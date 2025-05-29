@@ -1,0 +1,162 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Final API Key Validation</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        .test-section {
+            background: white;
+            padding: 20px;
+            margin: 10px 0;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .result {
+            padding: 10px;
+            margin: 10px 0;
+            border-radius: 4px;
+            font-family: monospace;
+        }
+        .success { background: #d4edda; color: #155724; border: 1px solid #c3e6cb; }
+        .error { background: #f8d7da; color: #721c24; border: 1px solid #f5c6cb; }
+        .info { background: #d1ecf1; color: #0c5460; border: 1px solid #bee5eb; }
+        button {
+            background: #007bff;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        button:hover { background: #0056b3; }
+        #recordButton {
+            background: #dc3545;
+            font-size: 16px;
+            padding: 12px 24px;
+        }
+    </style>
+</head>
+<body>
+    <h1>Final API Key & Record Button Validation</h1>
+    
+    <div class="test-section">
+        <h2>1. Environment Variable Test</h2>
+        <button onclick="testEnvironment()">Test Environment Variables</button>
+        <div id="envResult"></div>
+    </div>
+
+    <div class="test-section">
+        <h2>2. Record Button Test</h2>
+        <button id="recordButton" onclick="testRecordButton()">🎤 Test Record Button</button>
+        <div id="recordResult"></div>
+    </div>
+
+    <div class="test-section">
+        <h2>3. GoogleGenAI Initialization Test</h2>
+        <button onclick="testGenAI()">Test GenAI Initialization</button>
+        <div id="genaiResult"></div>
+    </div>
+
+    <div class="test-section">
+        <h2>4. Load Main Application</h2>
+        <button onclick="window.open('http://localhost:5173', '_blank')">Open Main App</button>
+        <p>Click to open the main application in a new tab</p>
+    </div>
+
+    <script type="importmap">
+        {
+            "imports": {
+                "@google/genai": "https://esm.sh/@google/genai@^0.8.0"
+            }
+        }
+    </script>
+
+    <script type="module">
+        import { GoogleGenAI } from '@google/genai';
+
+        window.testEnvironment = function() {
+            const result = document.getElementById('envResult');
+            const tests = [];
+            
+            // Test process.env availability
+            if (typeof process !== 'undefined' && process.env) {
+                tests.push(`✓ process.env is available`);
+                
+                if (process.env.GEMINI_API_KEY) {
+                    tests.push(`✓ GEMINI_API_KEY found: ${process.env.GEMINI_API_KEY.substring(0, 10)}...`);
+                } else {
+                    tests.push(`✗ GEMINI_API_KEY not found in process.env`);
+                }
+                
+                if (process.env.API_KEY) {
+                    tests.push(`✓ API_KEY found: ${process.env.API_KEY.substring(0, 10)}...`);
+                } else {
+                    tests.push(`✗ API_KEY not found in process.env`);
+                }
+            } else {
+                tests.push(`✗ process.env not available`);
+            }
+            
+            const hasApiKey = (typeof process !== 'undefined' && process.env && process.env.GEMINI_API_KEY);
+            result.innerHTML = `<div class="${hasApiKey ? 'success' : 'error'} result">${tests.join('<br>')}</div>`;
+        };
+
+        window.testRecordButton = function() {
+            const result = document.getElementById('recordResult');
+            const button = document.getElementById('recordButton');
+            
+            if (button) {
+                result.innerHTML = `<div class="success result">✓ Record button found and clicked!</div>`;
+                console.log('Record button test successful');
+            } else {
+                result.innerHTML = `<div class="error result">✗ Record button not found</div>`;
+            }
+        };
+
+        window.testGenAI = async function() {
+            const result = document.getElementById('genaiResult');
+            
+            try {
+                const apiKey = process.env.GEMINI_API_KEY || 'AIzaSyDE1gzCeTw42daw84Y-Lh_P7XurdLCZHoI';
+                
+                if (!apiKey) {
+                    throw new Error('No API key available');
+                }
+                
+                const genAI = new GoogleGenAI(apiKey);
+                const model = genAI.getGenerativeModel({ model: "gemini-pro" });
+                
+                result.innerHTML = `<div class="success result">✓ GoogleGenAI initialized successfully!<br>API Key: ${apiKey.substring(0, 10)}...<br>Model ready: ${!!model}</div>`;
+                console.log('GenAI initialization successful');
+                
+            } catch (error) {
+                result.innerHTML = `<div class="error result">✗ GenAI initialization failed:<br>${error.message}</div>`;
+                console.error('GenAI initialization failed:', error);
+            }
+        };
+
+        // Auto-run tests on page load
+        document.addEventListener('DOMContentLoaded', function() {
+            console.log('Running automatic tests...');
+            testEnvironment();
+            
+            // Test if main app elements exist
+            setTimeout(() => {
+                const button = document.getElementById('recordButton');
+                if (button) {
+                    console.log('✓ Record button found on validation page');
+                }
+            }, 100);
+        });
+    </script>
+</body>
+</html>

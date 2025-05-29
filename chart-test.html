@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Chart Test</title>
+    <link rel="stylesheet" href="index.css">
+    <script type="importmap">
+      {
+        "imports": {
+          "@google/genai": "https://esm.sh/@google/genai@^0.8.0",
+          "marked": "https://esm.sh/marked@^4.0.0"
+        }
+      }
+    </script>
+</head>
+<body>
+    <div class="app-container">
+        <h1>Chart Rendering Test</h1>
+        
+        <div class="test-controls" style="margin: 20px 0; display: flex; gap: 10px;">
+            <button id="testChart" style="padding: 10px 20px; background: #007acc; color: white; border: none; border-radius: 5px; cursor: pointer;">
+                Test Chart Generation
+            </button>
+            <button id="clearCharts" style="padding: 10px 20px; background: #dc3545; color: white; border: none; border-radius: 5px; cursor: pointer;">
+                Clear Charts
+            </button>
+            <button id="checkElements" style="padding: 10px 20px; background: #28a745; color: white; border: none; border-radius: 5px; cursor: pointer;">
+                Check Elements
+            </button>
+        </div>
+
+        <div class="note-area">
+            <div class="note-content-wrapper">
+                <div id="rawTranscription" class="editable-content active">
+                    <p>Raw transcription content goes here...</p>
+                    <div id="aiChartDisplayArea" class="ai-chart-raw-display">
+                        <!-- Charts will appear here -->
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div id="debugOutput" style="margin-top: 20px; padding: 15px; background: #f8f9fa; border: 1px solid #dee2e6; border-radius: 5px; font-family: monospace; white-space: pre-wrap; max-height: 400px; overflow-y: auto;"></div>
+    </div>
+
+    <script type="module">
+        import('./index.tsx').then(module => {
+            console.log('✅ Module loaded successfully');
+            
+            const debugOutput = document.getElementById('debugOutput');
+            
+            function log(message) {
+                console.log(message);
+                debugOutput.textContent += new Date().toLocaleTimeString() + ': ' + message + '\n';
+                debugOutput.scrollTop = debugOutput.scrollHeight;
+            }
+            
+            // Wait for app to initialize
+            setTimeout(() => {
+                log('🔍 Checking if app is available...');
+                if (window.app) {
+                    log('✅ App instance found');
+                    log('📊 Chart display area: ' + (window.app.aiChartDisplayArea ? 'Found' : 'Not found'));
+                    
+                    document.getElementById('testChart').addEventListener('click', async () => {
+                        log('🧪 Testing chart generation...');
+                        
+                        const testChartData = {
+                            title: "Test Chart",
+                            description: "This is a test chart to verify Chart.js functionality",
+                            type: "bar",
+                            data: {
+                                labels: ["Jan", "Feb", "Mar", "Apr", "May"],
+                                datasets: [{
+                                    label: "Sample Data",
+                                    data: [12, 19, 3, 5, 2],
+                                    backgroundColor: [
+                                        'rgba(255, 99, 132, 0.5)',
+                                        'rgba(54, 162, 235, 0.5)',
+                                        'rgba(255, 205, 86, 0.5)',
+                                        'rgba(75, 192, 192, 0.5)',
+                                        'rgba(153, 102, 255, 0.5)'
+                                    ],
+                                    borderColor: [
+                                        'rgba(255, 99, 132, 1)',
+                                        'rgba(54, 162, 235, 1)',
+                                        'rgba(255, 205, 86, 1)',
+                                        'rgba(75, 192, 192, 1)',
+                                        'rgba(153, 102, 255, 1)'
+                                    ],
+                                    borderWidth: 1
+                                }]
+                            }
+                        };
+                        
+                        try {
+                            await window.app.generateChartsFromAI(testChartData);
+                            log('✅ Chart generation completed');
+                        } catch (error) {
+                            log('❌ Chart generation failed: ' + error.message);
+                        }
+                    });
+                    
+                    document.getElementById('clearCharts').addEventListener('click', () => {
+                        log('🧹 Clearing charts...');
+                        if (window.app.clearActiveCharts) {
+                            window.app.clearActiveCharts();
+                            log('✅ Charts cleared');
+                        } else {
+                            log('❌ clearActiveCharts method not found');
+                        }
+                    });
+                    
+                    document.getElementById('checkElements').addEventListener('click', () => {
+                        log('🔍 Checking elements...');
+                        const chartArea = document.getElementById('aiChartDisplayArea');
+                        log('Chart area element: ' + (chartArea ? 'Found' : 'Not found'));
+                        if (chartArea) {
+                            log('Chart area children count: ' + chartArea.children.length);
+                            log('Chart area innerHTML length: ' + chartArea.innerHTML.length);
+                            log('Chart area CSS display: ' + window.getComputedStyle(chartArea).display);
+                            log('Chart area CSS visibility: ' + window.getComputedStyle(chartArea).visibility);
+                        }
+                        log('Canvas elements count: ' + document.querySelectorAll('canvas').length);
+                    });
+                    
+                } else {
+                    log('❌ App instance not found');
+                }
+            }, 1000);
+        }).catch(error => {
+            console.error('❌ Failed to load module:', error);
+            document.getElementById('debugOutput').textContent += 'Failed to load module: ' + error.message + '\n';
+        });
+    </script>
+</body>
+</html>

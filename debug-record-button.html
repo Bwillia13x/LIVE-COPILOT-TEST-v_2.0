@@ -1,0 +1,688 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Record Button Debug Tool</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: #1a1a1a;
+            color: #ffffff;
+            padding: 20px;
+            margin: 0;
+        }
+        .debug-panel {
+            background: #2a2a2a;
+            border-radius: 12px;
+            padding: 20px;
+            margin-bottom: 20px;
+            border: 1px solid #444;
+        }
+        .status {
+            padding: 10px;
+            border-radius: 8px;
+            margin: 10px 0;
+            font-weight: 500;
+        }
+        .status.success { background: #2d5a2d; border: 1px solid #4a8f4a; }
+        .status.error { background: #5a2d2d; border: 1px solid #8f4a4a; }
+        .status.warning { background: #5a5a2d; border: 1px solid #8f8f4a; }
+        .status.info { background: #2d2d5a; border: 1px solid #4a4a8f; }
+        button {
+            background: #007bff;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 8px;
+            cursor: pointer;
+            margin: 5px;
+            font-weight: 500;
+        }
+        button:hover { background: #0056b3; }
+        button:disabled { background: #555; cursor: not-allowed; }
+        .test-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 20px;
+        }
+        .code-block {
+            background: #1e1e1e;
+            border: 1px solid #444;
+            border-radius: 8px;
+            padding: 15px;
+            font-family: 'Courier New', monospace;
+            font-size: 14px;
+            overflow-x: auto;
+            white-space: pre-wrap;
+        }
+        .result {
+            margin-top: 10px;
+            padding: 10px;
+            border-radius: 8px;
+            background: #2d2d2d;
+            border: 1px solid #555;
+        }
+    </style>
+</head>
+<body>
+    <h1>🔧 Voice Notes App - Record Button Debug Tool</h1>
+    <p>This tool will help identify why the record button isn't working in the main application.</p>
+
+    <div class="test-grid">
+        <div class="debug-panel">
+            <h3>🔍 DOM Element Detection</h3>
+            <button onclick="testElementExists()">Test Record Button Element</button>
+            <button onclick="testAllButtons()">List All Buttons</button>
+            <button onclick="testElementProperties()">Check Element Properties</button>
+            <div id="domResults" class="result"></div>
+        </div>
+
+        <div class="debug-panel">
+            <h3>🎯 Event Listener Testing</h3>
+            <button onclick="testEventListeners()">Test Event Listener Attachment</button>
+            <button onclick="simulateClick()">Simulate Button Click</button>
+            <button onclick="testEventPropagation()">Test Event Propagation</button>
+            <div id="eventResults" class="result"></div>
+        </div>
+
+        <div class="debug-panel">
+            <h3>🎤 Microphone Access</h3>
+            <button onclick="testMicrophoneAccess()">Test Microphone Permission</button>
+            <button onclick="testMediaDevices()">Check Media Devices API</button>
+            <div id="micResults" class="result"></div>
+        </div>
+
+        <div class="debug-panel">
+            <h3>📱 Browser Compatibility</h3>
+            <button onclick="testBrowserAPIs()">Test Browser APIs</button>
+            <button onclick="testConsoleErrors()">Check Console Errors</button>
+            <div id="browserResults" class="result"></div>
+        </div>
+
+        <div class="debug-panel">
+            <h3>🌐 Application State</h3>
+            <button onclick="testAppInstance()">Test App Instance</button>
+            <button onclick="testInitialization()">Test App Initialization</button>
+            <button onclick="loadMainApp()">Load Main App (for testing)</button>
+            <div id="appResults" class="result"></div>
+        </div>
+
+        <div class="debug-panel">
+            <h3>🔧 Manual Testing</h3>
+            <button id="testRecordButton" onclick="manualRecordTest()">Manual Record Button Test</button>
+            <button onclick="createTestButton()">Create Test Button</button>
+            <div id="manualResults" class="result"></div>
+        </div>
+    </div>
+
+    <div class="debug-panel">
+        <h3>📋 Debug Log</h3>
+        <div id="debugLog" class="code-block">Debug information will appear here...</div>
+    </div>
+
+    <script>
+        let debugLog = [];
+        
+        function log(message, type = 'info') {
+            const timestamp = new Date().toLocaleTimeString();
+            const logEntry = `[${timestamp}] ${type.toUpperCase()}: ${message}`;
+            debugLog.push(logEntry);
+            document.getElementById('debugLog').textContent = debugLog.join('\n');
+            console.log(logEntry);
+        }
+
+        function showResult(containerId, content, status = 'info') {
+            const container = document.getElementById(containerId);
+            container.innerHTML = `<div class="status ${status}">${content}</div>`;
+        }
+
+        function testElementExists() {
+            log('Testing record button element existence...');
+            
+            // Test if we can access the main app's DOM
+            let recordButton = null;
+            let results = [];
+            
+            try {
+                // Try to access from current page
+                recordButton = document.getElementById('recordButton');
+                results.push(`Local search: ${recordButton ? 'FOUND' : 'NOT FOUND'}`);
+                
+                // Try to access parent window if in iframe
+                if (window.parent && window.parent !== window) {
+                    try {
+                        const parentButton = window.parent.document.getElementById('recordButton');
+                        results.push(`Parent window: ${parentButton ? 'FOUND' : 'NOT FOUND'}`);
+                    } catch (e) {
+                        results.push(`Parent window: ACCESS DENIED (${e.message})`);
+                    }
+                }
+                
+                // Check if element exists in different frame
+                if (!recordButton) {
+                    const allIframes = document.querySelectorAll('iframe');
+                    results.push(`Found ${allIframes.length} iframes to check`);
+                }
+                
+                const summary = recordButton ? 
+                    `✅ Record button found! ID: ${recordButton.id}, Tag: ${recordButton.tagName}` :
+                    `❌ Record button NOT found in current context`;
+                    
+                showResult('domResults', `${summary}<br><br>Details:<br>${results.join('<br>')}`, 
+                    recordButton ? 'success' : 'error');
+                    
+                log(`Element test complete: ${recordButton ? 'FOUND' : 'NOT FOUND'}`);
+                
+            } catch (error) {
+                showResult('domResults', `❌ Error testing element: ${error.message}`, 'error');
+                log(`Element test error: ${error.message}`, 'error');
+            }
+        }
+
+        function testAllButtons() {
+            log('Listing all button elements...');
+            
+            try {
+                const buttons = document.querySelectorAll('button');
+                const buttonInfo = Array.from(buttons).map((btn, index) => {
+                    return `${index + 1}. ID: "${btn.id || 'no-id'}" | Class: "${btn.className || 'no-class'}" | Text: "${btn.textContent?.trim().substring(0, 30) || 'no-text'}"`;
+                });
+                
+                showResult('domResults', 
+                    `Found ${buttons.length} button elements:<br><br>${buttonInfo.join('<br>')}`, 
+                    buttons.length > 0 ? 'info' : 'warning');
+                    
+                log(`Found ${buttons.length} buttons in current page`);
+                
+            } catch (error) {
+                showResult('domResults', `❌ Error listing buttons: ${error.message}`, 'error');
+                log(`Button listing error: ${error.message}`, 'error');
+            }
+        }
+
+        function testElementProperties() {
+            log('Testing record button properties...');
+            
+            try {
+                const recordButton = document.getElementById('recordButton');
+                if (!recordButton) {
+                    showResult('domResults', '❌ Record button not found to test properties', 'error');
+                    return;
+                }
+                
+                const properties = {
+                    'Tag Name': recordButton.tagName,
+                    'ID': recordButton.id,
+                    'Class Names': recordButton.className,
+                    'Disabled': recordButton.disabled,
+                    'Display Style': getComputedStyle(recordButton).display,
+                    'Visibility': getComputedStyle(recordButton).visibility,
+                    'Opacity': getComputedStyle(recordButton).opacity,
+                    'Pointer Events': getComputedStyle(recordButton).pointerEvents,
+                    'Z-Index': getComputedStyle(recordButton).zIndex,
+                    'Position': getComputedStyle(recordButton).position,
+                    'Event Listeners': 'Testing...'
+                };
+                
+                // Test if element has event listeners (limited detection)
+                const hasClickListener = recordButton.onclick !== null;
+                properties['Event Listeners'] = hasClickListener ? 'Has onclick property' : 'No onclick property detected';
+                
+                const propertyDisplay = Object.entries(properties)
+                    .map(([key, value]) => `${key}: ${value}`)
+                    .join('<br>');
+                    
+                showResult('domResults', `✅ Record button properties:<br><br>${propertyDisplay}`, 'success');
+                log('Element properties tested successfully');
+                
+            } catch (error) {
+                showResult('domResults', `❌ Error testing properties: ${error.message}`, 'error');
+                log(`Property test error: ${error.message}`, 'error');
+            }
+        }
+
+        function testEventListeners() {
+            log('Testing event listener functionality...');
+            
+            try {
+                const recordButton = document.getElementById('recordButton');
+                if (!recordButton) {
+                    showResult('eventResults', '❌ Record button not found for event testing', 'error');
+                    return;
+                }
+                
+                let results = [];
+                
+                // Test adding a new event listener
+                const testHandler = (event) => {
+                    results.push('✅ Test event listener triggered successfully');
+                    showResult('eventResults', results.join('<br>'), 'success');
+                    log('Test event listener fired');
+                };
+                
+                recordButton.addEventListener('click', testHandler);
+                results.push('✅ Test event listener added successfully');
+                
+                // Test programmatic click
+                recordButton.click();
+                
+                // Remove test listener
+                recordButton.removeEventListener('click', testHandler);
+                results.push('✅ Test event listener removed');
+                
+                if (results.length === 2) {
+                    results.push('⚠️ Event listener added but click did not trigger - possible issue!');
+                    showResult('eventResults', results.join('<br>'), 'warning');
+                } else {
+                    showResult('eventResults', results.join('<br>'), 'success');
+                }
+                
+                log('Event listener test completed');
+                
+            } catch (error) {
+                showResult('eventResults', `❌ Error testing event listeners: ${error.message}`, 'error');
+                log(`Event listener test error: ${error.message}`, 'error');
+            }
+        }
+
+        function simulateClick() {
+            log('Simulating record button click...');
+            
+            try {
+                const recordButton = document.getElementById('recordButton');
+                if (!recordButton) {
+                    showResult('eventResults', '❌ Record button not found for click simulation', 'error');
+                    return;
+                }
+                
+                // Try multiple click simulation methods
+                let results = [];
+                
+                // Method 1: Direct click()
+                try {
+                    recordButton.click();
+                    results.push('✅ Direct click() method executed');
+                } catch (e) {
+                    results.push(`❌ Direct click() failed: ${e.message}`);
+                }
+                
+                // Method 2: Mouse event
+                try {
+                    const mouseEvent = new MouseEvent('click', {
+                        bubbles: true,
+                        cancelable: true,
+                        view: window
+                    });
+                    recordButton.dispatchEvent(mouseEvent);
+                    results.push('✅ Mouse click event dispatched');
+                } catch (e) {
+                    results.push(`❌ Mouse event dispatch failed: ${e.message}`);
+                }
+                
+                // Method 3: Pointer event
+                try {
+                    const pointerEvent = new PointerEvent('click', {
+                        bubbles: true,
+                        cancelable: true,
+                        view: window
+                    });
+                    recordButton.dispatchEvent(pointerEvent);
+                    results.push('✅ Pointer click event dispatched');
+                } catch (e) {
+                    results.push(`❌ Pointer event dispatch failed: ${e.message}`);
+                }
+                
+                showResult('eventResults', results.join('<br>'), 'info');
+                log('Click simulation tests completed');
+                
+            } catch (error) {
+                showResult('eventResults', `❌ Error simulating click: ${error.message}`, 'error');
+                log(`Click simulation error: ${error.message}`, 'error');
+            }
+        }
+
+        function testEventPropagation() {
+            log('Testing event propagation...');
+            
+            try {
+                const recordButton = document.getElementById('recordButton');
+                if (!recordButton) {
+                    showResult('eventResults', '❌ Record button not found for propagation testing', 'error');
+                    return;
+                }
+                
+                let results = [];
+                
+                // Add listeners at different levels
+                const documentHandler = () => results.push('📄 Document level click detected');
+                const bodyHandler = () => results.push('🏠 Body level click detected');
+                const buttonHandler = () => results.push('🔘 Button level click detected');
+                
+                document.addEventListener('click', documentHandler);
+                document.body.addEventListener('click', bodyHandler);
+                recordButton.addEventListener('click', buttonHandler);
+                
+                // Trigger click
+                recordButton.click();
+                
+                // Clean up
+                setTimeout(() => {
+                    document.removeEventListener('click', documentHandler);
+                    document.body.removeEventListener('click', bodyHandler);
+                    recordButton.removeEventListener('click', buttonHandler);
+                    
+                    showResult('eventResults', 
+                        results.length > 0 ? results.join('<br>') : '⚠️ No event propagation detected',
+                        results.length > 0 ? 'success' : 'warning');
+                        
+                    log(`Event propagation test: ${results.length} events detected`);
+                }, 100);
+                
+            } catch (error) {
+                showResult('eventResults', `❌ Error testing propagation: ${error.message}`, 'error');
+                log(`Event propagation test error: ${error.message}`, 'error');
+            }
+        }
+
+        function testMicrophoneAccess() {
+            log('Testing microphone access...');
+            
+            if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+                showResult('micResults', '❌ getUserMedia API not supported in this browser', 'error');
+                log('getUserMedia API not available', 'error');
+                return;
+            }
+            
+            navigator.mediaDevices.getUserMedia({ audio: true })
+                .then(stream => {
+                    showResult('micResults', '✅ Microphone access granted successfully', 'success');
+                    log('Microphone access successful');
+                    
+                    // Stop the stream
+                    stream.getTracks().forEach(track => track.stop());
+                })
+                .catch(error => {
+                    let errorType = 'error';
+                    let message = '';
+                    
+                    switch(error.name) {
+                        case 'NotAllowedError':
+                            message = '❌ Microphone access denied by user';
+                            errorType = 'warning';
+                            break;
+                        case 'NotFoundError':
+                            message = '❌ No microphone found on device';
+                            break;
+                        case 'NotReadableError':
+                            message = '❌ Microphone is being used by another application';
+                            break;
+                        default:
+                            message = `❌ Microphone access error: ${error.message}`;
+                    }
+                    
+                    showResult('micResults', message, errorType);
+                    log(`Microphone test failed: ${error.name} - ${error.message}`, 'error');
+                });
+        }
+
+        function testMediaDevices() {
+            log('Testing media devices API...');
+            
+            try {
+                if (!navigator.mediaDevices) {
+                    showResult('micResults', '❌ MediaDevices API not supported', 'error');
+                    return;
+                }
+                
+                navigator.mediaDevices.enumerateDevices()
+                    .then(devices => {
+                        const audioInputs = devices.filter(device => device.kind === 'audioinput');
+                        const results = [
+                            `Total devices: ${devices.length}`,
+                            `Audio input devices: ${audioInputs.length}`,
+                            `Permissions API available: ${!!navigator.permissions}`,
+                            `getUserMedia available: ${!!navigator.mediaDevices.getUserMedia}`
+                        ];
+                        
+                        showResult('micResults', results.join('<br>'), audioInputs.length > 0 ? 'success' : 'warning');
+                        log(`Media devices enumerated: ${audioInputs.length} audio inputs found`);
+                    })
+                    .catch(error => {
+                        showResult('micResults', `❌ Error enumerating devices: ${error.message}`, 'error');
+                        log(`Device enumeration error: ${error.message}`, 'error');
+                    });
+                    
+            } catch (error) {
+                showResult('micResults', `❌ Error testing media devices: ${error.message}`, 'error');
+                log(`Media devices test error: ${error.message}`, 'error');
+            }
+        }
+
+        function testBrowserAPIs() {
+            log('Testing browser API compatibility...');
+            
+            const apis = {
+                'MediaDevices API': !!navigator.mediaDevices,
+                'getUserMedia': !!(navigator.mediaDevices && navigator.mediaDevices.getUserMedia),
+                'MediaRecorder API': !!window.MediaRecorder,
+                'Web Speech API': !!window.SpeechRecognition || !!window.webkitSpeechRecognition,
+                'AudioContext API': !!window.AudioContext || !!window.webkitAudioContext,
+                'Permissions API': !!navigator.permissions,
+                'Clipboard API': !!navigator.clipboard
+            };
+            
+            const results = Object.entries(apis)
+                .map(([api, supported]) => `${supported ? '✅' : '❌'} ${api}: ${supported ? 'Supported' : 'Not supported'}`)
+                .join('<br>');
+                
+            const supportedCount = Object.values(apis).filter(Boolean).length;
+            const totalCount = Object.keys(apis).length;
+            
+            showResult('browserResults', 
+                `Browser Compatibility (${supportedCount}/${totalCount}):<br><br>${results}`,
+                supportedCount === totalCount ? 'success' : 'warning');
+                
+            log(`Browser API test: ${supportedCount}/${totalCount} APIs supported`);
+        }
+
+        function testConsoleErrors() {
+            log('Checking for console errors...');
+            
+            // Override console.error to capture errors
+            const originalError = console.error;
+            const errors = [];
+            
+            console.error = function(...args) {
+                errors.push(args.join(' '));
+                originalError.apply(console, args);
+            };
+            
+            setTimeout(() => {
+                console.error = originalError;
+                
+                if (errors.length === 0) {
+                    showResult('browserResults', '✅ No console errors detected during test', 'success');
+                    log('No console errors found');
+                } else {
+                    showResult('browserResults', 
+                        `⚠️ Console errors detected:<br><br>${errors.join('<br>')}`, 
+                        'warning');
+                    log(`Found ${errors.length} console errors`);
+                }
+            }, 1000);
+        }
+
+        function testAppInstance() {
+            log('Testing for app instance...');
+            
+            try {
+                // Check for global app instance
+                const appInstance = window.app || window.voiceNotesApp || window.VoiceNotesApp;
+                
+                if (appInstance) {
+                    const properties = Object.getOwnPropertyNames(appInstance);
+                    showResult('appResults', 
+                        `✅ App instance found with ${properties.length} properties:<br>${properties.slice(0, 10).join(', ')}...`,
+                        'success');
+                    log('App instance found');
+                } else {
+                    showResult('appResults', '❌ No app instance found in global scope', 'warning');
+                    log('No app instance detected');
+                }
+                
+            } catch (error) {
+                showResult('appResults', `❌ Error testing app instance: ${error.message}`, 'error');
+                log(`App instance test error: ${error.message}`, 'error');
+            }
+        }
+
+        function testInitialization() {
+            log('Testing app initialization sequence...');
+            
+            try {
+                const results = [];
+                
+                // Check document ready state
+                results.push(`Document ready state: ${document.readyState}`);
+                
+                // Check if DOM elements exist
+                const elements = ['recordButton', 'recordingStatus', 'rawTranscription'];
+                elements.forEach(id => {
+                    const element = document.getElementById(id);
+                    results.push(`${id}: ${element ? 'EXISTS' : 'MISSING'}`);
+                });
+                
+                // Check for script tags
+                const scripts = document.querySelectorAll('script[src*="index"]');
+                results.push(`App scripts found: ${scripts.length}`);
+                
+                showResult('appResults', results.join('<br>'), 'info');
+                log('Initialization test completed');
+                
+            } catch (error) {
+                showResult('appResults', `❌ Error testing initialization: ${error.message}`, 'error');
+                log(`Initialization test error: ${error.message}`, 'error');
+            }
+        }
+
+        function loadMainApp() {
+            log('Attempting to load main app for testing...');
+            
+            try {
+                // Create iframe to load main app
+                const iframe = document.createElement('iframe');
+                iframe.src = 'index.html';
+                iframe.style.width = '100%';
+                iframe.style.height = '400px';
+                iframe.style.border = '1px solid #555';
+                iframe.style.borderRadius = '8px';
+                
+                iframe.onload = () => {
+                    showResult('appResults', '✅ Main app loaded in iframe - check manually for functionality', 'success');
+                    log('Main app loaded in iframe');
+                };
+                
+                iframe.onerror = () => {
+                    showResult('appResults', '❌ Failed to load main app', 'error');
+                    log('Failed to load main app in iframe', 'error');
+                };
+                
+                document.getElementById('appResults').appendChild(iframe);
+                
+            } catch (error) {
+                showResult('appResults', `❌ Error loading main app: ${error.message}`, 'error');
+                log(`Main app loading error: ${error.message}`, 'error');
+            }
+        }
+
+        function manualRecordTest() {
+            log('Running manual record button test...');
+            
+            const button = document.getElementById('testRecordButton');
+            let clickCount = 0;
+            
+            const originalText = button.textContent;
+            
+            button.addEventListener('click', () => {
+                clickCount++;
+                button.textContent = `Clicked ${clickCount} times`;
+                
+                setTimeout(() => {
+                    button.textContent = originalText;
+                }, 1000);
+            });
+            
+            showResult('manualResults', '✅ Manual test button is working - try clicking it!', 'success');
+            log('Manual test button activated');
+        }
+
+        function createTestButton() {
+            log('Creating a test record button...');
+            
+            try {
+                // Remove existing test button
+                const existing = document.getElementById('createdTestButton');
+                if (existing) existing.remove();
+                
+                // Create test button with same structure as main app
+                const testButton = document.createElement('button');
+                testButton.id = 'createdTestButton';
+                testButton.className = 'record-button';
+                testButton.innerHTML = `
+                    <div class="record-button-inner">
+                        <i class="fas fa-microphone"></i>
+                    </div>
+                    <span class="record-text">Test Record</span>
+                `;
+                
+                testButton.style.cssText = `
+                    position: relative; width: 72px; height: 72px; border-radius: 50%; 
+                    border: none; outline: none; background: none; cursor: pointer; 
+                    margin: 10px; transition: all 0.3s ease;
+                `;
+                
+                const inner = testButton.querySelector('.record-button-inner');
+                inner.style.cssText = `
+                    position: relative; width: 100%; height: 100%; border-radius: 50%;
+                    background: linear-gradient(145deg, #2a2a2a, #1a1a1a);
+                    border: 1px solid #444; display: flex; align-items: center; justify-content: center;
+                    color: #fff; font-size: 24px; box-shadow: 0 4px 8px rgba(0,0,0,0.3);
+                `;
+                
+                // Add click handler
+                testButton.addEventListener('click', () => {
+                    testButton.style.transform = 'scale(0.95)';
+                    inner.style.background = '#dc3545';
+                    
+                    setTimeout(() => {
+                        testButton.style.transform = 'scale(1)';
+                        inner.style.background = 'linear-gradient(145deg, #2a2a2a, #1a1a1a)';
+                    }, 200);
+                    
+                    showResult('manualResults', '✅ Test button clicked successfully! Button is functional.', 'success');
+                    log('Test button clicked - functionality confirmed');
+                });
+                
+                document.getElementById('manualResults').appendChild(testButton);
+                
+                showResult('manualResults', '✅ Test record button created - try clicking it!', 'success');
+                log('Test record button created successfully');
+                
+            } catch (error) {
+                showResult('manualResults', `❌ Error creating test button: ${error.message}`, 'error');
+                log(`Test button creation error: ${error.message}`, 'error');
+            }
+        }
+
+        // Auto-run some tests on page load
+        window.addEventListener('load', () => {
+            log('Debug tool loaded - running initial tests...');
+            setTimeout(() => {
+                testElementExists();
+                testBrowserAPIs();
+            }, 500);
+        });
+    </script>
+</body>
+</html>

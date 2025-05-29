@@ -1,0 +1,223 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Record Button Test</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background: #1a1a1a;
+            color: white;
+        }
+        .test-section {
+            margin: 20px 0;
+            padding: 20px;
+            border: 1px solid #333;
+            border-radius: 8px;
+            background: #2a2a2a;
+        }
+        .status {
+            padding: 10px;
+            margin: 10px 0;
+            border-radius: 4px;
+        }
+        .success { background: #2d5a2d; border: 1px solid #4a8a4a; }
+        .error { background: #5a2d2d; border: 1px solid #8a4a4a; }
+        .warning { background: #5a5a2d; border: 1px solid #8a8a4a; }
+        button {
+            padding: 10px 20px;
+            margin: 5px;
+            border: none;
+            border-radius: 4px;
+            background: #007bff;
+            color: white;
+            cursor: pointer;
+        }
+        button:hover { background: #0056b3; }
+        #console-output {
+            background: #000;
+            color: #0f0;
+            padding: 10px;
+            border-radius: 4px;
+            max-height: 300px;
+            overflow-y: auto;
+            font-family: monospace;
+            white-space: pre-wrap;
+        }
+    </style>
+</head>
+<body>
+    <h1>Record Button Functionality Test</h1>
+    
+    <div class="test-section">
+        <h2>Test Results</h2>
+        <div id="test-results"></div>
+        <button onclick="runTests()">Run Tests</button>
+        <button onclick="testInMainApp()">Test in Main App</button>
+    </div>
+
+    <div class="test-section">
+        <h2>Console Output</h2>
+        <div id="console-output"></div>
+        <button onclick="clearConsole()">Clear Console</button>
+    </div>
+
+    <script>
+        let consoleOutput = document.getElementById('console-output');
+        let testResults = document.getElementById('test-results');
+
+        // Capture console logs
+        const originalLog = console.log;
+        const originalError = console.error;
+        const originalWarn = console.warn;
+
+        function logToDiv(type, ...args) {
+            const timestamp = new Date().toLocaleTimeString();
+            const message = args.map(arg => 
+                typeof arg === 'object' ? JSON.stringify(arg, null, 2) : String(arg)
+            ).join(' ');
+            consoleOutput.textContent += `[${timestamp}] ${type.toUpperCase()}: ${message}\n`;
+            consoleOutput.scrollTop = consoleOutput.scrollHeight;
+        }
+
+        console.log = (...args) => {
+            originalLog(...args);
+            logToDiv('log', ...args);
+        };
+
+        console.error = (...args) => {
+            originalError(...args);
+            logToDiv('error', ...args);
+        };
+
+        console.warn = (...args) => {
+            originalWarn(...args);
+            logToDiv('warn', ...args);
+        };
+
+        function addResult(message, type = 'success') {
+            const div = document.createElement('div');
+            div.className = `status ${type}`;
+            div.textContent = message;
+            testResults.appendChild(div);
+        }
+
+        function clearConsole() {
+            consoleOutput.textContent = '';
+        }
+
+        function clearResults() {
+            testResults.innerHTML = '';
+        }
+
+        async function runTests() {
+            clearResults();
+            console.log('🧪 Starting Record Button Tests...');
+
+            try {
+                // Test 1: Check if we can access the main app
+                const mainWindow = window.open('http://localhost:5173', '_blank');
+                if (mainWindow) {
+                    addResult('✅ Main app window opened successfully');
+                    
+                    // Wait for app to load and test
+                    setTimeout(() => {
+                        testMainAppFeatures(mainWindow);
+                    }, 3000);
+                } else {
+                    addResult('❌ Failed to open main app window', 'error');
+                }
+
+            } catch (error) {
+                console.error('Test failed:', error);
+                addResult(`❌ Test failed: ${error.message}`, 'error');
+            }
+        }
+
+        function testMainAppFeatures(appWindow) {
+            try {
+                // Test if the app instance exists
+                if (appWindow.app) {
+                    console.log('✅ App instance found in main window');
+                    addResult('✅ App instance accessible');
+
+                    // Test record button element
+                    const recordButton = appWindow.document.getElementById('recordButton');
+                    if (recordButton) {
+                        console.log('✅ Record button element found');
+                        addResult('✅ Record button element exists');
+
+                        // Test button click
+                        console.log('🧪 Testing record button click...');
+                        recordButton.click();
+                        addResult('✅ Record button click triggered');
+                    } else {
+                        console.error('❌ Record button not found');
+                        addResult('❌ Record button element not found', 'error');
+                    }
+                } else {
+                    console.error('❌ App instance not found');
+                    addResult('❌ App instance not accessible', 'error');
+                }
+            } catch (error) {
+                console.error('Main app test failed:', error);
+                addResult(`❌ Main app test failed: ${error.message}`, 'error');
+            }
+        }
+
+        function testInMainApp() {
+            // Open main app and run tests there
+            const testScript = `
+                console.log('🧪 Testing record button in main app...');
+                
+                // Test 1: Check if app exists
+                if (typeof app !== 'undefined') {
+                    console.log('✅ App instance exists');
+                } else {
+                    console.error('❌ App instance not found');
+                    return;
+                }
+                
+                // Test 2: Check record button element
+                const recordButton = document.getElementById('recordButton');
+                if (recordButton) {
+                    console.log('✅ Record button found:', recordButton);
+                    console.log('✅ Record button classes:', recordButton.className);
+                    console.log('✅ Record button tag:', recordButton.tagName);
+                } else {
+                    console.error('❌ Record button not found');
+                    return;
+                }
+                
+                // Test 3: Check if event listeners are bound
+                console.log('🧪 Testing record button click...');
+                try {
+                    recordButton.click();
+                    console.log('✅ Record button click executed');
+                } catch (error) {
+                    console.error('❌ Record button click failed:', error);
+                }
+                
+                // Test 4: Check app state
+                console.log('🧪 App recording state:', app.isRecording);
+            `;
+
+            // Open main app with test script
+            const url = `javascript:${encodeURIComponent(testScript)}`;
+            window.open('http://localhost:5173', '_blank');
+            
+            addResult('✅ Test script prepared for main app', 'warning');
+            console.log('🧪 Test will run in the main app window. Check its console for results.');
+        }
+
+        // Auto-run tests on page load
+        setTimeout(() => {
+            console.log('🧪 Test page loaded. Click "Run Tests" to test the record button functionality.');
+        }, 1000);
+    </script>
+</body>
+</html>

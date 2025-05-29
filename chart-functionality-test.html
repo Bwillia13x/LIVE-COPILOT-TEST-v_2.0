@@ -1,0 +1,235 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Chart Functionality Test</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        .test-section {
+            border: 1px solid #ddd;
+            margin: 20px 0;
+            padding: 20px;
+            border-radius: 8px;
+        }
+        .test-result {
+            margin: 10px 0;
+            padding: 10px;
+            border-radius: 4px;
+        }
+        .success { background-color: #d4edda; color: #155724; }
+        .error { background-color: #f8d7da; color: #721c24; }
+        .info { background-color: #d1ecf1; color: #0c5460; }
+        button {
+            margin: 5px;
+            padding: 10px 20px;
+            background: #007bff;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        button:hover { background: #0056b3; }
+        .chart-container {
+            margin: 20px 0;
+            height: 400px;
+            border: 1px solid #ccc;
+            position: relative;
+        }
+        canvas {
+            max-width: 100%;
+            max-height: 100%;
+        }
+    </style>
+</head>
+<body>
+    <h1>Chart Functionality Comprehensive Test</h1>
+    
+    <div class="test-section">
+        <h2>1. Library Loading Test</h2>
+        <div id="libraryTest" class="test-result info">Testing...</div>
+        <button onclick="testLibraryLoading()">Test Chart.js Loading</button>
+    </div>
+
+    <div class="test-section">
+        <h2>2. Direct Chart Creation Test</h2>
+        <div id="directChartTest" class="test-result info">Ready to test</div>
+        <button onclick="testDirectChart()">Create Direct Chart</button>
+        <div id="directChartContainer" class="chart-container">
+            <canvas id="directChart"></canvas>
+        </div>
+    </div>
+
+    <div class="test-section">
+        <h2>3. Main Application Integration Test</h2>
+        <div id="mainAppTest" class="test-result info">Ready to test</div>
+        <button onclick="testMainAppIntegration()">Test Main App Charts</button>
+        <div id="mainAppResults"></div>
+    </div>
+
+    <div class="test-section">
+        <h2>4. API Configuration Test</h2>
+        <div id="apiTest" class="test-result info">Ready to test</div>
+        <button onclick="testAPIConfiguration()">Test API Setup</button>
+    </div>
+
+    <div class="test-section">
+        <h2>5. Full Application Test</h2>
+        <div id="fullAppTest" class="test-result info">Ready to test</div>
+        <button onclick="openMainApp()">Open Main Application</button>
+    </div>
+
+    <!-- Load Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.9/dist/chart.min.js"></script>
+    
+    <script>
+        function logResult(elementId, message, type = 'info') {
+            const element = document.getElementById(elementId);
+            element.textContent = message;
+            element.className = `test-result ${type}`;
+            console.log(`[${type.toUpperCase()}] ${message}`);
+        }
+
+        function testLibraryLoading() {
+            try {
+                if (typeof Chart !== 'undefined') {
+                    logResult('libraryTest', `✅ Chart.js loaded successfully! Version: ${Chart.version || 'Unknown'}`, 'success');
+                    console.log('Chart object:', Chart);
+                } else {
+                    logResult('libraryTest', '❌ Chart.js is not loaded', 'error');
+                }
+            } catch (error) {
+                logResult('libraryTest', `❌ Error checking Chart.js: ${error.message}`, 'error');
+            }
+        }
+
+        function testDirectChart() {
+            try {
+                const ctx = document.getElementById('directChart').getContext('2d');
+                
+                const chart = new Chart(ctx, {
+                    type: 'bar',
+                    data: {
+                        labels: ['Test 1', 'Test 2', 'Test 3', 'Test 4'],
+                        datasets: [{
+                            label: 'Test Data',
+                            data: [12, 19, 3, 17],
+                            backgroundColor: [
+                                'rgba(255, 99, 132, 0.2)',
+                                'rgba(54, 162, 235, 0.2)',
+                                'rgba(255, 205, 86, 0.2)',
+                                'rgba(75, 192, 192, 0.2)'
+                            ],
+                            borderColor: [
+                                'rgba(255, 99, 132, 1)',
+                                'rgba(54, 162, 235, 1)',
+                                'rgba(255, 205, 86, 1)',
+                                'rgba(75, 192, 192, 1)'
+                            ],
+                            borderWidth: 1
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        plugins: {
+                            title: {
+                                display: true,
+                                text: 'Direct Chart Test'
+                            }
+                        },
+                        scales: {
+                            y: {
+                                beginAtZero: true
+                            }
+                        }
+                    }
+                });
+
+                logResult('directChartTest', '✅ Direct chart created successfully!', 'success');
+                console.log('Direct chart instance:', chart);
+            } catch (error) {
+                logResult('directChartTest', `❌ Error creating direct chart: ${error.message}`, 'error');
+                console.error('Direct chart error:', error);
+            }
+        }
+
+        function testMainAppIntegration() {
+            try {
+                // Try to access the main application's window.app
+                if (window.opener && window.opener.app) {
+                    logResult('mainAppTest', '✅ Main app detected in opener window', 'success');
+                    
+                    // Try to call chart functions
+                    if (typeof window.opener.app.testChartWithoutAI === 'function') {
+                        logResult('mainAppTest', '✅ Chart test function found in main app', 'success');
+                    } else {
+                        logResult('mainAppTest', '⚠️ Chart test function not found in main app', 'error');
+                    }
+                } else {
+                    // Try to load and test the main app directly
+                    fetch('/index.tsx')
+                        .then(response => response.text())
+                        .then(code => {
+                            if (code.includes('createTopicChart') && code.includes('Chart.register')) {
+                                logResult('mainAppTest', '✅ Main app contains chart functionality', 'success');
+                            } else {
+                                logResult('mainAppTest', '❌ Chart functionality not found in main app', 'error');
+                            }
+                        })
+                        .catch(error => {
+                            logResult('mainAppTest', `❌ Error checking main app: ${error.message}`, 'error');
+                        });
+                }
+            } catch (error) {
+                logResult('mainAppTest', `❌ Error testing main app integration: ${error.message}`, 'error');
+            }
+        }
+
+        function testAPIConfiguration() {
+            try {
+                // Check for environment variables or API configuration
+                const hasGoogleGenAI = typeof window.google !== 'undefined' || 
+                                     document.querySelector('script[src*="genai"]') !== null;
+                
+                if (hasGoogleGenAI) {
+                    logResult('apiTest', '✅ Google GenAI library detected', 'success');
+                } else {
+                    logResult('apiTest', '⚠️ Google GenAI library not detected', 'info');
+                }
+
+                // Check for importmap
+                const importMap = document.querySelector('script[type="importmap"]');
+                if (importMap) {
+                    logResult('apiTest', '✅ Import map found for module loading', 'success');
+                } else {
+                    logResult('apiTest', '❌ No import map found', 'error');
+                }
+            } catch (error) {
+                logResult('apiTest', `❌ Error testing API configuration: ${error.message}`, 'error');
+            }
+        }
+
+        function openMainApp() {
+            try {
+                window.open('/', '_blank');
+                logResult('fullAppTest', '✅ Main application opened in new tab', 'success');
+            } catch (error) {
+                logResult('fullAppTest', `❌ Error opening main app: ${error.message}`, 'error');
+            }
+        }
+
+        // Auto-run basic tests on load
+        window.onload = function() {
+            setTimeout(() => {
+                testLibraryLoading();
+                testAPIConfiguration();
+            }, 500);
+        };
+    </script>
+</body>
+</html>

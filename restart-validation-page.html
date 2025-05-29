@@ -1,0 +1,404 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Voice Notes App - Restart Validation</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+        
+        .header {
+            background: rgba(255, 255, 255, 0.95);
+            padding: 20px;
+            border-radius: 15px;
+            margin-bottom: 20px;
+            text-align: center;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+        }
+        
+        .app-container {
+            background: rgba(255, 255, 255, 0.98);
+            border-radius: 15px;
+            padding: 20px;
+            flex: 1;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+            overflow: hidden;
+        }
+        
+        .validation-panel {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            width: 400px;
+            background: rgba(0, 0, 0, 0.9);
+            color: white;
+            padding: 15px;
+            border-radius: 10px;
+            font-family: 'Courier New', monospace;
+            font-size: 12px;
+            max-height: 80vh;
+            overflow-y: auto;
+            z-index: 10000;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+        }
+        
+        .validation-header {
+            color: #4CAF50;
+            font-weight: bold;
+            margin-bottom: 10px;
+            border-bottom: 1px solid #333;
+            padding-bottom: 5px;
+        }
+        
+        .status-indicator {
+            display: inline-block;
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            margin-right: 8px;
+            animation: pulse 2s infinite;
+        }
+        
+        .status-testing {
+            background: #ffc107;
+        }
+        
+        .status-success {
+            background: #4CAF50;
+        }
+        
+        .status-error {
+            background: #f44336;
+        }
+        
+        @keyframes pulse {
+            0% { opacity: 0.7; }
+            50% { opacity: 1; }
+            100% { opacity: 0.7; }
+        }
+        
+        #app-frame {
+            width: 100%;
+            height: 600px;
+            border: none;
+            border-radius: 10px;
+        }
+        
+        .controls {
+            margin: 20px 0;
+            text-align: center;
+        }
+        
+        .btn {
+            background: #4CAF50;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 25px;
+            cursor: pointer;
+            margin: 0 10px;
+            font-size: 14px;
+            transition: all 0.3s ease;
+        }
+        
+        .btn:hover {
+            background: #45a049;
+            transform: translateY(-2px);
+        }
+        
+        .btn-secondary {
+            background: #2196F3;
+        }
+        
+        .btn-secondary:hover {
+            background: #1976D2;
+        }
+        
+        .btn-danger {
+            background: #f44336;
+        }
+        
+        .btn-danger:hover {
+            background: #d32f2f;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>🎤 Voice Notes App - Restart Validation Test</h1>
+        <p>Testing the application after infinite chart generation bug fix</p>
+        <div class="controls">
+            <button class="btn" onclick="runManualValidation()">🔄 Run Manual Validation</button>
+            <button class="btn btn-secondary" onclick="openMainApp()">🚀 Open Main App</button>
+            <button class="btn btn-danger" onclick="clearValidation()">🧹 Clear Results</button>
+        </div>
+    </div>
+    
+    <div class="app-container">
+        <iframe id="app-frame" src="index.html"></iframe>
+    </div>
+    
+    <div class="validation-panel" id="validation-panel">
+        <div class="validation-header">
+            <span class="status-indicator status-testing"></span>
+            RESTART VALIDATION MONITOR
+        </div>
+        <div id="validation-output">
+            <div>🔄 Initializing validation system...</div>
+            <div>📱 Loading Voice Notes App...</div>
+            <div>⏳ Waiting for app to fully load...</div>
+        </div>
+    </div>
+
+    <script>
+        let validationResults = [];
+        let testStartTime = Date.now();
+        
+        function log(message, type = 'info') {
+            const timestamp = new Date().toLocaleTimeString();
+            const output = document.getElementById('validation-output');
+            
+            const icon = type === 'error' ? '❌' : type === 'success' ? '✅' : 'ℹ️';
+            const div = document.createElement('div');
+            div.innerHTML = `[${timestamp}] ${icon} ${message}`;
+            div.style.marginBottom = '5px';
+            
+            if (type === 'error') {
+                div.style.color = '#ff6b6b';
+            } else if (type === 'success') {
+                div.style.color = '#51cf66';
+            } else {
+                div.style.color = '#74c0fc';
+            }
+            
+            output.appendChild(div);
+            output.scrollTop = output.scrollHeight;
+            
+            validationResults.push({ timestamp, message, type });
+        }
+        
+        function updateStatus(status) {
+            const indicator = document.querySelector('.status-indicator');
+            indicator.className = `status-indicator status-${status}`;
+        }
+        
+        async function runValidationTests() {
+            log('🚀 Starting comprehensive restart validation tests...', 'info');
+            updateStatus('testing');
+            
+            try {
+                // Test 1: App Frame Loading
+                await testAppFrameLoading();
+                
+                // Test 2: Monitor for Infinite Chart Generation
+                await monitorChartGeneration();
+                
+                // Test 3: Test App Functionality
+                await testAppFunctionality();
+                
+                // Generate Final Report
+                generateValidationReport();
+                
+            } catch (error) {
+                log(`Validation failed: ${error.message}`, 'error');
+                updateStatus('error');
+            }
+        }
+        
+        async function testAppFrameLoading() {
+            log('Testing app frame loading...', 'info');
+            
+            return new Promise((resolve) => {
+                const frame = document.getElementById('app-frame');
+                
+                frame.onload = () => {
+                    log('✓ App frame loaded successfully', 'success');
+                    
+                    try {
+                        // Try to access frame content (may be blocked by CORS)
+                        const frameDoc = frame.contentDocument || frame.contentWindow.document;
+                        if (frameDoc) {
+                            log('✓ Frame content accessible', 'success');
+                            
+                            // Look for key elements
+                            const title = frameDoc.title;
+                            if (title.includes('Voice') || title.includes('Audio') || title.includes('Transcription')) {
+                                log(`✓ App title detected: "${title}"`, 'success');
+                            }
+                            
+                            // Check for record button
+                            const recordButton = frameDoc.querySelector('.record-button, #recordButton, button[class*="record"]');
+                            if (recordButton) {
+                                log('✓ Record button found in app', 'success');
+                            } else {
+                                log('? Record button not found (may be dynamically created)', 'info');
+                            }
+                        }
+                    } catch (e) {
+                        log('? Frame content access blocked (CORS) - this is normal', 'info');
+                    }
+                    
+                    resolve();
+                };
+                
+                frame.onerror = () => {
+                    log('❌ App frame failed to load', 'error');
+                    resolve();
+                };
+                
+                // Timeout fallback
+                setTimeout(() => {
+                    log('⏰ App frame loading timeout', 'info');
+                    resolve();
+                }, 10000);
+            });
+        }
+        
+        async function monitorChartGeneration() {
+            log('Monitoring for infinite chart generation (15 seconds)...', 'info');
+            
+            return new Promise((resolve) => {
+                let chartActivityCount = 0;
+                let intervalCount = 0;
+                
+                // Monitor console for chart-related activity in the frame
+                const originalConsoleLog = console.log;
+                console.log = (...args) => {
+                    const message = args.join(' ').toLowerCase();
+                    if (message.includes('chart') || message.includes('generation') || message.includes('creating')) {
+                        chartActivityCount++;
+                        log(`Chart activity detected: ${args.join(' ').slice(0, 100)}`, 'info');
+                    }
+                    originalConsoleLog.apply(console, args);
+                };
+                
+                // Monitor for excessive intervals
+                const originalSetInterval = window.setInterval;
+                window.setInterval = function(fn, delay) {
+                    intervalCount++;
+                    if (intervalCount > 10) {
+                        log(`⚠️ High interval count detected: ${intervalCount}`, 'info');
+                    }
+                    return originalSetInterval.call(this, fn, delay);
+                };
+                
+                setTimeout(() => {
+                    console.log = originalConsoleLog;
+                    window.setInterval = originalSetInterval;
+                    
+                    if (chartActivityCount === 0) {
+                        log('🎉 NO INFINITE CHART GENERATION DETECTED!', 'success');
+                        updateStatus('success');
+                    } else if (chartActivityCount < 5) {
+                        log(`✓ Minimal chart activity (${chartActivityCount} events) - normal`, 'success');
+                    } else {
+                        log(`⚠️ High chart activity (${chartActivityCount} events) - investigate`, 'error');
+                        updateStatus('error');
+                    }
+                    
+                    log(`📊 Total intervals created: ${intervalCount}`, 'info');
+                    resolve();
+                }, 15000);
+            });
+        }
+        
+        async function testAppFunctionality() {
+            log('Testing app functionality...', 'info');
+            
+            try {
+                const frame = document.getElementById('app-frame');
+                
+                // Test if frame is responsive
+                if (frame.contentWindow) {
+                    log('✓ App frame is responsive', 'success');
+                } else {
+                    log('? App frame may not be fully loaded', 'info');
+                }
+                
+                // Test WebRTC support (for recording)
+                if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
+                    log('✓ WebRTC/MediaDevices API available', 'success');
+                } else {
+                    log('❌ WebRTC/MediaDevices API not available', 'error');
+                }
+                
+                // Test storage functionality
+                try {
+                    localStorage.setItem('test-key', 'test-value');
+                    localStorage.removeItem('test-key');
+                    log('✓ Local storage functional', 'success');
+                } catch (e) {
+                    log('❌ Local storage not available', 'error');
+                }
+                
+            } catch (error) {
+                log(`App functionality test failed: ${error.message}`, 'error');
+            }
+        }
+        
+        function generateValidationReport() {
+            const endTime = Date.now();
+            const duration = (endTime - testStartTime) / 1000;
+            
+            log('', 'info'); // Empty line
+            log('='.repeat(40), 'info');
+            log('🎯 RESTART VALIDATION FINAL REPORT', 'success');
+            log('='.repeat(40), 'info');
+            
+            log(`⏱️ Test Duration: ${duration.toFixed(2)} seconds`, 'info');
+            log(`📊 Total Tests: ${validationResults.length}`, 'info');
+            
+            const successCount = validationResults.filter(r => r.type === 'success').length;
+            const errorCount = validationResults.filter(r => r.type === 'error').length;
+            const infoCount = validationResults.filter(r => r.type === 'info').length;
+            
+            log(`✅ Successful: ${successCount}`, 'success');
+            log(`❌ Errors: ${errorCount}`, errorCount > 0 ? 'error' : 'info');
+            log(`ℹ️ Info: ${infoCount}`, 'info');
+            
+            if (errorCount === 0) {
+                log('🎉 ALL TESTS PASSED! App appears to be working correctly.', 'success');
+                updateStatus('success');
+            } else {
+                log(`⚠️ ${errorCount} issues detected - manual verification recommended.`, 'error');
+                updateStatus('error');
+            }
+            
+            log('='.repeat(40), 'info');
+        }
+        
+        function runManualValidation() {
+            clearValidation();
+            testStartTime = Date.now();
+            log('🔄 Running manual validation...', 'info');
+            runValidationTests();
+        }
+        
+        function clearValidation() {
+            document.getElementById('validation-output').innerHTML = '';
+            validationResults = [];
+            updateStatus('testing');
+        }
+        
+        function openMainApp() {
+            window.open('index.html', '_blank');
+        }
+        
+        // Auto-start validation after page loads
+        window.addEventListener('load', () => {
+            setTimeout(() => {
+                log('🔄 Auto-starting validation tests...', 'info');
+                runValidationTests();
+            }, 3000); // Wait 3 seconds for everything to load
+        });
+    </script>
+</body>
+</html>

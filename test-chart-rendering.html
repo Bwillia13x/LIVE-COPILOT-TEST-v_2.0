@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Chart Rendering Test</title>
+    <link rel="stylesheet" href="index.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+    <div class="container">
+        <h1>Chart Rendering Test</h1>
+        
+        <div class="test-section">
+            <h2>Test Controls</h2>
+            <button id="testChartBtn" onclick="testChartGeneration()">Test Chart Generation</button>
+            <button id="testTranscriptionBtn" onclick="testTranscriptionFlow()">Test Full Transcription Flow</button>
+            <button id="checkElementsBtn" onclick="checkChartElements()">Check Chart Elements</button>
+        </div>
+        
+        <div class="test-section">
+            <h2>Chart Display Areas</h2>
+            <div id="ai-chart-display" class="chart-display-area">
+                <h3>AI Generated Charts</h3>
+                <div class="chart-container"></div>
+            </div>
+            
+            <div id="insights-charts" class="chart-display-area">
+                <h3>Insights Charts</h3>
+                <div class="chart-container"></div>
+            </div>
+        </div>
+        
+        <div class="test-section">
+            <h2>Console Output</h2>
+            <div id="console-output" style="background: #f0f0f0; padding: 10px; height: 300px; overflow-y: auto; font-family: monospace; white-space: pre-wrap;"></div>
+        </div>
+    </div>
+
+    <script type="module">
+        import { VoiceTranscriptionApp } from './index.tsx';
+        
+        // Initialize the app
+        window.app = new VoiceTranscriptionApp();
+        
+        // Override console.log to capture output
+        const originalLog = console.log;
+        const originalError = console.error;
+        const consoleOutput = document.getElementById('console-output');
+        
+        function appendToConsole(message, type = 'log') {
+            const timestamp = new Date().toLocaleTimeString();
+            const prefix = type === 'error' ? '❌' : '📝';
+            consoleOutput.textContent += `[${timestamp}] ${prefix} ${message}\n`;
+            consoleOutput.scrollTop = consoleOutput.scrollHeight;
+        }
+        
+        console.log = (...args) => {
+            originalLog(...args);
+            appendToConsole(args.join(' '));
+        };
+        
+        console.error = (...args) => {
+            originalError(...args);
+            appendToConsole(args.join(' '), 'error');
+        };
+        
+        // Test functions
+        window.testChartGeneration = async function() {
+            console.log('🧪 Starting chart generation test...');
+            
+            try {
+                if (window.app && window.app.testChartGeneration) {
+                    await window.app.testChartGeneration();
+                    console.log('✅ Chart generation test completed');
+                } else {
+                    console.error('❌ App or testChartGeneration method not available');
+                }
+            } catch (error) {
+                console.error('❌ Chart generation test failed:', error);
+            }
+        };
+        
+        window.testTranscriptionFlow = async function() {
+            console.log('🎯 Testing full transcription to chart flow...');
+            
+            try {
+                // Simulate transcription
+                const mockTranscription = "Today we discussed quarterly sales performance. Revenue increased by 25% compared to last quarter. Customer satisfaction scores improved significantly. Key metrics include 150 new customers and 95% retention rate.";
+                
+                console.log('📝 Simulating transcription:', mockTranscription);
+                
+                // Manually trigger the polishing process
+                if (window.app && window.app.updatePolishedNote) {
+                    // Set mock transcript
+                    window.app.finalTranscript = mockTranscription;
+                    await window.app.updatePolishedNote();
+                    console.log('✅ Transcription flow test completed');
+                } else {
+                    console.error('❌ App or updatePolishedNote method not available');
+                }
+            } catch (error) {
+                console.error('❌ Transcription flow test failed:', error);
+            }
+        };
+        
+        window.checkChartElements = function() {
+            console.log('🔍 Checking chart elements...');
+            
+            const aiChartArea = document.getElementById('ai-chart-display');
+            const insightsChartArea = document.getElementById('insights-charts');
+            
+            console.log('AI Chart Area found:', !!aiChartArea);
+            console.log('AI Chart Area innerHTML:', aiChartArea?.innerHTML);
+            console.log('Insights Chart Area found:', !!insightsChartArea);
+            console.log('Insights Chart Area innerHTML:', insightsChartArea?.innerHTML);
+            
+            // Check if Chart.js is available
+            console.log('Chart.js available:', typeof Chart !== 'undefined');
+            
+            // Check app state
+            if (window.app) {
+                console.log('App available:', true);
+                console.log('App has aiChartDisplayArea:', !!window.app.aiChartDisplayArea);
+                console.log('App has insightsChartsContainer:', !!window.app.insightsChartsContainer);
+                console.log('App has genAI:', !!window.app.genAI);
+            } else {
+                console.log('App available:', false);
+            }
+        };
+        
+        // Auto-check elements on load
+        setTimeout(() => {
+            console.log('🚀 Page loaded, checking initial state...');
+            checkChartElements();
+        }, 1000);
+    </script>
+    
+    <style>
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        
+        .test-section {
+            margin: 20px 0;
+            padding: 15px;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+        }
+        
+        .chart-display-area {
+            margin: 10px 0;
+            padding: 15px;
+            border: 2px dashed #ccc;
+            min-height: 200px;
+            background: #fafafa;
+        }
+        
+        button {
+            margin: 5px;
+            padding: 10px 15px;
+            background: #007cba;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        
+        button:hover {
+            background: #005a8b;
+        }
+    </style>
+</body>
+</html>

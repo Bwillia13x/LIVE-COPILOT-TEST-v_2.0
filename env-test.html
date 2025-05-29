@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Environment Variable Test</title>
+</head>
+<body>
+    <h1>Environment Variable Test</h1>
+    <div id="output"></div>
+    
+    <script type="module">
+        const output = document.getElementById('output');
+        
+        function log(message) {
+            output.innerHTML += message + '<br>';
+            console.log(message);
+        }
+        
+        // Test Vite environment variables
+        log('Testing Vite environment variables...');
+        log('import.meta.env available: ' + !!import.meta.env);
+        
+        if (import.meta.env.VITE_GEMINI_API_KEY) {
+            log('✓ VITE_GEMINI_API_KEY found: ' + import.meta.env.VITE_GEMINI_API_KEY.substring(0, 10) + '...');
+            log('✓ Key length: ' + import.meta.env.VITE_GEMINI_API_KEY.length + ' characters');
+        } else {
+            log('✗ VITE_GEMINI_API_KEY not found');
+        }
+        
+        // Test all environment variables
+        log('\nAll available environment variables:');
+        Object.keys(import.meta.env).forEach(key => {
+            if (key.startsWith('VITE_')) {
+                log('- ' + key + ': ' + (import.meta.env[key] ? 'SET' : 'NOT SET'));
+            }
+        });
+    </script>
+</body>
+</html>

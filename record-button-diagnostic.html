@@ -1,0 +1,232 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Record Button Diagnostic</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+            background: #f0f0f0;
+        }
+        .diagnostic-panel {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            margin: 10px 0;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .status {
+            padding: 8px 12px;
+            margin: 5px 0;
+            border-radius: 4px;
+            font-weight: bold;
+        }
+        .success { background: #d4edda; color: #155724; }
+        .error { background: #f8d7da; color: #721c24; }
+        .warning { background: #fff3cd; color: #856404; }
+        .info { background: #d1ecf1; color: #0c5460; }
+        #results {
+            max-height: 400px;
+            overflow-y: auto;
+            padding: 10px;
+            background: #f8f9fa;
+            border: 1px solid #dee2e6;
+            border-radius: 4px;
+        }
+        button {
+            background: #007bff;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            margin: 5px;
+        }
+    </style>
+</head>
+<body>
+    <h1>🔧 Record Button Diagnostic Tool</h1>
+    
+    <div class="diagnostic-panel">
+        <h2>🎯 Quick Test</h2>
+        <button onclick="runQuickDiagnostic()">Run Quick Diagnostic</button>
+        <button onclick="runFullDiagnostic()">Run Full Diagnostic</button>
+        <button onclick="openMainApp()">Open Main App</button>
+    </div>
+
+    <div class="diagnostic-panel">
+        <h2>📋 Diagnostic Results</h2>
+        <div id="results"></div>
+    </div>
+
+    <script>
+        function log(message, type = 'info') {
+            const results = document.getElementById('results');
+            const div = document.createElement('div');
+            div.className = `status ${type}`;
+            div.innerHTML = `[${new Date().toLocaleTimeString()}] ${message}`;
+            results.appendChild(div);
+            results.scrollTop = results.scrollHeight;
+            console.log(message);
+        }
+
+        function openMainApp() {
+            log('🌐 Opening main application...', 'info');
+            window.open('http://localhost:8081', 'mainApp');
+        }
+
+        function runQuickDiagnostic() {
+            log('🚀 Starting quick diagnostic...', 'info');
+            
+            // Test main app availability
+            fetch('http://localhost:8081/')
+                .then(response => {
+                    if (response.ok) {
+                        log('✅ Main app server responding', 'success');
+                        return response.text();
+                    } else {
+                        log(`❌ Server error: ${response.status}`, 'error');
+                        throw new Error(`Server responded with ${response.status}`);
+                    }
+                })
+                .then(html => {
+                    // Check for record button
+                    if (html.includes('id="recordButton"')) {
+                        log('✅ Record button found in HTML', 'success');
+                    } else {
+                        log('❌ Record button not found in HTML', 'error');
+                    }
+                    
+                    // Check for TypeScript compilation
+                    if (html.includes('<script') && html.includes('index.tsx')) {
+                        log('✅ TypeScript file referenced', 'success');
+                    } else {
+                        log('⚠️ No TypeScript compilation detected', 'warning');
+                    }
+                    
+                    // Check for MediaRecorder support
+                    if (typeof MediaRecorder !== 'undefined') {
+                        log('✅ MediaRecorder API available', 'success');
+                    } else {
+                        log('❌ MediaRecorder API not available', 'error');
+                    }
+                    
+                    // Check microphone permission
+                    if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
+                        log('✅ getUserMedia API available', 'success');
+                    } else {
+                        log('❌ getUserMedia API not available', 'error');
+                    }
+                })
+                .catch(error => {
+                    log(`❌ Quick diagnostic failed: ${error.message}`, 'error');
+                });
+        }
+
+        function runFullDiagnostic() {
+            log('🔍 Starting full diagnostic...', 'info');
+            
+            // Test 1: Basic connectivity
+            fetch('http://localhost:8081/')
+                .then(response => response.text())
+                .then(html => {
+                    log('✅ Main app HTML loaded', 'success');
+                    
+                    // Check HTML structure
+                    const hasRecordButton = html.includes('id="recordButton"');
+                    const hasRecordingInterface = html.includes('recording-interface');
+                    const hasRecordingStatus = html.includes('id="recordingStatus"');
+                    
+                    log(`Record button in HTML: ${hasRecordButton ? '✅' : '❌'}`, hasRecordButton ? 'success' : 'error');
+                    log(`Recording interface: ${hasRecordingInterface ? '✅' : '❌'}`, hasRecordingInterface ? 'success' : 'error');
+                    log(`Recording status element: ${hasRecordingStatus ? '✅' : '❌'}`, hasRecordingStatus ? 'success' : 'error');
+                    
+                    // Test 2: Check CSS
+                    return fetch('http://localhost:8081/index.css');
+                })
+                .then(response => response.text())
+                .then(css => {
+                    log('✅ CSS file loaded', 'success');
+                    
+                    const hasRecordButtonCSS = css.includes('.record-button');
+                    const hasRecordingClass = css.includes('.recording');
+                    const hasButtonStyles = css.includes('record-button-inner');
+                    
+                    log(`Record button CSS: ${hasRecordButtonCSS ? '✅' : '❌'}`, hasRecordButtonCSS ? 'success' : 'error');
+                    log(`Recording state CSS: ${hasRecordingClass ? '✅' : '❌'}`, hasRecordingClass ? 'success' : 'error');
+                    log(`Button inner styles: ${hasButtonStyles ? '✅' : '❌'}`, hasButtonStyles ? 'success' : 'error');
+                    
+                    // Test 3: Check TypeScript source
+                    return fetch('http://localhost:8081/index.tsx');
+                })
+                .then(response => response.text())
+                .then(tsx => {
+                    log('✅ TypeScript source loaded', 'success');
+                    
+                    const hasStartRecording = tsx.includes('startRecording()');
+                    const hasStopRecording = tsx.includes('stopRecording()');
+                    const hasMediaRecorder = tsx.includes('MediaRecorder');
+                    const hasEventListeners = tsx.includes('addEventListener');
+                    const hasGetUserMedia = tsx.includes('getUserMedia');
+                    
+                    log(`startRecording method: ${hasStartRecording ? '✅' : '❌'}`, hasStartRecording ? 'success' : 'error');
+                    log(`stopRecording method: ${hasStopRecording ? '✅' : '❌'}`, hasStopRecording ? 'success' : 'error');
+                    log(`MediaRecorder usage: ${hasMediaRecorder ? '✅' : '❌'}`, hasMediaRecorder ? 'success' : 'error');
+                    log(`Event listeners: ${hasEventListeners ? '✅' : '❌'}`, hasEventListeners ? 'success' : 'error');
+                    log(`getUserMedia usage: ${hasGetUserMedia ? '✅' : '❌'}`, hasGetUserMedia ? 'success' : 'error');
+                    
+                    // Test 4: Browser capabilities
+                    log('🌐 Testing browser capabilities...', 'info');
+                    
+                    if (typeof MediaRecorder !== 'undefined') {
+                        log('✅ MediaRecorder API supported', 'success');
+                    } else {
+                        log('❌ MediaRecorder API not supported', 'error');
+                    }
+                    
+                    if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
+                        log('✅ getUserMedia API supported', 'success');
+                        
+                        // Test microphone access (without actually starting)
+                        navigator.mediaDevices.enumerateDevices()
+                            .then(devices => {
+                                const audioInputs = devices.filter(device => device.kind === 'audioinput');
+                                log(`🎤 Audio input devices: ${audioInputs.length}`, audioInputs.length > 0 ? 'success' : 'warning');
+                            })
+                            .catch(error => {
+                                log(`⚠️ Could not enumerate devices: ${error.message}`, 'warning');
+                            });
+                    } else {
+                        log('❌ getUserMedia API not supported', 'error');
+                    }
+                    
+                    // Test 5: Check for common TypeScript compilation issues
+                    if (tsx.includes('class VoiceNotesApp')) {
+                        log('✅ Main app class found', 'success');
+                    } else {
+                        log('❌ Main app class not found', 'error');
+                    }
+                    
+                    if (tsx.includes('bindEventListeners')) {
+                        log('✅ Event binding method found', 'success');
+                    } else {
+                        log('❌ Event binding method not found', 'error');
+                    }
+                    
+                    log('📊 Full diagnostic completed!', 'info');
+                })
+                .catch(error => {
+                    log(`❌ Full diagnostic failed: ${error.message}`, 'error');
+                });
+        }
+
+        // Auto-run quick diagnostic on load
+        window.addEventListener('load', () => {
+            log('🎯 Record Button Diagnostic Tool Started', 'info');
+            setTimeout(runQuickDiagnostic, 1000);
+        });
+    </script>
+</body>
+</html>

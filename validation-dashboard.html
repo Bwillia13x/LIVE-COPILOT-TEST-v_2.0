@@ -1,0 +1,302 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Record Button Fix Validation</title>
+    <style>
+        body {
+            font-family: 'SF Pro Display', -apple-system, BlinkMacSystemFont, sans-serif;
+            max-width: 1000px;
+            margin: 0 auto;
+            padding: 20px;
+            background: linear-gradient(135deg, #1e3c72, #2a5298);
+            color: white;
+            min-height: 100vh;
+        }
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        .status-panel {
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            border-radius: 16px;
+            padding: 24px;
+            margin: 20px 0;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+        .status-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 12px 0;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        .status-item:last-child {
+            border-bottom: none;
+        }
+        .status-label {
+            font-weight: 600;
+        }
+        .status-value {
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 0.9em;
+            font-weight: 500;
+        }
+        .status-success {
+            background: rgba(52, 199, 89, 0.3);
+            color: #34c759;
+            border: 1px solid rgba(52, 199, 89, 0.5);
+        }
+        .status-error {
+            background: rgba(255, 69, 58, 0.3);
+            color: #ff453a;
+            border: 1px solid rgba(255, 69, 58, 0.5);
+        }
+        .status-pending {
+            background: rgba(255, 214, 10, 0.3);
+            color: #ffd60a;
+            border: 1px solid rgba(255, 214, 10, 0.5);
+        }
+        .btn {
+            background: linear-gradient(135deg, #007aff, #5856d6);
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 12px;
+            font-weight: 600;
+            cursor: pointer;
+            margin: 10px;
+            transition: all 0.3s ease;
+        }
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.3);
+        }
+        .console-output {
+            background: rgba(0, 0, 0, 0.6);
+            color: #00ff00;
+            padding: 20px;
+            border-radius: 12px;
+            font-family: 'SF Mono', Monaco, 'Cascadia Code', monospace;
+            max-height: 400px;
+            overflow-y: auto;
+            font-size: 13px;
+            line-height: 1.4;
+            white-space: pre-wrap;
+            margin-top: 20px;
+        }
+        .summary {
+            margin-top: 20px;
+            padding: 20px;
+            background: rgba(0, 0, 0, 0.3);
+            border-radius: 12px;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>🎤 Record Button Fix Validation</h1>
+        <p>Testing the record button functionality after recent fixes</p>
+    </div>
+
+    <div class="status-panel">
+        <h2>🔍 Validation Status</h2>
+        
+        <div class="status-item">
+            <span class="status-label">App Initialization</span>
+            <span id="status-app" class="status-value status-pending">Checking...</span>
+        </div>
+        
+        <div class="status-item">
+            <span class="status-label">Record Button Element</span>
+            <span id="status-button" class="status-value status-pending">Checking...</span>
+        </div>
+        
+        <div class="status-item">
+            <span class="status-label">DOM Integration</span>
+            <span id="status-dom" class="status-value status-pending">Checking...</span>
+        </div>
+        
+        <div class="status-item">
+            <span class="status-label">Event Binding</span>
+            <span id="status-events" class="status-value status-pending">Checking...</span>
+        </div>
+        
+        <div class="status-item">
+            <span class="status-label">Click Responsiveness</span>
+            <span id="status-click" class="status-value status-pending">Checking...</span>
+        </div>
+    </div>
+
+    <div class="status-panel">
+        <h2>🛠 Actions</h2>
+        <button class="btn" onclick="openMainApp()">🔗 Open Main App</button>
+        <button class="btn" onclick="runValidation()">🧪 Run Validation</button>
+        <button class="btn" onclick="clearConsole()">🗑 Clear Console</button>
+        <button class="btn" onclick="showSummary()">📋 Show Summary</button>
+    </div>
+
+    <div class="status-panel">
+        <h2>📝 Console Output</h2>
+        <div id="console-output" class="console-output">
+Validation will start automatically when main app is detected...
+        </div>
+    </div>
+
+    <div id="summary" class="summary" style="display: none;">
+        <h2>📋 Summary</h2>
+        <div id="summary-content"></div>
+    </div>
+
+    <script>
+        let mainAppWindow = null;
+        let validationResults = {};
+        
+        // Console capture
+        const consoleOutput = document.getElementById('console-output');
+        const originalLog = console.log;
+        const originalError = console.error;
+        const originalWarn = console.warn;
+
+        function logToConsole(type, ...args) {
+            const timestamp = new Date().toLocaleTimeString();
+            const message = args.map(arg => 
+                typeof arg === 'object' ? JSON.stringify(arg, null, 2) : String(arg)
+            ).join(' ');
+            consoleOutput.textContent += `[${timestamp}] ${type.toUpperCase()}: ${message}\n`;
+            consoleOutput.scrollTop = consoleOutput.scrollHeight;
+        }
+
+        console.log = (...args) => {
+            originalLog(...args);
+            logToConsole('log', ...args);
+        };
+
+        console.error = (...args) => {
+            originalError(...args);
+            logToConsole('error', ...args);
+        };
+
+        console.warn = (...args) => {
+            originalWarn(...args);
+            logToConsole('warn', ...args);
+        };
+
+        function updateStatus(item, status, text) {
+            const element = document.getElementById(`status-${item}`);
+            element.className = `status-value status-${status}`;
+            element.textContent = text;
+            validationResults[item] = { status, text };
+        }
+
+        function openMainApp() {
+            console.log('🔗 Opening main application...');
+            mainAppWindow = window.open('http://localhost:5173', 'mainApp', 'width=1200,height=800');
+            
+            if (mainAppWindow) {
+                console.log('✅ Main app window opened successfully');
+                
+                // Wait for the app to load and then run validation
+                setTimeout(() => {
+                    runValidationInMainApp();
+                }, 3000);
+            } else {
+                console.error('❌ Failed to open main app window');
+                updateStatus('app', 'error', 'Failed to open');
+            }
+        }
+
+        function runValidationInMainApp() {
+            if (!mainAppWindow) {
+                console.error('❌ Main app window not available');
+                return;
+            }
+
+            try {
+                console.log('🧪 Injecting validation script into main app...');
+                
+                // Simple validation using a much cleaner approach
+                const script = mainAppWindow.document.createElement('script');
+                script.src = './validate-fix.js';
+                mainAppWindow.document.head.appendChild(script);
+                console.log('✅ Validation script injected successfully');
+                
+            } catch (error) {
+                console.error('❌ Failed to inject validation script:', error);
+                updateStatus('app', 'error', 'Injection failed');
+            }
+        }
+
+        function runValidation() {
+            console.log('🧪 Starting local validation...');
+            
+            // Reset all statuses
+            updateStatus('app', 'pending', 'Checking...');
+            updateStatus('button', 'pending', 'Checking...');
+            updateStatus('dom', 'pending', 'Checking...');
+            updateStatus('events', 'pending', 'Checking...');
+            updateStatus('click', 'pending', 'Checking...');
+            
+            if (!mainAppWindow) {
+                openMainApp();
+            } else {
+                runValidationInMainApp();
+            }
+        }
+
+        function clearConsole() {
+            consoleOutput.textContent = 'Console cleared...\n';
+        }
+
+        function showSummary() {
+            const summaryDiv = document.getElementById('summary');
+            const summaryContent = document.getElementById('summary-content');
+            
+            let summary = '<h3>Validation Results:</h3><ul>';
+            for (const [key, result] of Object.entries(validationResults)) {
+                const icon = result.status === 'success' ? '✅' : result.status === 'error' ? '❌' : '⏳';
+                summary += `<li>${icon} ${key.charAt(0).toUpperCase() + key.slice(1)}: ${result.text}</li>`;
+            }
+            summary += '</ul>';
+            
+            summaryContent.innerHTML = summary;
+            summaryDiv.style.display = 'block';
+        }
+
+        // Listen for messages from main app
+        window.addEventListener('message', function(event) {
+            if (event.data.type === 'validationResults') {
+                const results = event.data.results;
+                console.log('📊 Received validation results from main app:', results);
+                
+                // Update status based on results
+                updateStatus('app', results.appExists ? 'success' : 'error', 
+                    results.appExists ? 'App initialized' : 'App not found');
+                
+                updateStatus('button', results.buttonExists ? 'success' : 'error',
+                    results.buttonExists ? 'Button in DOM' : 'Button missing');
+                
+                updateStatus('dom', results.appHasButton ? 'success' : 'error',
+                    results.appHasButton ? 'App has button ref' : 'No button reference');
+                
+                updateStatus('events', results.buttonMatches ? 'success' : 'error',
+                    results.buttonMatches ? 'References match' : 'Reference mismatch');
+                
+                updateStatus('click', results.buttonMatches ? 'success' : 'error',
+                    results.buttonMatches ? 'Click should work' : 'Click may fail');
+                
+                // Auto-show summary
+                setTimeout(showSummary, 1000);
+            }
+        });
+
+        // Auto-start validation
+        console.log('🎤 Record Button Fix Validation Tool loaded');
+        console.log('📋 This tool will help verify that the record button is working correctly');
+        console.log('🔗 Click "Open Main App" to begin validation');
+    </script>
+</body>
+</html>

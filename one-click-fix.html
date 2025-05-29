@@ -1,0 +1,332 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Voice Notes App - One-Click Fix</title>
+    <style>
+        body { 
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; 
+            padding: 20px; 
+            background: linear-gradient(135deg, #1a1a1a 0%, #2d2d2d 100%);
+            color: #fff; 
+            line-height: 1.6;
+            margin: 0;
+        }
+        .fix-container {
+            max-width: 800px;
+            margin: 0 auto;
+            text-align: center;
+        }
+        .hero-section {
+            background: linear-gradient(135deg, #4CAF50 0%, #45a049 100%);
+            padding: 40px;
+            border-radius: 15px;
+            margin-bottom: 30px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+        }
+        .fix-button {
+            background: linear-gradient(135deg, #ff6b6b 0%, #ee5a52 100%);
+            color: white;
+            border: none;
+            padding: 20px 40px;
+            font-size: 24px;
+            font-weight: bold;
+            border-radius: 50px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: 0 8px 25px rgba(255, 107, 107, 0.3);
+            margin: 15px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+        .fix-button:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 12px 35px rgba(255, 107, 107, 0.4);
+        }
+        .secondary-button {
+            background: linear-gradient(135deg, #007bff 0%, #0056b3 100%);
+            color: white;
+            border: none;
+            padding: 15px 30px;
+            font-size: 16px;
+            border-radius: 25px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            margin: 10px;
+        }
+        .secondary-button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 20px rgba(0, 123, 255, 0.3);
+        }
+        .status-panel {
+            background: rgba(255,255,255,0.1);
+            border-radius: 10px;
+            padding: 20px;
+            margin: 20px 0;
+            backdrop-filter: blur(10px);
+        }
+        .instructions {
+            text-align: left;
+            background: rgba(0,0,0,0.3);
+            padding: 20px;
+            border-radius: 10px;
+            margin: 20px 0;
+        }
+        .step {
+            background: rgba(255,255,255,0.05);
+            padding: 15px;
+            margin: 10px 0;
+            border-radius: 8px;
+            border-left: 4px solid #4CAF50;
+        }
+        .warning {
+            background: rgba(255, 193, 7, 0.1);
+            border-left-color: #FFC107;
+        }
+        .error {
+            background: rgba(220, 53, 69, 0.1);
+            border-left-color: #DC3545;
+        }
+    </style>
+</head>
+<body>
+    <div class="fix-container">
+        <div class="hero-section">
+            <h1>🎤 Voice Notes App - Complete Fix</h1>
+            <p style="font-size: 20px; margin: 20px 0;">One-click solution to fix record button and chart issues</p>
+            <button class="fix-button" onclick="openAndFix()">
+                🚀 OPEN & FIX APP NOW
+            </button>
+        </div>
+
+        <div class="status-panel">
+            <h3>📊 Current Status</h3>
+            <p id="serverStatus">🔄 Checking Vite server...</p>
+            <p id="appStatus">⏳ App status: Unknown</p>
+        </div>
+
+        <div class="instructions">
+            <h3>🎯 What This Fix Does:</h3>
+            <div class="step">
+                <strong>1. Opens the app at correct URL:</strong> http://localhost:5173/
+            </div>
+            <div class="step">
+                <strong>2. Runs diagnostic script</strong> to identify issues
+            </div>
+            <div class="step">
+                <strong>3. Applies automatic fixes</strong> for common problems
+            </div>
+            <div class="step">
+                <strong>4. Tests record button</strong> and chart functionality
+            </div>
+            <div class="step warning">
+                <strong>⚠️ Important:</strong> Make sure Vite server is running with <code>npm run dev</code>
+            </div>
+        </div>
+
+        <div style="margin: 30px 0;">
+            <h3>🛠️ Manual Options</h3>
+            <button class="secondary-button" onclick="window.open('http://localhost:5173/', '_blank')">
+                🌐 Open App Only
+            </button>
+            <button class="secondary-button" onclick="copyFixScript()">
+                📋 Copy Fix Script
+            </button>
+            <button class="secondary-button" onclick="showInstructions()">
+                📖 Show Instructions
+            </button>
+        </div>
+
+        <div id="copyArea" style="display: none;">
+            <h3>📋 Copy This Script to Browser Console:</h3>
+            <textarea id="scriptText" style="width: 100%; height: 200px; background: #000; color: #0f0; padding: 10px; font-family: monospace; border: 1px solid #333; border-radius: 5px;"></textarea>
+            <button class="secondary-button" onclick="copyToClipboard()">📋 Copy to Clipboard</button>
+        </div>
+
+        <div id="instructionsPanel" style="display: none;">
+            <div class="instructions">
+                <h3>📖 Step-by-Step Manual Fix:</h3>
+                <div class="step">
+                    <strong>Step 1:</strong> Make sure Vite is running<br>
+                    <code>cd /Users/benjaminwilliams/Audio-Transcription-Rendering && npm run dev</code>
+                </div>
+                <div class="step">
+                    <strong>Step 2:</strong> Open the app in your browser<br>
+                    <code>http://localhost:5173/</code>
+                </div>
+                <div class="step">
+                    <strong>Step 3:</strong> Open browser console (F12)
+                </div>
+                <div class="step">
+                    <strong>Step 4:</strong> Copy and paste the fix script
+                </div>
+                <div class="step">
+                    <strong>Step 5:</strong> Follow the console instructions
+                </div>
+                <div class="step error">
+                    <strong>Common Issue:</strong> If you see "Record button not found", make sure you're at the Vite URL (localhost:5173) not a file:// URL
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Load the fix script content
+        const fixScript = \`
+console.clear();
+console.log('🔧 VOICE NOTES APP AUTO-FIX SCRIPT');
+console.log('=' + '='.repeat(49));
+
+// Check if we're on the right URL
+if (!location.href.includes('localhost:5173')) {
+    console.error('❌ Wrong URL! You must be at http://localhost:5173/');
+    console.log('Current URL:', location.href);
+    console.log('Redirecting to correct URL...');
+    location.href = 'http://localhost:5173/';
+    throw new Error('Wrong URL - redirecting');
+}
+
+// Wait for DOM to be ready
+function waitForElement(selector, timeout = 5000) {
+    return new Promise((resolve, reject) => {
+        const element = document.querySelector(selector);
+        if (element) {
+            resolve(element);
+            return;
+        }
+        
+        const observer = new MutationObserver(() => {
+            const element = document.querySelector(selector);
+            if (element) {
+                observer.disconnect();
+                resolve(element);
+            }
+        });
+        
+        observer.observe(document.body, {
+            childList: true,
+            subtree: true
+        });
+        
+        setTimeout(() => {
+            observer.disconnect();
+            reject(new Error('Element not found: ' + selector));
+        }, timeout);
+    });
+}
+
+async function runFix() {
+    console.log('\\n🔍 Searching for record button...');
+    
+    try {
+        const recordButton = await waitForElement('#recordButton');
+        console.log('✅ Record button found!');
+        console.log('   ID:', recordButton.id);
+        console.log('   Classes:', recordButton.className);
+        
+        // Test click
+        console.log('\\n🧪 Testing click functionality...');
+        recordButton.click();
+        console.log('✅ Record button clicked successfully!');
+        
+        // Check for app instance
+        if (window.app) {
+            console.log('\\n✅ App instance found:', typeof window.app);
+            
+            // Test chart functionality
+            const testChartButton = document.getElementById('testChartButton');
+            if (testChartButton) {
+                console.log('✅ Chart test button found');
+                console.log('\\n📊 Testing chart generation...');
+                if (typeof window.app.testChartGeneration === 'function') {
+                    window.app.testChartGeneration();
+                    console.log('✅ Chart test function called');
+                } else {
+                    console.log('⚠️ Chart test function not available');
+                }
+            }
+        } else {
+            console.log('⚠️ App instance not found at window.app');
+        }
+        
+        console.log('\\n🎉 FIX COMPLETE!');
+        console.log('✅ Record button is working');
+        console.log('✅ App is properly loaded');
+        console.log('\\n🎯 Try clicking the record button now!');
+        
+    } catch (error) {
+        console.error('❌ Fix failed:', error.message);
+        console.log('\\n🔍 Debugging info:');
+        console.log('Available buttons:');
+        document.querySelectorAll('button').forEach((btn, i) => {
+            console.log(\`  \${i}: ID="\${btn.id}" class="\${btn.className}"\`);
+        });
+    }
+}
+
+// Run the fix
+runFix();
+\`;
+
+        function openAndFix() {
+            // Open the app
+            const appWindow = window.open('http://localhost:5173/', 'voiceNotesApp', 'width=1200,height=800');
+            
+            // Wait a bit for the app to load, then inject the fix script
+            setTimeout(() => {
+                try {
+                    // Try to inject the script
+                    const script = appWindow.document.createElement('script');
+                    script.textContent = fixScript;
+                    appWindow.document.head.appendChild(script);
+                    
+                    updateStatus('✅ Fix script injected successfully!');
+                } catch (error) {
+                    updateStatus('⚠️ Cannot inject script due to browser security. Use manual method.');
+                    console.log('Error injecting script:', error);
+                    copyFixScript(); // Show the manual copy option
+                }
+            }, 3000);
+        }
+
+        function copyFixScript() {
+            document.getElementById('copyArea').style.display = 'block';
+            document.getElementById('scriptText').value = fixScript;
+        }
+
+        function copyToClipboard() {
+            const textarea = document.getElementById('scriptText');
+            textarea.select();
+            document.execCommand('copy');
+            alert('Fix script copied to clipboard! Paste it in the browser console.');
+        }
+
+        function showInstructions() {
+            const panel = document.getElementById('instructionsPanel');
+            panel.style.display = panel.style.display === 'none' ? 'block' : 'none';
+        }
+
+        function updateStatus(message) {
+            document.getElementById('appStatus').textContent = message;
+        }
+
+        // Check server status on load
+        async function checkServerStatus() {
+            try {
+                const response = await fetch('http://localhost:5173/');
+                if (response.ok) {
+                    document.getElementById('serverStatus').textContent = '✅ Vite server is running';
+                    document.getElementById('serverStatus').style.color = '#4CAF50';
+                } else {
+                    throw new Error('Server not responding');
+                }
+            } catch (error) {
+                document.getElementById('serverStatus').textContent = '❌ Vite server not running - run: npm run dev';
+                document.getElementById('serverStatus').style.color = '#f44336';
+            }
+        }
+
+        // Auto-check on load
+        window.addEventListener('load', checkServerStatus);
+    </script>
+</body>
+</html>

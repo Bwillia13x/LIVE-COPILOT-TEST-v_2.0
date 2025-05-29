@@ -19,6 +19,12 @@
         }
       }
     </script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.9/dist/chart.min.js"></script>
+    <script src="chart-test-runner.js"></script>
+    <script src="manual-chart-trigger.js"></script>
+    <script src="chart-canvas-fix-test.js"></script>
+    <script src="final-canvas-fix-validation.js"></script>
+    <script type="module" src="comprehensive-fix.js"></script>
   </head>
   <body>
     <div class="app-container">
@@ -49,9 +55,188 @@
               class="editable-content"
               contenteditable="true"
               placeholder="Raw transcription will appear here..."
-            ></div>
-            <div id="aiChartDisplayArea" class="ai-chart-raw-display">
-              <!-- AI-generated charts based on raw transcription will appear here -->
+            >
+              <div id="aiChartDisplayArea" class="ai-chart-raw-display">
+                <!-- AI-generated charts based on raw transcription will appear here -->
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Priority 2: Advanced Analytics Dashboard -->
+        <div class="analytics-panel" id="analyticsPanel" style="display: none">
+          <div class="analytics-header">
+            <h3>Session Analytics</h3>
+            <button class="btn-close" id="closeAnalytics" aria-label="Close Analytics">
+              <i class="fas fa-times"></i>
+            </button>
+          </div>
+          
+          <div class="analytics-content">
+            <div class="analytics-grid">
+              <!-- Speech Metrics -->
+              <div class="analytics-card">
+                <div class="analytics-card-header">
+                  <i class="fas fa-microphone"></i>
+                  <h4>Speech Metrics</h4>
+                </div>
+                <div class="analytics-card-content">
+                  <div class="metric">
+                    <span class="metric-label">Speaking Rate:</span>
+                    <span class="metric-value" id="speakingRate">-- WPM</span>
+                  </div>
+                  <div class="metric">
+                    <span class="metric-label">Average Confidence:</span>
+                    <span class="metric-value" id="avgConfidence">--%</span>
+                  </div>
+                  <div class="metric">
+                    <span class="metric-label">Recording Duration:</span>
+                    <span class="metric-value" id="recordingDuration">--:--</span>
+                  </div>
+                  <div class="metric">
+                    <span class="metric-label">Words Transcribed:</span>
+                    <span class="metric-value" id="wordsTranscribed">--</span>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Content Analysis -->
+              <div class="analytics-card">
+                <div class="analytics-card-header">
+                  <i class="fas fa-brain"></i>
+                  <h4>Content Analysis</h4>
+                </div>
+                <div class="analytics-card-content">
+                  <div class="metric">
+                    <span class="metric-label">Detected Topics:</span>
+                    <div class="topic-tags" id="detectedTopics">
+                      <span class="topic-tag">Analyzing...</span>
+                    </div>
+                  </div>
+                  <div class="metric">
+                    <span class="metric-label">Sentiment:</span>
+                    <span class="metric-value sentiment" id="sentimentAnalysis">
+                      <span class="sentiment-indicator"></span>
+                      <span class="sentiment-text">Neutral</span>
+                    </span>
+                  </div>
+                  <div class="metric">
+                    <span class="metric-label">Content Type:</span>
+                    <span class="metric-value" id="contentType">General</span>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Performance Metrics -->
+              <div class="analytics-card">
+                <div class="analytics-card-header">
+                  <i class="fas fa-tachometer-alt"></i>
+                  <h4>Performance</h4>
+                </div>
+                <div class="analytics-card-content">
+                  <div class="metric">
+                    <span class="metric-label">Processing Speed:</span>
+                    <span class="metric-value" id="processingSpeed">-- ms</span>
+                  </div>
+                  <div class="metric">
+                    <span class="metric-label">AI Response Time:</span>
+                    <span class="metric-value" id="aiResponseTime">-- ms</span>
+                  </div>
+                  <div class="metric">
+                    <span class="metric-label">Memory Usage:</span>
+                    <span class="metric-value" id="memoryUsage">-- MB</span>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Session History -->
+              <div class="analytics-card full-width">
+                <div class="analytics-card-header">
+                  <i class="fas fa-history"></i>
+                  <h4>Recording Sessions</h4>
+                </div>
+                <div class="analytics-card-content">
+                  <div class="session-timeline" id="sessionTimeline">
+                    <div class="session-item">
+                      <div class="session-time">Start new recording to see session data</div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Enhanced Export Modal -->
+        <div class="modal-overlay" id="exportModal" style="display: none">
+          <div class="modal-content export-modal">
+            <div class="modal-header">
+              <h3>Advanced Export Options</h3>
+              <button class="btn-close" id="closeExportModal">
+                <i class="fas fa-times"></i>
+              </button>
+            </div>
+            <div class="modal-body">
+              <div class="export-options">
+                <div class="export-section">
+                  <h4>Export Format</h4>
+                  <div class="format-options">
+                    <label class="format-option">
+                      <input type="radio" name="exportFormat" value="markdown" checked>
+                      <span class="format-icon"><i class="fab fa-markdown"></i></span>
+                      <span class="format-label">Markdown</span>
+                    </label>
+                    <label class="format-option">
+                      <input type="radio" name="exportFormat" value="html">
+                      <span class="format-icon"><i class="fab fa-html5"></i></span>
+                      <span class="format-label">HTML</span>
+                    </label>
+                    <label class="format-option">
+                      <input type="radio" name="exportFormat" value="pdf">
+                      <span class="format-icon"><i class="fas fa-file-pdf"></i></span>
+                      <span class="format-label">PDF</span>
+                    </label>
+                    <label class="format-option">
+                      <input type="radio" name="exportFormat" value="docx">
+                      <span class="format-icon"><i class="fas fa-file-word"></i></span>
+                      <span class="format-label">Word</span>
+                    </label>
+                  </div>
+                </div>
+
+                <div class="export-section">
+                  <h4>Include Content</h4>
+                  <div class="include-options">
+                    <label class="checkbox-option">
+                      <input type="checkbox" name="includePolished" checked>
+                      <span class="checkbox-custom"></span>
+                      <span>Polished Note</span>
+                    </label>
+                    <label class="checkbox-option">
+                      <input type="checkbox" name="includeRaw">
+                      <span class="checkbox-custom"></span>
+                      <span>Raw Transcription</span>
+                    </label>
+                    <label class="checkbox-option">
+                      <input type="checkbox" name="includeCharts" checked>
+                      <span class="checkbox-custom"></span>
+                      <span>Charts & Visualizations</span>
+                    </label>
+                    <label class="checkbox-option">
+                      <input type="checkbox" name="includeAnalytics">
+                      <span class="checkbox-custom"></span>
+                      <span>Analytics & Metrics</span>
+                    </label>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div class="modal-footer">
+              <button class="btn btn-secondary" id="cancelExport">Cancel</button>
+              <button class="btn btn-primary" id="confirmExport">
+                <i class="fas fa-download"></i>
+                Export Note
+              </button>
             </div>
           </div>
         </div>
@@ -67,9 +252,30 @@
 
           <div class="status-indicator">
             <span id="recordingStatus" class="status-text">Ready to record</span>
+            <div id="confidenceIndicator" class="confidence-indicator" style="display: none">
+              <div class="confidence-label">Confidence:</div>
+              <div class="confidence-bar">
+                <div id="confidenceLevel" class="confidence-level"></div>
+              </div>
+              <span id="confidenceText" class="confidence-text">--</span>
+            </div>
+            <div id="voiceActivityIndicator" class="voice-activity-indicator" style="display: none">
+              <div class="voice-activity-label">Voice Activity:</div>
+              <div class="voice-activity-visualizer">
+                <div class="voice-activity-bar"></div>
+                <div class="voice-activity-bar"></div>
+                <div class="voice-activity-bar"></div>
+                <div class="voice-activity-bar"></div>
+                <div class="voice-activity-bar"></div>
+              </div>
+            </div>
           </div>
 
           <div class="recording-controls">
+            <button class="action-button" id="analyticsButton" title="Show Analytics">
+              <i class="fas fa-chart-line"></i>
+            </button>
+
             <button class="action-button" id="themeToggleButton" title="Toggle Theme">
               <i class="fas fa-sun"></i>
             </button>
@@ -86,16 +292,372 @@
               <span class="record-text">Record</span>
             </button>
 
+            <button class="action-button" id="advancedExportButton" title="Advanced Export">
+              <i class="fas fa-download"></i>
+            </button>
+
             <button class="action-button" id="newButton" title="New Note / Clear">
               <i class="fas fa-file"></i>
+            </button>
+
+            <button class="action-button" id="testChartButton" title="Test Chart Generation" style="background-color: #ff6b6b;">
+              <i class="fas fa-chart-bar"></i>
+            </button>
+            
+            <button class="action-button" id="sampleChartsButton" title="Generate Sample Charts" style="background-color: #28a745;">
+              <i class="fas fa-chart-pie"></i>
             </button>
           </div>
         </div>
       </div>
     </div>
 
-    <div id="micStatus" class="debug-panel"></div>
+    <!-- Priority 3: Smart Suggestions Panel -->
+    <div id="smartSuggestionsPanel" class="smart-suggestions-panel">
+      <div class="suggestions-header">
+        <h3><i class="fas fa-lightbulb"></i> Smart Suggestions</h3>
+        <button class="btn btn-icon suggestions-close" id="closeSuggestions">
+          <i class="fas fa-times"></i>
+        </button>
+      </div>
+      <div class="suggestions-content">
+        <div class="suggestion-section">
+          <h4>Next Actions</h4>
+          <div id="nextActions" class="suggestion-items"></div>
+        </div>
+        <div class="suggestion-section">
+          <h4>Related Topics</h4>
+          <div id="relatedTopics" class="suggestion-items"></div>
+        </div>
+        <div class="suggestion-section">
+          <h4>Improvement Tips</h4>
+          <div id="improvementTips" class="suggestion-items"></div>
+        </div>
+        <div class="suggestion-section">
+          <h4>Export Recommendations</h4>
+          <div id="exportRecommendations" class="suggestion-items"></div>
+        </div>
+      </div>
+    </div>
 
+    <!-- Priority 3: Content Insights Panel -->
+    <div id="contentInsightsPanel" class="content-insights-panel">
+      <div class="insights-header">
+        <h3><i class="fas fa-brain"></i> Content Insights</h3>
+        <button class="btn btn-icon insights-toggle" id="toggleInsights">
+          <i class="fas fa-chevron-right"></i>
+        </button>
+      </div>
+      <div class="insights-content">
+        <div class="insight-card">
+          <h4>Content Analysis</h4>
+          <div id="contentAnalysisInsights" class="insight-data">
+            <div class="insight-item">
+              <span class="insight-label">Readability:</span>
+              <span id="readabilityScore" class="insight-value">--</span>
+            </div>
+            <div class="insight-item">
+              <span class="insight-label">Complexity:</span>
+              <span id="complexityLevel" class="insight-value">--</span>
+            </div>
+            <div class="insight-item">
+              <span class="insight-label">Key Themes:</span>
+              <div id="keyThemes" class="insight-tags"></div>
+            </div>
+          </div>
+        </div>
+        <div class="insight-card">
+          <h4>Real-time Processing</h4>
+          <div id="realtimeInsights" class="insight-data">
+            <div class="insight-item">
+              <span class="insight-label">Processing Speed:</span>
+              <span id="processingSpeedInsight" class="insight-value">--</span>
+            </div>
+            <div class="insight-item">
+              <span class="insight-label">Content Updates:</span>
+              <span id="contentUpdates" class="insight-value">--</span>
+            </div>
+          </div>
+        </div>
+        <div class="insight-card">
+          <h4>Smart Search</h4>
+          <div class="search-container">
+            <input type="text" id="semanticSearchInput" placeholder="Search notes semantically..." class="search-input">
+            <button id="semanticSearchButton" class="btn btn-primary btn-sm">
+              <i class="fas fa-search"></i>
+            </button>
+          </div>
+          <div id="searchResults" class="search-results"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Priority 4: File Integration & Multi-modal Features -->
+    <div id="fileDropZone" class="file-drop-zone">
+      <div class="drop-zone-content">
+        <i class="fas fa-cloud-upload-alt drop-zone-icon"></i>
+        <p class="drop-zone-text">Drop files here or click to upload</p>
+        <p class="drop-zone-subtitle">Support for PDF, DOC, TXT, JPG, PNG, MP3, WAV</p>
+        <input type="file" id="fileInput" multiple accept=".pdf,.doc,.docx,.txt,.jpg,.jpeg,.png,.mp3,.wav" style="display: none;">
+      </div>
+    </div>
+
+    <!-- Priority 4: Content Library Panel -->
+    <div id="contentLibraryPanel" class="content-library-panel">
+      <div class="library-header">
+        <h3><i class="fas fa-folder-open"></i> Content Library</h3>
+        <button class="btn btn-icon library-close" id="closeLibrary">
+          <i class="fas fa-times"></i>
+        </button>
+      </div>
+      <div class="library-content">
+        <div class="library-toolbar">
+          <button class="btn btn-sm btn-primary" id="uploadFilesBtn">
+            <i class="fas fa-plus"></i> Add Files
+          </button>
+          <div class="library-search">
+            <input type="text" id="librarySearchInput" placeholder="Search files..." class="search-input">
+          </div>
+        </div>
+        <div id="filesList" class="files-list">
+          <div class="files-empty-state">
+            <i class="fas fa-folder-open"></i>
+            <p>No files uploaded yet</p>
+            <button class="btn btn-primary" onclick="document.getElementById('fileInput').click()">
+              <i class="fas fa-upload"></i> Upload First File
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Priority 4: Workflow Automation Panel -->
+    <div id="workflowPanel" class="workflow-panel">
+      <div class="workflow-header">
+        <h3><i class="fas fa-cogs"></i> Automation Workflows</h3>
+        <button class="btn btn-icon workflow-close" id="closeWorkflow">
+          <i class="fas fa-times"></i>
+        </button>
+      </div>
+      <div class="workflow-content">
+        <div class="workflow-toolbar">
+          <button class="btn btn-sm btn-primary" id="createWorkflowBtn">
+            <i class="fas fa-plus"></i> New Workflow
+          </button>
+          <button class="btn btn-sm btn-secondary" id="workflowTemplatesBtn">
+            <i class="fas fa-template"></i> Templates
+          </button>
+        </div>
+        <div id="workflowsList" class="workflows-list">
+          <div class="workflow-empty-state">
+            <i class="fas fa-robot"></i>
+            <p>No workflows created yet</p>
+            <button class="btn btn-primary" id="createFirstWorkflow">
+              <i class="fas fa-magic"></i> Create First Workflow
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Priority 4: Action Buttons -->
+    <button class="action-button floating-button" id="contentLibraryButton" title="Content Library">
+      <i class="fas fa-folder-open"></i>
+    </button>
+
+    <button class="action-button floating-button" id="workflowButton" title="Automation Workflows">
+      <i class="fas fa-cogs"></i>
+    </button>
+
+    <!-- Priority 3: Smart Suggestions Button -->
+    <button class="action-button floating-button" id="smartSuggestionsButton" title="Show Smart Suggestions">
+      <i class="fas fa-lightbulb"></i>
+    </button>
+
+    <!-- Priority 5: Enterprise & Collaboration Features -->
+    
+    <!-- Authentication Modal -->
+    <div id="authModal" class="auth-modal">
+      <div class="auth-modal-overlay"></div>
+      <div class="auth-modal-content">
+        <div class="auth-modal-header">
+          <h2 id="authModalTitle">Welcome to Voice Notes</h2>
+          <button class="btn btn-icon auth-modal-close" id="closeAuthModal">
+            <i class="fas fa-times"></i>
+          </button>
+        </div>
+        <div class="auth-modal-body">
+          <!-- Login Form -->
+          <form id="loginForm" class="auth-form active">
+            <div class="form-group">
+              <label for="loginEmail">Email Address</label>
+              <input type="email" id="loginEmail" class="form-input" placeholder="Enter your email" required>
+            </div>
+            <div class="form-group">
+              <label for="loginPassword">Password</label>
+              <input type="password" id="loginPassword" class="form-input" placeholder="Enter your password" required>
+            </div>
+            <div class="form-group">
+              <label class="checkbox-label">
+                <input type="checkbox" id="rememberMe">
+                <span class="checkbox-custom"></span>
+                Remember me
+              </label>
+            </div>
+            <button type="submit" class="btn btn-primary btn-full">
+              <i class="fas fa-sign-in-alt"></i> Sign In
+            </button>
+            <div class="auth-divider">
+              <span>or</span>
+            </div>
+            <button type="button" class="btn btn-secondary btn-full" id="googleSignIn">
+              <i class="fab fa-google"></i> Continue with Google
+            </button>
+            <div class="auth-links">
+              <a href="#" id="showRegister">Don't have an account? Sign up</a>
+              <a href="#" id="showForgotPassword">Forgot password?</a>
+            </div>
+          </form>
+
+          <!-- Register Form -->
+          <form id="registerForm" class="auth-form">
+            <div class="form-group">
+              <label for="registerName">Full Name</label>
+              <input type="text" id="registerName" class="form-input" placeholder="Enter your full name" required>
+            </div>
+            <div class="form-group">
+              <label for="registerEmail">Email Address</label>
+              <input type="email" id="registerEmail" class="form-input" placeholder="Enter your email" required>
+            </div>
+            <div class="form-group">
+              <label for="registerPassword">Password</label>
+              <input type="password" id="registerPassword" class="form-input" placeholder="Create a password" required>
+            </div>
+            <div class="form-group">
+              <label for="confirmPassword">Confirm Password</label>
+              <input type="password" id="confirmPassword" class="form-input" placeholder="Confirm your password" required>
+            </div>
+            <div class="form-group">
+              <label class="checkbox-label">
+                <input type="checkbox" id="agreeTerms" required>
+                <span class="checkbox-custom"></span>
+                I agree to the <a href="#" target="_blank">Terms of Service</a> and <a href="#" target="_blank">Privacy Policy</a>
+              </label>
+            </div>
+            <button type="submit" class="btn btn-primary btn-full">
+              <i class="fas fa-user-plus"></i> Create Account
+            </button>
+            <div class="auth-divider">
+              <span>or</span>
+            </div>
+            <button type="button" class="btn btn-secondary btn-full" id="googleSignUp">
+              <i class="fab fa-google"></i> Sign up with Google
+            </button>
+            <div class="auth-links">
+              <a href="#" id="showLogin">Already have an account? Sign in</a>
+            </div>
+          </form>
+
+          <!-- Forgot Password Form -->
+          <form id="forgotPasswordForm" class="auth-form">
+            <div class="form-group">
+              <label for="resetEmail">Email Address</label>
+              <input type="email" id="resetEmail" class="form-input" placeholder="Enter your email" required>
+            </div>
+            <button type="submit" class="btn btn-primary btn-full">
+              <i class="fas fa-paper-plane"></i> Send Reset Link
+            </button>
+            <div class="auth-links">
+              <a href="#" id="backToLogin">Back to Sign In</a>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
+
+    <!-- User Management Panel -->
+    <div id="userManagementPanel" class="user-management-panel">
+      <div class="user-panel-header">
+        <h3><i class="fas fa-users"></i> Team Members</h3>
+        <button class="btn btn-icon user-panel-close" id="closeUserPanel">
+          <i class="fas fa-times"></i>
+        </button>
+      </div>
+      <div class="user-panel-content">
+        <div class="user-panel-toolbar">
+          <button class="btn btn-sm btn-primary" id="inviteUserBtn">
+            <i class="fas fa-user-plus"></i> Invite Member
+          </button>
+          <div class="user-search">
+            <input type="text" id="userSearchInput" placeholder="Search members..." class="search-input">
+          </div>
+        </div>
+        
+        <!-- Workspace Stats -->
+        <div class="workspace-stats">
+          <div class="stat">
+            <span class="stat-value">1</span>
+            <span class="stat-label">Members</span>
+          </div>
+          <div class="stat">
+            <span class="stat-value">0</span>
+            <span class="stat-label">Notes</span>
+          </div>
+          <div class="stat">
+            <span class="stat-value">0MB</span>
+            <span class="stat-label">Storage</span>
+          </div>
+        </div>
+
+        <div id="membersList" class="users-list">
+          <!-- Members will be populated by JavaScript -->
+        </div>
+      </div>
+    </div>
+
+    <!-- User Invitation Modal -->
+    <div id="inviteModal" class="modal">
+      <div class="modal-overlay"></div>
+      <div class="modal-content">
+        <div class="modal-header">
+          <h3><i class="fas fa-user-plus"></i> Invite Team Member</h3>
+          <button class="btn btn-icon modal-close" id="closeInviteModal">
+            <i class="fas fa-times"></i>
+          </button>
+        </div>
+        <div class="modal-body">
+          <form id="inviteUserForm">
+            <div class="form-group">
+              <label for="inviteEmail">Email Address</label>
+              <input type="email" id="inviteEmail" class="form-input" placeholder="colleague@company.com" required>
+            </div>
+            <div class="form-group">
+              <label for="inviteRole">Role</label>
+              <select id="inviteRole" class="form-select">
+                <option value="viewer">Viewer - Can view and comment</option>
+                <option value="editor" selected>Editor - Can edit and collaborate</option>
+                <option value="admin">Admin - Full workspace access</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label for="inviteMessage">Personal Message (Optional)</label>
+              <textarea id="inviteMessage" class="form-textarea" placeholder="Add a personal message to the invitation..." rows="3"></textarea>
+            </div>
+            <div class="modal-actions">
+              <button type="button" class="btn btn-secondary" id="cancelInvite">Cancel</button>
+              <button type="submit" class="btn btn-primary">
+                <i class="fas fa-paper-plane"></i> Send Invitation
+              </button>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
+
+    <!-- Debug script for recording issues -->
+    <script src="debug-recorder.js"></script>
+    <script src="test-app.js"></script>
+    
     <script>
       document.addEventListener("DOMContentLoaded", () => {
         const tabNav = document.querySelector(".tab-navigation");
@@ -157,7 +719,9 @@
         });
       });
     </script>
+    <!-- Enterprise Test Suite -->
+    <script src="enterprise-test-suite.js" type="module"></script>
+    <!-- Main TypeScript entry point (handled by Vite) -->
+    <script type="module" src="/index.tsx"></script>
   </body>
 </html>
-<link rel="stylesheet" href="index.css">
-<script src="index.tsx" type="module"></script>

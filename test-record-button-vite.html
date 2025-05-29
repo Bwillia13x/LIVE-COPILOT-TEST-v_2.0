@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Test Record Button with Vite Server</title>
+    <style>
+        body { font-family: Arial, sans-serif; padding: 20px; }
+        .test-section { margin-bottom: 20px; padding: 15px; border: 1px solid #ccc; }
+        .test-result { margin: 10px 0; padding: 10px; border-radius: 4px; }
+        .success { background-color: #d4edda; color: #155724; }
+        .error { background-color: #f8d7da; color: #721c24; }
+        .info { background-color: #d1ecf1; color: #0c5460; }
+        button { padding: 10px 15px; margin: 5px; cursor: pointer; }
+        .test-buttons { margin-top: 10px; }
+    </style>
+</head>
+<body>
+    <h1>Voice Notes App - Record Button Test (Vite Server)</h1>
+    
+    <div class="test-section">
+        <h3>Test Instructions</h3>
+        <p>1. Make sure the Vite server is running at <a href="http://localhost:5173/" target="_blank">http://localhost:5173/</a></p>
+        <p>2. Open the main application in a new tab</p>
+        <p>3. Try clicking the record button</p>
+        <p>4. Use the tests below to verify functionality</p>
+    </div>
+
+    <div class="test-section">
+        <h3>Quick Access</h3>
+        <button onclick="window.open('http://localhost:5173/', '_blank')">Open Main App</button>
+        <button onclick="testViteServer()">Test Vite Server</button>
+    </div>
+
+    <div class="test-section">
+        <h3>Cross-Origin Test</h3>
+        <div id="crossOriginResult" class="test-result info">Click the button below to test if we can access the main app's DOM</div>
+        <button onclick="testCrossOriginAccess()">Test Cross-Origin Access</button>
+    </div>
+
+    <div class="test-section">
+        <h3>Manual Test Checklist</h3>
+        <div id="manualChecklist">
+            <label><input type="checkbox"> Record button is visible</label><br>
+            <label><input type="checkbox"> Record button responds to clicks</label><br>
+            <label><input type="checkbox"> Browser asks for microphone permission</label><br>
+            <label><input type="checkbox"> Recording indicator appears</label><br>
+            <label><input type="checkbox"> Console shows no JavaScript errors</label><br>
+        </div>
+    </div>
+
+    <div class="test-section">
+        <h3>Test Results</h3>
+        <div id="testResults"></div>
+    </div>
+
+    <script>
+        function addResult(message, type = 'info') {
+            const resultsDiv = document.getElementById('testResults');
+            const resultDiv = document.createElement('div');
+            resultDiv.className = `test-result ${type}`;
+            resultDiv.innerHTML = `<strong>${new Date().toLocaleTimeString()}:</strong> ${message}`;
+            resultsDiv.appendChild(resultDiv);
+        }
+
+        function testViteServer() {
+            addResult('Testing Vite server connectivity...', 'info');
+            
+            fetch('http://localhost:5173/')
+                .then(response => {
+                    if (response.ok) {
+                        addResult('✅ Vite server is accessible and responding', 'success');
+                        return response.text();
+                    } else {
+                        throw new Error(`Server responded with status: ${response.status}`);
+                    }
+                })
+                .then(html => {
+                    if (html.includes('index.tsx')) {
+                        addResult('✅ HTML includes TypeScript module reference', 'success');
+                    } else {
+                        addResult('⚠️ HTML may not be loading TypeScript properly', 'error');
+                    }
+                })
+                .catch(error => {
+                    addResult(`❌ Error accessing Vite server: ${error.message}`, 'error');
+                });
+        }
+
+        function testCrossOriginAccess() {
+            addResult('Testing cross-origin access to main app...', 'info');
+            
+            // Try to open a connection to test if we can communicate
+            try {
+                const popup = window.open('http://localhost:5173/', 'testWindow', 'width=800,height=600');
+                
+                setTimeout(() => {
+                    try {
+                        // This will fail due to cross-origin restrictions, but that's expected
+                        const hasRecordButton = popup.document.getElementById('recordButton');
+                        if (hasRecordButton) {
+                            addResult('✅ Record button found in main app', 'success');
+                        } else {
+                            addResult('❌ Record button not found', 'error');
+                        }
+                        popup.close();
+                    } catch (e) {
+                        addResult('⚠️ Cannot access popup DOM due to security restrictions (this is normal)', 'info');
+                        addResult('📝 Please manually test the record button in the main app window', 'info');
+                        popup.close();
+                    }
+                }, 2000);
+            } catch (error) {
+                addResult(`❌ Error opening popup: ${error.message}`, 'error');
+            }
+        }
+
+        // Auto-run server test on load
+        window.addEventListener('load', () => {
+            addResult('Voice Notes App test page loaded', 'info');
+            setTimeout(testViteServer, 1000);
+        });
+    </script>
+</body>
+</html>

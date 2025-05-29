@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Direct API Key Test</title>
+</head>
+<body>
+    <h1>Direct API Key Test</h1>
+    <div id="output"></div>
+    
+    <script type="importmap">
+        {
+            "imports": {
+                "@google/genai": "https://esm.sh/@google/genai@^0.8.0"
+            }
+        }
+    </script>
+    
+    <script type="module">
+        import { GoogleGenAI } from '@google/genai';
+        
+        const output = document.getElementById('output');
+        
+        function log(message) {
+            output.innerHTML += message + '<br>';
+            console.log(message);
+        }
+        
+        // Test environment variables
+        log('Testing environment variables...');
+        log('process available: ' + (typeof process !== 'undefined'));
+        
+        if (typeof process !== 'undefined' && process.env) {
+            log('process.env available: true');
+            log('GEMINI_API_KEY: ' + (process.env.GEMINI_API_KEY ? 'SET (' + process.env.GEMINI_API_KEY.length + ' chars)' : 'NOT SET'));
+            log('API_KEY: ' + (process.env.API_KEY ? 'SET (' + process.env.API_KEY.length + ' chars)' : 'NOT SET'));
+        } else {
+            log('process.env NOT available');
+        }
+        
+        // Test the same logic as the main app
+        try {
+            const apiKey = process.env.GEMINI_API_KEY || 'AIzaSyDE1gzCeTw42daw84Y-Lh_P7XurdLCZHoI';
+            log('Using API key: ' + apiKey.substring(0, 10) + '...');
+            
+            const genAI = new GoogleGenAI(apiKey);
+            log('✓ GoogleGenAI instance created successfully');
+            
+            const model = genAI.getGenerativeModel({ model: "gemini-pro" });
+            log('✓ Model created successfully');
+            
+        } catch (error) {
+            log('✗ Error: ' + error.message);
+        }
+    </script>
+</body>
+</html>

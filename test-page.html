@@ -1,0 +1,275 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Voice App Test Page</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .test-container {
+            max-width: 800px;
+            margin: 0 auto;
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        .test-result {
+            padding: 10px;
+            margin: 10px 0;
+            border-radius: 4px;
+        }
+        .success { background-color: #d4edda; color: #155724; border: 1px solid #c3e6cb; }
+        .error { background-color: #f8d7da; color: #721c24; border: 1px solid #f5c6cb; }
+        .warning { background-color: #fff3cd; color: #856404; border: 1px solid #ffeaa7; }
+        .info { background-color: #d1ecf1; color: #0c5460; border: 1px solid #bee5eb; }
+        .button {
+            background-color: #007bff;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        .button:hover { background-color: #0056b3; }
+        #testResults { margin-top: 20px; }
+        .console-output {
+            background-color: #f8f9fa;
+            border: 1px solid #dee2e6;
+            padding: 15px;
+            border-radius: 4px;
+            font-family: monospace;
+            font-size: 12px;
+            white-space: pre-wrap;
+            max-height: 300px;
+            overflow-y: auto;
+            margin: 10px 0;
+        }
+    </style>
+</head>
+<body>
+    <div class="test-container">
+        <h1>🧪 Voice Notes App Test Suite</h1>
+        <p>This page will test if the VoiceNotesApp is properly initialized and working.</p>
+        
+        <div>
+            <button class="button" onclick="runFullTest()">🔍 Run Full Test</button>
+            <button class="button" onclick="testAppInstance()">📱 Test App Instance</button>
+            <button class="button" onclick="testRecordButton()">🎤 Test Record Button</button>
+            <button class="button" onclick="clearResults()">🗑️ Clear Results</button>
+        </div>
+        
+        <div id="testResults"></div>
+        
+        <h3>Console Output:</h3>
+        <div id="consoleOutput" class="console-output">Console output will appear here...</div>
+    </div>
+
+    <script>
+        // Capture console output
+        const originalLog = console.log;
+        const originalError = console.error;
+        const originalWarn = console.warn;
+        
+        const consoleOutput = document.getElementById('consoleOutput');
+        const testResults = document.getElementById('testResults');
+        
+        function addToConsole(type, ...args) {
+            const timestamp = new Date().toLocaleTimeString();
+            const message = args.map(arg => 
+                typeof arg === 'object' ? JSON.stringify(arg, null, 2) : String(arg)
+            ).join(' ');
+            consoleOutput.textContent += `[${timestamp}] ${type.toUpperCase()}: ${message}\n`;
+            consoleOutput.scrollTop = consoleOutput.scrollHeight;
+        }
+        
+        console.log = function(...args) {
+            originalLog.apply(console, args);
+            addToConsole('log', ...args);
+        };
+        
+        console.error = function(...args) {
+            originalError.apply(console, args);
+            addToConsole('error', ...args);
+        };
+        
+        console.warn = function(...args) {
+            originalWarn.apply(console, args);
+            addToConsole('warn', ...args);
+        };
+
+        function addTestResult(type, title, message) {
+            const result = document.createElement('div');
+            result.className = `test-result ${type}`;
+            result.innerHTML = `<strong>${title}:</strong> ${message}`;
+            testResults.appendChild(result);
+        }
+
+        function clearResults() {
+            testResults.innerHTML = '';
+            consoleOutput.textContent = 'Console cleared...\n';
+        }
+
+        function testAppInstance() {
+            console.log('🧪 Testing app instance...');
+            
+            if (typeof window.app === 'undefined') {
+                addTestResult('error', 'App Instance', 'window.app is undefined');
+                return false;
+            }
+            
+            if (window.app === null) {
+                addTestResult('error', 'App Instance', 'window.app is null');
+                return false;
+            }
+            
+            addTestResult('success', 'App Instance', `Found app instance of type: ${typeof window.app}`);
+            
+            // Test required methods
+            const requiredMethods = [
+                'initializeErrorHandling',
+                'handleError', 
+                'showToast',
+                'setupMediaRecorder',
+                'startRecording',
+                'stopRecording'
+            ];
+            
+            const missingMethods = [];
+            const presentMethods = [];
+            
+            requiredMethods.forEach(method => {
+                if (typeof window.app[method] === 'function') {
+                    presentMethods.push(method);
+                } else {
+                    missingMethods.push(method);
+                }
+            });
+            
+            if (missingMethods.length === 0) {
+                addTestResult('success', 'Required Methods', `All ${requiredMethods.length} methods present`);
+            } else {
+                addTestResult('error', 'Missing Methods', missingMethods.join(', '));
+                addTestResult('info', 'Present Methods', presentMethods.join(', '));
+            }
+            
+            return missingMethods.length === 0;
+        }
+
+        function testRecordButton() {
+            console.log('🧪 Testing record button...');
+            
+            const recordBtn = document.getElementById('recordBtn') || document.getElementById('recordButton');
+            
+            if (!recordBtn) {
+                addTestResult('error', 'Record Button', 'Record button not found in DOM');
+                return false;
+            }
+            
+            addTestResult('success', 'Record Button', 'Found in DOM');
+            addTestResult('info', 'Button State', `Disabled: ${recordBtn.disabled}, Classes: ${recordBtn.className}`);
+            
+            // Test click handlers
+            const listeners = getEventListeners ? getEventListeners(recordBtn) : null;
+            if (listeners && listeners.click) {
+                addTestResult('success', 'Event Listeners', `${listeners.click.length} click listeners attached`);
+            } else {
+                addTestResult('warning', 'Event Listeners', 'Cannot detect listeners (getEventListeners not available)');
+            }
+            
+            return true;
+        }
+
+        function testMediaDevices() {
+            console.log('🧪 Testing media devices...');
+            
+            if (!navigator.mediaDevices) {
+                addTestResult('error', 'Media Devices', 'navigator.mediaDevices not available');
+                return false;
+            }
+            
+            if (!navigator.mediaDevices.getUserMedia) {
+                addTestResult('error', 'getUserMedia', 'getUserMedia not available');
+                return false;
+            }
+            
+            addTestResult('success', 'Media API', 'MediaDevices API available');
+            
+            // Test microphone access (don't actually request permission, just check)
+            addTestResult('info', 'Protocol', `Page served over: ${location.protocol}`);
+            
+            if (location.protocol === 'https:' || location.hostname === 'localhost') {
+                addTestResult('success', 'Security Context', 'Secure context - microphone access should work');
+            } else {
+                addTestResult('warning', 'Security Context', 'Non-secure context - microphone may not work');
+            }
+            
+            return true;
+        }
+
+        function testErrorHandling() {
+            console.log('🧪 Testing error handling...');
+            
+            if (!window.app) {
+                addTestResult('error', 'Error Handling', 'Cannot test - app not available');
+                return false;
+            }
+            
+            try {
+                window.app.showToast('Test toast message', 'info');
+                addTestResult('success', 'Toast System', 'showToast executed without error');
+            } catch (error) {
+                addTestResult('error', 'Toast System', `showToast failed: ${error.message}`);
+                return false;
+            }
+            
+            return true;
+        }
+
+        async function runFullTest() {
+            console.log('🚀 Starting full test suite...');
+            clearResults();
+            
+            addTestResult('info', 'Test Started', 'Running comprehensive tests...');
+            
+            let allPassed = true;
+            
+            // Test 1: App Instance
+            allPassed &= testAppInstance();
+            
+            // Test 2: Record Button
+            allPassed &= testRecordButton();
+            
+            // Test 3: Media Devices
+            allPassed &= testMediaDevices();
+            
+            // Test 4: Error Handling
+            allPassed &= testErrorHandling();
+            
+            // Final result
+            if (allPassed) {
+                addTestResult('success', 'Overall Result', '✅ All tests passed! App should be working correctly.');
+            } else {
+                addTestResult('error', 'Overall Result', '❌ Some tests failed. Check individual results above.');
+            }
+            
+            console.log('🏁 Test suite completed');
+        }
+
+        // Auto-run basic test when page loads
+        window.addEventListener('load', () => {
+            console.log('🌐 Test page loaded');
+            setTimeout(() => {
+                if (document.readyState === 'complete') {
+                    testAppInstance();
+                }
+            }, 500);
+        });
+    </script>
+</body>
+</html>

@@ -11,7 +11,10 @@
   "dependencies": {
     "@google/genai": "^0.8.0",
     "chart.js": "^4.4.9",
-    "marked": "^4.0.0"
+    "mammoth": "^1.9.1",
+    "marked": "^4.0.0",
+    "pdfjs-dist": "^5.2.133",
+    "tesseract.js": "^6.0.1"
   },
   "devDependencies": {
     "@types/marked": "^4.0.8",

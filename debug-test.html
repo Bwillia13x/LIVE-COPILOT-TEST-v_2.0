@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Chart Generation Debug Test</title>
+    <script>
+        // Debug function to be run in browser console
+        function debugChartGeneration() {
+            console.log('🔍 DEBUGGING CHART GENERATION ISSUE');
+            console.log('=====================================');
+            
+            if (!window.app) {
+                console.log('❌ App not available');
+                return;
+            }
+            
+            console.log('✅ App found');
+            console.log('🧠 genAI available:', !!window.app.genAI);
+            console.log('📊 aiChartDisplayArea available:', !!window.app.aiChartDisplayArea);
+            
+            // Test 1: Manual chart generation (this should work)
+            console.log('\n📊 TEST 1: Manual chart generation...');
+            window.app.testChartGeneration().then(() => {
+                console.log('✅ Manual chart test completed');
+                
+                // Test 2: AI polishing with chart data
+                console.log('\n🧠 TEST 2: AI polishing with chart data...');
+                window.app.testAIPolishingWithCharts().then(() => {
+                    console.log('✅ AI polishing test completed');
+                    
+                    // Test 3: Simulate real transcription
+                    console.log('\n📝 TEST 3: Simulate real transcription...');
+                    simulateRealTranscription();
+                }).catch(err => {
+                    console.error('❌ AI polishing test failed:', err);
+                });
+            }).catch(err => {
+                console.error('❌ Manual chart test failed:', err);
+            });
+        }
+        
+        function simulateRealTranscription() {
+            const testText = "Our company's performance has been excellent. Sales in January were 100k, February 150k, March 200k, and April reached 250k. This represents steady growth.";
+            
+            // Set the final transcript
+            window.app.finalTranscript = testText;
+            
+            // Update the raw display
+            if (window.app.rawTranscription) {
+                window.app.rawTranscription.textContent = testText;
+            }
+            
+            // Call the normal processing chain
+            console.log('🔄 Calling processNewTranscription...');
+            window.app.processNewTranscription(testText);
+            
+            // Check results after delay
+            setTimeout(() => {
+                console.log('\n📋 RESULTS AFTER REAL TRANSCRIPTION:');
+                console.log('Final transcript length:', window.app.finalTranscript.length);
+                console.log('Polished note content length:', window.app.polishedNote?.innerHTML?.length || 0);
+                console.log('Chart area children:', window.app.aiChartDisplayArea?.children?.length || 0);
+                console.log('Active charts:', window.app.activeAiChartInstances?.length || 0);
+                
+                if (window.app.polishedNote?.innerHTML) {
+                    console.log('Polished content preview:', window.app.polishedNote.innerHTML.substring(0, 100));
+                }
+            }, 4000);
+        }
+        
+        // Auto-run when page loads
+        window.addEventListener('load', () => {
+            setTimeout(debugChartGeneration, 3000);
+        });
+    </script>
+</head>
+<body>
+    <h1>Chart Generation Debug Test</h1>
+    <p>Check the browser console for debug output. The test will run automatically after 3 seconds.</p>
+    <p>You can also run <code>debugChartGeneration()</code> manually in the console.</p>
+    
+    <!-- Load the main app -->
+    <script src="debug-transcription-flow.js"></script>
+</body>
+</html>

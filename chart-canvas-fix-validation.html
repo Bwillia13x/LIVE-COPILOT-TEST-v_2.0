@@ -1,0 +1,209 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Chart Canvas Fix Test</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            margin: 20px;
+            background: #f5f5f5;
+        }
+        .test-container {
+            max-width: 800px;
+            margin: 0 auto;
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        .test-buttons {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+        button {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-weight: 500;
+        }
+        .test-btn {
+            background: #007acc;
+            color: white;
+        }
+        .test-btn:hover {
+            background: #005999;
+        }
+        .clear-btn {
+            background: #dc3545;
+            color: white;
+        }
+        .clear-btn:hover {
+            background: #c82333;
+        }
+        #results {
+            margin-top: 20px;
+            padding: 10px;
+            background: #f8f9fa;
+            border-radius: 5px;
+            font-family: monospace;
+            font-size: 14px;
+            white-space: pre-wrap;
+        }
+        .chart-area {
+            margin-top: 20px;
+            padding: 20px;
+            border: 2px dashed #dee2e6;
+            border-radius: 8px;
+            min-height: 200px;
+        }
+        .chart-container {
+            margin-bottom: 20px;
+            padding: 15px;
+            border: 1px solid #dee2e6;
+            border-radius: 8px;
+            background: white;
+        }
+        .chart-header {
+            margin-bottom: 10px;
+        }
+        .chart-header h4 {
+            margin: 0 0 5px 0;
+            color: #333;
+        }
+        .chart-description {
+            margin: 0;
+            color: #666;
+            font-size: 14px;
+        }
+    </style>
+</head>
+<body>
+    <div class="test-container">
+        <h1>Chart Canvas Fix Test</h1>
+        <p>Testing the canvas element lookup fix for chart rendering.</p>
+        
+        <div class="test-buttons">
+            <button id="testChart" class="test-btn">Test Basic Chart</button>
+            <button id="testSampleCharts" class="test-btn">Test Sample Charts</button>
+            <button id="clearCharts" class="clear-btn">Clear Charts</button>
+        </div>
+        
+        <div id="results"></div>
+        
+        <div id="aiChartDisplayArea" class="chart-area">
+            <p style="text-align: center; color: #666;">Charts will appear here</p>
+        </div>
+    </div>
+
+    <script src="http://localhost:5176/index.tsx" type="module"></script>
+    <script>
+        const resultsDiv = document.getElementById('results');
+        
+        function log(message) {
+            resultsDiv.textContent += message + '\n';
+            console.log(message);
+        }
+        
+        function clearResults() {
+            resultsDiv.textContent = '';
+        }
+        
+        function testChartAccess() {
+            log('🧪 Testing Chart Access...');
+            
+            // Wait for the main app to load
+            const checkApp = () => {
+                if (window.app) {
+                    log('✅ Main app loaded successfully');
+                    log('🔍 Available methods:');
+                    log(`  - testChartWithoutAI: ${typeof window.app.testChartWithoutAI}`);
+                    log(`  - generateSampleCharts: ${typeof window.app.generateSampleCharts}`);
+                    return true;
+                } else {
+                    log('⏳ Waiting for app to load...');
+                    setTimeout(checkApp, 500);
+                    return false;
+                }
+            };
+            
+            checkApp();
+        }
+        
+        document.getElementById('testChart').addEventListener('click', () => {
+            clearResults();
+            log('🧪 Testing Basic Chart Creation...');
+            
+            if (window.app && typeof window.app.testChartWithoutAI === 'function') {
+                try {
+                    window.app.testChartWithoutAI();
+                    log('✅ testChartWithoutAI() called successfully');
+                    
+                    setTimeout(() => {
+                        const chartArea = document.getElementById('aiChartDisplayArea');
+                        const canvases = chartArea.querySelectorAll('canvas');
+                        log(`📊 Found ${canvases.length} canvas elements`);
+                        
+                        if (canvases.length > 0) {
+                            log('🎉 SUCCESS: Canvas elements created and found!');
+                            log('✅ Canvas lookup fix is working!');
+                        } else {
+                            log('❌ FAILED: No canvas elements found');
+                        }
+                    }, 1000);
+                    
+                } catch (error) {
+                    log(`❌ Error calling testChartWithoutAI: ${error.message}`);
+                }
+            } else {
+                log('❌ testChartWithoutAI function not available');
+            }
+        });
+        
+        document.getElementById('testSampleCharts').addEventListener('click', () => {
+            clearResults();
+            log('🧪 Testing Sample Charts Creation...');
+            
+            if (window.app && typeof window.app.generateSampleCharts === 'function') {
+                try {
+                    window.app.generateSampleCharts();
+                    log('✅ generateSampleCharts() called successfully');
+                    
+                    setTimeout(() => {
+                        const chartArea = document.getElementById('aiChartDisplayArea');
+                        const canvases = chartArea.querySelectorAll('canvas');
+                        const containers = chartArea.querySelectorAll('.chart-container');
+                        log(`📊 Found ${canvases.length} canvas elements`);
+                        log(`📦 Found ${containers.length} chart containers`);
+                        
+                        if (canvases.length > 0) {
+                            log('🎉 SUCCESS: Sample charts created successfully!');
+                            log('✅ Canvas lookup fix is working for sample charts!');
+                        } else {
+                            log('❌ FAILED: No canvas elements found for sample charts');
+                        }
+                    }, 2000);
+                    
+                } catch (error) {
+                    log(`❌ Error calling generateSampleCharts: ${error.message}`);
+                }
+            } else {
+                log('❌ generateSampleCharts function not available');
+            }
+        });
+        
+        document.getElementById('clearCharts').addEventListener('click', () => {
+            const chartArea = document.getElementById('aiChartDisplayArea');
+            chartArea.innerHTML = '<p style="text-align: center; color: #666;">Charts will appear here</p>';
+            clearResults();
+            log('🧹 Charts cleared');
+        });
+        
+        // Test on page load
+        setTimeout(testChartAccess, 1000);
+    </script>
+</body>
+</html>

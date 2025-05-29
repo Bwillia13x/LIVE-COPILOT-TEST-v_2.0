@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Validation Test - Voice Notes App</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        .test-controls {
+            margin: 20px 0;
+            padding: 15px;
+            background: #e8f4fd;
+            border-radius: 5px;
+        }
+        button {
+            padding: 10px 15px;
+            margin: 5px;
+            border: none;
+            border-radius: 4px;
+            background: #007acc;
+            color: white;
+            cursor: pointer;
+        }
+        button:hover {
+            background: #005999;
+        }
+        #console-output {
+            background: #1e1e1e;
+            color: #d4d4d4;
+            padding: 15px;
+            border-radius: 5px;
+            font-family: 'Courier New', monospace;
+            font-size: 14px;
+            height: 400px;
+            overflow-y: auto;
+            white-space: pre-wrap;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔍 Voice Notes App - Infinite Chart Fix Validation</h1>
+        
+        <div class="test-controls">
+            <h3>Test Controls</h3>
+            <button onclick="loadMainApp()">Load Main App</button>
+            <button onclick="runValidation()">Run Validation Tests</button>
+            <button onclick="testManualChart()">Test Manual Chart Generation</button>
+            <button onclick="clearConsole()">Clear Console</button>
+        </div>
+        
+        <h3>Console Output</h3>
+        <div id="console-output"></div>
+        
+        <div id="app-container" style="display: none;">
+            <iframe id="main-app" src="index.html" width="100%" height="600px" style="border: 1px solid #ccc; border-radius: 5px;"></iframe>
+        </div>
+    </div>
+
+    <script>
+        // Capture console output
+        const consoleOutput = document.getElementById('console-output');
+        const originalConsoleLog = console.log;
+        const originalConsoleError = console.error;
+
+        function addToConsole(message, type = 'log') {
+            const timestamp = new Date().toLocaleTimeString();
+            const className = type === 'error' ? 'error' : 'log';
+            consoleOutput.innerHTML += `[${timestamp}] ${message}\n`;
+            consoleOutput.scrollTop = consoleOutput.scrollHeight;
+        }
+
+        console.log = function(...args) {
+            const message = args.join(' ');
+            addToConsole(message, 'log');
+            return originalConsoleLog.apply(console, args);
+        };
+
+        console.error = function(...args) {
+            const message = args.join(' ');
+            addToConsole(`❌ ERROR: ${message}`, 'error');
+            return originalConsoleError.apply(console, args);
+        };
+
+        function loadMainApp() {
+            const container = document.getElementById('app-container');
+            container.style.display = 'block';
+            console.log('📱 Loading main application...');
+        }
+
+        function runValidation() {
+            console.log('🚀 Starting validation process...');
+            
+            // Load and execute the validation script
+            const script = document.createElement('script');
+            script.src = 'validate-infinite-chart-fix.js';
+            script.onload = function() {
+                console.log('✅ Validation script loaded successfully');
+            };
+            script.onerror = function() {
+                console.error('❌ Failed to load validation script');
+            };
+            document.head.appendChild(script);
+        }
+
+        function testManualChart() {
+            console.log('🧪 Testing manual chart generation...');
+            
+            const iframe = document.getElementById('main-app');
+            if (iframe && iframe.contentWindow && iframe.contentWindow.app) {
+                try {
+                    iframe.contentWindow.app.testChartGeneration();
+                    console.log('✅ Manual chart test executed');
+                } catch (error) {
+                    console.error('Failed to execute manual chart test:', error);
+                }
+            } else {
+                console.error('❌ Main app not loaded or app object not available');
+            }
+        }
+
+        function clearConsole() {
+            consoleOutput.innerHTML = '';
+        }
+
+        // Initial message
+        console.log('🔧 Validation test environment ready');
+        console.log('📋 Steps:');
+        console.log('1. Click "Load Main App" to load the voice notes application');
+        console.log('2. Click "Run Validation Tests" to execute the validation suite');
+        console.log('3. Monitor console output for results');
+    </script>
+</body>
+</html>

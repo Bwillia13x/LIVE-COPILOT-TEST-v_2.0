@@ -1,0 +1,301 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Autonomous Chart Test Runner</title>
+    <style>
+        body {
+            font-family: 'Courier New', monospace;
+            background: #1a1a1a;
+            color: #00ff00;
+            padding: 20px;
+            margin: 0;
+        }
+        .test-container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        .test-header {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        .test-frame {
+            width: 100%;
+            height: 600px;
+            border: 2px solid #00ff00;
+            border-radius: 8px;
+            margin-bottom: 20px;
+        }
+        .test-results {
+            background: #000;
+            padding: 20px;
+            border-radius: 8px;
+            border: 1px solid #333;
+            white-space: pre-wrap;
+            font-family: monospace;
+            max-height: 400px;
+            overflow-y: auto;
+        }
+        .test-controls {
+            margin: 20px 0;
+            text-align: center;
+        }
+        button {
+            background: #00ff00;
+            color: #000;
+            border: none;
+            padding: 10px 20px;
+            margin: 5px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-weight: bold;
+        }
+        button:hover {
+            background: #00cc00;
+        }
+        .status {
+            font-size: 18px;
+            font-weight: bold;
+            margin: 10px 0;
+        }
+        .success { color: #00ff00; }
+        .error { color: #ff4444; }
+        .warning { color: #ffaa00; }
+    </style>
+</head>
+<body>
+    <div class="test-container">
+        <div class="test-header">
+            <h1>🤖 Autonomous Chart Test Runner</h1>
+            <div class="status" id="testStatus">Initializing tests...</div>
+        </div>
+        
+        <div class="test-controls">
+            <button onclick="runManualTests()">🧪 Run Manual Tests</button>
+            <button onclick="testChartGeneration()">📊 Test Chart Generation</button>
+            <button onclick="validateTabSwitching()">🔄 Test Tab Switching</button>
+            <button onclick="clearResults()">🗑️ Clear Results</button>
+        </div>
+        
+        <iframe id="appFrame" class="test-frame" src="http://localhost:8080"></iframe>
+        
+        <div id="testResults" class="test-results">
+🚀 Autonomous Chart Testing System Ready
+⏳ Loading main application...
+        </div>
+    </div>
+
+    <script>
+        let testResults = [];
+        
+        function log(message, type = 'info') {
+            const timestamp = new Date().toLocaleTimeString();
+            const prefix = type === 'error' ? '❌' : type === 'success' ? '✅' : type === 'warning' ? '⚠️' : 'ℹ️';
+            const formattedMessage = `[${timestamp}] ${prefix} ${message}`;
+            testResults.push(formattedMessage);
+            updateResults();
+            console.log(formattedMessage);
+        }
+        
+        function updateResults() {
+            document.getElementById('testResults').textContent = testResults.join('\n');
+        }
+        
+        function updateStatus(message, type = 'info') {
+            const statusEl = document.getElementById('testStatus');
+            statusEl.textContent = message;
+            statusEl.className = `status ${type}`;
+        }
+        
+        function clearResults() {
+            testResults = [];
+            updateResults();
+            log('Results cleared');
+        }
+        
+        // Test iframe communication
+        function runManualTests() {
+            log('Starting manual test sequence...', 'info');
+            const iframe = document.getElementById('appFrame');
+            
+            try {
+                // Inject test script into iframe
+                const testScript = iframe.contentDocument.createElement('script');
+                testScript.textContent = \`
+                    // Chart functionality tests
+                    function testChartInfrastructure() {
+                        const results = {};
+                        
+                        // Test 1: Chart.js availability
+                        results.chartJS = typeof Chart !== 'undefined';
+                        
+                        // Test 2: Chart display area
+                        const chartArea = document.getElementById('aiChartDisplayArea');
+                        results.chartArea = !!chartArea;
+                        
+                        // Test 3: App instance
+                        results.appInstance = typeof window.app !== 'undefined';
+                        
+                        // Test 4: Chart generation method
+                        results.chartGeneration = window.app && typeof window.app.testChartGeneration === 'function';
+                        
+                        return results;
+                    }
+                    
+                    // Run tests and post results
+                    const testResults = testChartInfrastructure();
+                    window.parent.postMessage({
+                        type: 'testResults',
+                        results: testResults
+                    }, '*');
+                \`;
+                
+                iframe.contentDocument.head.appendChild(testScript);
+                log('Test script injected successfully', 'success');
+                
+            } catch (error) {
+                log(\`Failed to inject test script: \${error.message}\`, 'error');
+            }
+        }
+        
+        function testChartGeneration() {
+            log('Testing chart generation...', 'info');
+            const iframe = document.getElementById('appFrame');
+            
+            try {
+                const testScript = iframe.contentDocument.createElement('script');
+                testScript.textContent = \`
+                    try {
+                        if (window.app && window.app.testChartGeneration) {
+                            window.app.testChartGeneration();
+                            
+                            // Check for canvas elements after generation
+                            setTimeout(() => {
+                                const canvases = document.querySelectorAll('canvas');
+                                window.parent.postMessage({
+                                    type: 'chartGenerated',
+                                    canvasCount: canvases.length,
+                                    success: true
+                                }, '*');
+                            }, 1000);
+                        } else {
+                            window.parent.postMessage({
+                                type: 'chartGenerated',
+                                success: false,
+                                error: 'Chart generation function not available'
+                            }, '*');
+                        }
+                    } catch (error) {
+                        window.parent.postMessage({
+                            type: 'chartGenerated',
+                            success: false,
+                            error: error.message
+                        }, '*');
+                    }
+                \`;
+                
+                iframe.contentDocument.head.appendChild(testScript);
+                
+            } catch (error) {
+                log(\`Chart generation test failed: \${error.message}\`, 'error');
+            }
+        }
+        
+        function validateTabSwitching() {
+            log('Testing tab switching functionality...', 'info');
+            const iframe = document.getElementById('appFrame');
+            
+            try {
+                const testScript = iframe.contentDocument.createElement('script');
+                testScript.textContent = \`
+                    const rawTab = document.querySelector('[data-tab="raw"]');
+                    const chartArea = document.getElementById('aiChartDisplayArea');
+                    
+                    if (rawTab && chartArea) {
+                        rawTab.click();
+                        
+                        setTimeout(() => {
+                            const tabContent = chartArea.closest('.tab-content, #rawTranscription');
+                            const isVisible = tabContent && window.getComputedStyle(tabContent).display !== 'none';
+                            
+                            window.parent.postMessage({
+                                type: 'tabTest',
+                                success: true,
+                                chartAreaVisible: isVisible
+                            }, '*');
+                        }, 200);
+                    } else {
+                        window.parent.postMessage({
+                            type: 'tabTest',
+                            success: false,
+                            error: 'Tab or chart area not found'
+                        }, '*');
+                    }
+                \`;
+                
+                iframe.contentDocument.head.appendChild(testScript);
+                
+            } catch (error) {
+                log(\`Tab switching test failed: \${error.message}\`, 'error');
+            }
+        }
+        
+        // Listen for messages from iframe
+        window.addEventListener('message', function(event) {
+            if (event.data.type === 'testResults') {
+                const results = event.data.results;
+                log('=== Test Infrastructure Results ===');
+                log(\`Chart.js loaded: \${results.chartJS ? '✅' : '❌'}\`);
+                log(\`Chart display area: \${results.chartArea ? '✅' : '❌'}\`);
+                log(\`App instance: \${results.appInstance ? '✅' : '❌'}\`);
+                log(\`Chart generation method: \${results.chartGeneration ? '✅' : '❌'}\`);
+                
+                const passedTests = Object.values(results).filter(Boolean).length;
+                const totalTests = Object.keys(results).length;
+                
+                if (passedTests === totalTests) {
+                    updateStatus(\`All \${totalTests} infrastructure tests passed!\`, 'success');
+                } else {
+                    updateStatus(\`\${passedTests}/\${totalTests} infrastructure tests passed\`, 'warning');
+                }
+            }
+            
+            if (event.data.type === 'chartGenerated') {
+                if (event.data.success) {
+                    log(\`Chart generation successful! Found \${event.data.canvasCount} canvas element(s)\`, 'success');
+                    updateStatus('Chart generation working!', 'success');
+                } else {
+                    log(\`Chart generation failed: \${event.data.error}\`, 'error');
+                    updateStatus('Chart generation failed', 'error');
+                }
+            }
+            
+            if (event.data.type === 'tabTest') {
+                if (event.data.success) {
+                    log(\`Tab switching test completed. Chart area visible: \${event.data.chartAreaVisible ? '✅' : '❌'}\`, 
+                        event.data.chartAreaVisible ? 'success' : 'warning');
+                    updateStatus('Tab switching functional', 'success');
+                } else {
+                    log(\`Tab switching test failed: \${event.data.error}\`, 'error');
+                    updateStatus('Tab switching failed', 'error');
+                }
+            }
+        });
+        
+        // Auto-run tests when iframe loads
+        document.getElementById('appFrame').addEventListener('load', function() {
+            log('Main application loaded successfully', 'success');
+            updateStatus('Application loaded - ready for testing', 'success');
+            
+            // Auto-run basic tests
+            setTimeout(() => {
+                runManualTests();
+            }, 1000);
+        });
+        
+        // Initial status
+        updateStatus('Loading application...', 'info');
+    </script>
+</body>
+</html>

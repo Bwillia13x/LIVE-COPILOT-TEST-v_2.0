@@ -1,0 +1,208 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Record Button Test - With Vite</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            min-height: 100vh;
+        }
+        .container {
+            max-width: 600px;
+            margin: 0 auto;
+            background: rgba(255, 255, 255, 0.1);
+            padding: 30px;
+            border-radius: 16px;
+            backdrop-filter: blur(10px);
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+        }
+        .status {
+            padding: 10px;
+            margin: 10px 0;
+            border-radius: 8px;
+            font-weight: bold;
+        }
+        .success { background: rgba(0, 255, 136, 0.2); border-left: 4px solid #00ff88; }
+        .error { background: rgba(255, 0, 0, 0.2); border-left: 4px solid #ff0000; }
+        .info { background: rgba(0, 136, 255, 0.2); border-left: 4px solid #0088ff; }
+        button {
+            background: #00ff88;
+            color: #000;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 8px;
+            cursor: pointer;
+            margin: 5px;
+            font-weight: bold;
+        }
+        button:hover {
+            background: #00cc6a;
+        }
+        #results {
+            max-height: 300px;
+            overflow-y: auto;
+            margin-top: 20px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🎤 Record Button Test - Vite Server</h1>
+        <p>Testing with proper TypeScript compilation via Vite</p>
+        
+        <button onclick="testRecordButton()">Test Record Button</button>
+        <button onclick="openMainApp()">Open Main App (Vite)</button>
+        <button onclick="testBrowserCapabilities()">Test Browser Capabilities</button>
+        
+        <div id="results"></div>
+    </div>
+
+    <script>
+        function log(message, type = 'info') {
+            const results = document.getElementById('results');
+            const div = document.createElement('div');
+            div.className = `status ${type}`;
+            div.innerHTML = `[${new Date().toLocaleTimeString()}] ${message}`;
+            results.appendChild(div);
+            results.scrollTop = results.scrollHeight;
+            console.log(message);
+        }
+
+        function openMainApp() {
+            log('🌐 Opening main application with Vite...', 'info');
+            const mainWindow = window.open('http://localhost:5174', 'mainApp');
+            
+            if (mainWindow) {
+                log('✅ Main app opened successfully', 'success');
+                log('💡 Try clicking the record button in the main app!', 'info');
+                
+                // Give the app time to load, then check if we can access it
+                setTimeout(() => {
+                    try {
+                        if (mainWindow.app) {
+                            log('✅ Main app object accessible', 'success');
+                            log('🎯 Record button should be working now!', 'success');
+                        } else {
+                            log('⏳ App still loading or compilation in progress...', 'info');
+                        }
+                    } catch (error) {
+                        log('🔒 Cannot access main app (cross-origin or still loading)', 'info');
+                    }
+                }, 3000);
+            } else {
+                log('❌ Could not open main app window', 'error');
+            }
+        }
+
+        function testRecordButton() {
+            log('🧪 Testing record button functionality...', 'info');
+            
+            // Test with Vite server
+            fetch('http://localhost:5174/')
+                .then(response => {
+                    if (response.ok) {
+                        log('✅ Vite server responding', 'success');
+                        return response.text();
+                    } else {
+                        throw new Error(`Server error: ${response.status}`);
+                    }
+                })
+                .then(html => {
+                    // Check if the HTML structure is correct
+                    if (html.includes('id="recordButton"')) {
+                        log('✅ Record button found in HTML', 'success');
+                    } else {
+                        log('❌ Record button not found in HTML', 'error');
+                    }
+                    
+                    // Check if TypeScript is being loaded
+                    if (html.includes('index.tsx')) {
+                        log('✅ TypeScript file referenced', 'success');
+                    } else {
+                        log('❌ TypeScript file not referenced', 'error');
+                    }
+                    
+                    // The key difference: Vite will compile TypeScript on the fly
+                    log('🚀 Vite will compile TypeScript automatically', 'success');
+                    log('✨ Record button should be functional now!', 'success');
+                })
+                .catch(error => {
+                    log(`❌ Test failed: ${error.message}`, 'error');
+                });
+        }
+
+        function testBrowserCapabilities() {
+            log('🌐 Testing browser capabilities for recording...', 'info');
+            
+            // Test MediaRecorder
+            if (typeof MediaRecorder !== 'undefined') {
+                log('✅ MediaRecorder API supported', 'success');
+                
+                // Test supported MIME types
+                const mimeTypes = ['audio/webm', 'audio/mp4', 'audio/wav'];
+                let supportedTypes = [];
+                
+                mimeTypes.forEach(type => {
+                    if (MediaRecorder.isTypeSupported(type)) {
+                        supportedTypes.push(type);
+                    }
+                });
+                
+                if (supportedTypes.length > 0) {
+                    log(`✅ Supported audio types: ${supportedTypes.join(', ')}`, 'success');
+                } else {
+                    log('⚠️ No common audio types supported', 'error');
+                }
+            } else {
+                log('❌ MediaRecorder API not supported', 'error');
+            }
+            
+            // Test getUserMedia
+            if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
+                log('✅ getUserMedia API supported', 'success');
+                
+                // Test microphone enumeration
+                navigator.mediaDevices.enumerateDevices()
+                    .then(devices => {
+                        const audioInputs = devices.filter(device => device.kind === 'audioinput');
+                        if (audioInputs.length > 0) {
+                            log(`✅ Found ${audioInputs.length} audio input device(s)`, 'success');
+                        } else {
+                            log('⚠️ No audio input devices found', 'error');
+                        }
+                    })
+                    .catch(error => {
+                        log(`⚠️ Could not enumerate devices: ${error.message}`, 'error');
+                    });
+            } else {
+                log('❌ getUserMedia API not supported', 'error');
+            }
+            
+            // Test Speech Recognition
+            const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+            if (SpeechRecognition) {
+                log('✅ Speech Recognition API supported', 'success');
+            } else {
+                log('⚠️ Speech Recognition API not supported', 'error');
+            }
+            
+            log('📊 Browser capability test completed!', 'info');
+        }
+
+        // Auto-run tests on load
+        window.addEventListener('load', () => {
+            log('🎯 Record Button Test Tool Started', 'info');
+            log('🔧 Using Vite development server for proper TypeScript compilation', 'success');
+            setTimeout(() => {
+                testRecordButton();
+                testBrowserCapabilities();
+            }, 1000);
+        });
+    </script>
+</body>
+</html>

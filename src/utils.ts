@@ -325,6 +325,27 @@ export class ErrorHandler {
   public getRetryCount(operationName: string): number {
     return this.retryAttempts.get(operationName) || 0;
   }
+
+  /**
+   * Static method for simple error logging - provides backward compatibility
+   */
+  public static logError(message: string, error?: Error | unknown): void {
+    const instance = ErrorHandler.getInstance();
+    const errorObj = error instanceof Error ? error : new Error(String(error));
+    instance.logger.error(message, errorObj);
+  }
+
+  /**
+   * Instance method for comprehensive error handling
+   */
+  public handleError(error: Error, context: { operationName: string; fallback?: () => any }): void {
+    this.logger.error(`${context.operationName} failed: ${error.message}`, error);
+    
+    if (context.fallback) {
+      this.logger.info(`Using fallback for ${context.operationName}`);
+      return context.fallback();
+    }
+  }
 }
 
 /**

@@ -1,0 +1,399 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Button Functionality Validation</title>
+    <style>
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 12px;
+            padding: 30px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+        }
+        
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        
+        .header h1 {
+            color: #2d3748;
+            margin: 0 0 10px 0;
+            font-size: 2.5rem;
+            font-weight: 700;
+        }
+        
+        .header p {
+            color: #718096;
+            font-size: 1.1rem;
+            margin: 0;
+        }
+        
+        .test-section {
+            margin-bottom: 30px;
+            padding: 20px;
+            border: 2px solid #e2e8f0;
+            border-radius: 8px;
+            background: #f7fafc;
+        }
+        
+        .test-section h2 {
+            color: #2d3748;
+            margin: 0 0 15px 0;
+            font-size: 1.5rem;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .button-group {
+            display: flex;
+            gap: 15px;
+            flex-wrap: wrap;
+            margin-bottom: 20px;
+        }
+        
+        .test-btn {
+            padding: 12px 24px;
+            border: none;
+            border-radius: 6px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-size: 14px;
+        }
+        
+        .test-btn.primary {
+            background: #4299e1;
+            color: white;
+        }
+        
+        .test-btn.primary:hover {
+            background: #3182ce;
+            transform: translateY(-2px);
+        }
+        
+        .test-btn.success {
+            background: #48bb78;
+            color: white;
+        }
+        
+        .test-btn.warning {
+            background: #ed8936;
+            color: white;
+        }
+        
+        .test-btn.danger {
+            background: #f56565;
+            color: white;
+        }
+        
+        .results-container {
+            margin-top: 20px;
+            padding: 20px;
+            background: white;
+            border-radius: 8px;
+            border: 1px solid #e2e8f0;
+        }
+        
+        .log-output {
+            background: #1a202c;
+            color: #e2e8f0;
+            padding: 20px;
+            border-radius: 8px;
+            font-family: 'Monaco', 'Menlo', monospace;
+            font-size: 13px;
+            line-height: 1.5;
+            height: 300px;
+            overflow-y: auto;
+            margin-top: 15px;
+        }
+        
+        .status-indicator {
+            display: inline-block;
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            margin-right: 8px;
+        }
+        
+        .status-indicator.success { background: #48bb78; }
+        .status-indicator.error { background: #f56565; }
+        .status-indicator.warning { background: #ed8936; }
+        .status-indicator.info { background: #4299e1; }
+        
+        .app-iframe {
+            width: 100%;
+            height: 600px;
+            border: 2px solid #e2e8f0;
+            border-radius: 8px;
+            background: white;
+        }
+        
+        .metric-card {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            border: 1px solid #e2e8f0;
+            text-align: center;
+            min-width: 150px;
+        }
+        
+        .metric-value {
+            font-size: 2rem;
+            font-weight: 700;
+            margin-bottom: 5px;
+        }
+        
+        .metric-label {
+            color: #718096;
+            font-size: 0.9rem;
+        }
+        
+        .metrics-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 20px;
+            margin-bottom: 20px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🔧 Button Functionality Validation</h1>
+            <p>Comprehensive testing suite for Voice Notes Pro v2.0 button functionality</p>
+        </div>
+
+        <div class="test-section">
+            <h2>
+                <span class="status-indicator info"></span>
+                Test Controls
+            </h2>
+            <div class="button-group">
+                <button class="test-btn primary" onclick="runComprehensiveTest()">
+                    🚀 Run All Tests
+                </button>
+                <button class="test-btn success" onclick="testButtonExistence()">
+                    🔍 Check Button Existence
+                </button>
+                <button class="test-btn warning" onclick="testEventListeners()">
+                    📡 Test Event Listeners
+                </button>
+                <button class="test-btn danger" onclick="testButtonClicks()">
+                    👆 Simulate Button Clicks
+                </button>
+                <button class="test-btn primary" onclick="clearResults()">
+                    🗑️ Clear Results
+                </button>
+            </div>
+        </div>
+
+        <div class="test-section">
+            <h2>
+                <span class="status-indicator success"></span>
+                Test Results
+            </h2>
+            <div class="metrics-grid" id="metricsGrid">
+                <div class="metric-card">
+                    <div class="metric-value" id="totalTests">0</div>
+                    <div class="metric-label">Total Tests</div>
+                </div>
+                <div class="metric-card">
+                    <div class="metric-value" id="passedTests">0</div>
+                    <div class="metric-label">Passed</div>
+                </div>
+                <div class="metric-card">
+                    <div class="metric-value" id="failedTests">0</div>
+                    <div class="metric-label">Failed</div>
+                </div>
+                <div class="metric-card">
+                    <div class="metric-value" id="successRate">0%</div>
+                    <div class="metric-label">Success Rate</div>
+                </div>
+            </div>
+            <div class="results-container">
+                <div id="resultsOutput">
+                    <p>Click "Run All Tests" to start the comprehensive button functionality test.</p>
+                </div>
+            </div>
+        </div>
+
+        <div class="test-section">
+            <h2>
+                <span class="status-indicator warning"></span>
+                Console Output
+            </h2>
+            <div class="log-output" id="logOutput">
+                <div>Waiting for test execution...</div>
+            </div>
+        </div>
+
+        <div class="test-section">
+            <h2>
+                <span class="status-indicator info"></span>
+                Live Application
+            </h2>
+            <iframe id="appFrame" class="app-iframe" src="http://localhost:5177"></iframe>
+        </div>
+    </div>
+
+    <script>
+        // Override console methods to capture output
+        const originalLog = console.log;
+        const originalError = console.error;
+        const originalWarn = console.warn;
+        
+        const logOutput = document.getElementById('logOutput');
+        
+        function appendToLog(message, type = 'info') {
+            const timestamp = new Date().toLocaleTimeString();
+            const color = {
+                'info': '#e2e8f0',
+                'error': '#f56565',
+                'warn': '#ed8936',
+                'success': '#48bb78'
+            }[type] || '#e2e8f0';
+            
+            const logEntry = document.createElement('div');
+            logEntry.style.color = color;
+            logEntry.innerHTML = `[${timestamp}] ${message}`;
+            logOutput.appendChild(logEntry);
+            logOutput.scrollTop = logOutput.scrollHeight;
+        }
+        
+        console.log = function(...args) {
+            originalLog.apply(console, args);
+            appendToLog(args.join(' '), 'info');
+        };
+        
+        console.error = function(...args) {
+            originalError.apply(console, args);
+            appendToLog(args.join(' '), 'error');
+        };
+        
+        console.warn = function(...args) {
+            originalWarn.apply(console, args);
+            appendToLog(args.join(' '), 'warn');
+        };
+
+        // Test functions
+        async function runComprehensiveTest() {
+            appendToLog('🚀 Starting comprehensive button functionality test...', 'info');
+            updateMetrics(0, 0, 0, '0%');
+            
+            try {
+                // Get the iframe window
+                const iframe = document.getElementById('appFrame');
+                const iframeWindow = iframe.contentWindow;
+                const iframeDocument = iframe.contentDocument;
+                
+                if (!iframeDocument) {
+                    throw new Error('Cannot access iframe document');
+                }
+                
+                // Inject test script into iframe
+                const script = iframeDocument.createElement('script');
+                script.src = '/comprehensive-button-test.js';
+                iframeDocument.head.appendChild(script);
+                
+                // Wait for script to load and run tests
+                setTimeout(async () => {
+                    if (iframeWindow.runButtonTests) {
+                        const results = await iframeWindow.runButtonTests();
+                        displayResults(results);
+                    } else {
+                        appendToLog('❌ Test framework not loaded in iframe', 'error');
+                    }
+                }, 2000);
+                
+            } catch (error) {
+                appendToLog(`❌ Test execution failed: ${error.message}`, 'error');
+                console.error('Test execution error:', error);
+            }
+        }
+        
+        function updateMetrics(total, passed, failed, successRate) {
+            document.getElementById('totalTests').textContent = total;
+            document.getElementById('passedTests').textContent = passed;
+            document.getElementById('failedTests').textContent = failed;
+            document.getElementById('successRate').textContent = successRate;
+        }
+        
+        function displayResults(results) {
+            const output = document.getElementById('resultsOutput');
+            
+            if (!results) {
+                output.innerHTML = '<p style="color: #f56565;">❌ Test execution failed</p>';
+                return;
+            }
+            
+            const total = results.summary?.total || 0;
+            const passed = results.summary?.passed || 0;
+            const failed = results.summary?.failed || 0;
+            const successRate = results.summary?.successRate || '0%';
+            
+            updateMetrics(total, passed, failed, successRate);
+            
+            let html = `
+                <h3>Test Execution Summary</h3>
+                <p><strong>Total Tests:</strong> ${total}</p>
+                <p><strong>Passed:</strong> <span style="color: #48bb78;">${passed}</span></p>
+                <p><strong>Failed:</strong> <span style="color: #f56565;">${failed}</span></p>
+                <p><strong>Success Rate:</strong> ${successRate}</p>
+                
+                <h4>Detailed Results:</h4>
+                <ul>
+            `;
+            
+            if (results.results) {
+                Object.entries(results.results).forEach(([testName, result]) => {
+                    html += `<li><strong>${testName}:</strong> ${JSON.stringify(result, null, 2)}</li>`;
+                });
+            }
+            
+            html += '</ul>';
+            output.innerHTML = html;
+            
+            appendToLog(`✅ Test completed: ${passed}/${total} passed (${successRate})`, 'success');
+        }
+        
+        function testButtonExistence() {
+            appendToLog('🔍 Testing button existence...', 'info');
+            // Individual test implementation
+        }
+        
+        function testEventListeners() {
+            appendToLog('📡 Testing event listeners...', 'info');
+            // Individual test implementation
+        }
+        
+        function testButtonClicks() {
+            appendToLog('👆 Testing button clicks...', 'info');
+            // Individual test implementation
+        }
+        
+        function clearResults() {
+            document.getElementById('resultsOutput').innerHTML = '<p>Results cleared. Ready for new tests.</p>';
+            document.getElementById('logOutput').innerHTML = '<div>Console cleared.</div>';
+            updateMetrics(0, 0, 0, '0%');
+            appendToLog('🗑️ Results and console cleared', 'info');
+        }
+        
+        // Initialize
+        appendToLog('🎯 Button Functionality Validation Suite loaded', 'success');
+        appendToLog('Click "Run All Tests" to begin testing', 'info');
+    </script>
+</body>
+</html>

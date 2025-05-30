@@ -1,0 +1,974 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🧪 Voice Notes Pro v2.0 - Comprehensive AI Testing</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: #333;
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            background: rgba(255, 255, 255, 0.98);
+            border-radius: 24px;
+            box-shadow: 0 32px 64px rgba(0, 0, 0, 0.15);
+            overflow: hidden;
+        }
+
+        .header {
+            background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
+            padding: 40px;
+            text-align: center;
+            color: white;
+            position: relative;
+        }
+
+        .header::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><defs><pattern id="grid" width="10" height="10" patternUnits="userSpaceOnUse"><path d="M 10 0 L 0 0 0 10" fill="none" stroke="rgba(255,255,255,0.1)" stroke-width="1"/></pattern></defs><rect width="100" height="100" fill="url(%23grid)"/></svg>') center/cover;
+            opacity: 0.3;
+        }
+
+        .header-content {
+            position: relative;
+            z-index: 2;
+        }
+
+        .header h1 {
+            font-size: 3rem;
+            margin-bottom: 16px;
+            font-weight: 700;
+            text-shadow: 2px 2px 8px rgba(0, 0, 0, 0.3);
+        }
+
+        .header p {
+            font-size: 1.2rem;
+            opacity: 0.9;
+            margin-bottom: 20px;
+        }
+
+        .status-bar {
+            display: flex;
+            justify-content: center;
+            gap: 20px;
+            margin-top: 20px;
+        }
+
+        .status-item {
+            background: rgba(255, 255, 255, 0.2);
+            padding: 12px 20px;
+            border-radius: 50px;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .main-content {
+            padding: 40px;
+        }
+
+        .test-controls {
+            display: flex;
+            justify-content: center;
+            gap: 20px;
+            margin-bottom: 40px;
+            flex-wrap: wrap;
+        }
+
+        .control-btn {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 16px 32px;
+            border-radius: 50px;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: 0 8px 16px rgba(102, 126, 234, 0.3);
+        }
+
+        .control-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 12px 24px rgba(102, 126, 234, 0.4);
+        }
+
+        .control-btn:active {
+            transform: translateY(0);
+        }
+
+        .control-btn.secondary {
+            background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+            box-shadow: 0 8px 16px rgba(240, 147, 251, 0.3);
+        }
+
+        .control-btn.secondary:hover {
+            box-shadow: 0 12px 24px rgba(240, 147, 251, 0.4);
+        }
+
+        .test-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
+            gap: 30px;
+            margin-bottom: 40px;
+        }
+
+        .test-card {
+            background: white;
+            border-radius: 20px;
+            padding: 30px;
+            box-shadow: 0 12px 24px rgba(0, 0, 0, 0.1);
+            border: 2px solid transparent;
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .test-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 4px;
+            background: linear-gradient(90deg, #667eea, #764ba2);
+            transform: scaleX(0);
+            transition: transform 0.3s ease;
+        }
+
+        .test-card:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 16px 32px rgba(0, 0, 0, 0.15);
+        }
+
+        .test-card.active::before {
+            transform: scaleX(1);
+        }
+
+        .test-card.passed {
+            border-color: #10b981;
+            background: linear-gradient(135deg, #f0fdf4, #ffffff);
+        }
+
+        .test-card.failed {
+            border-color: #ef4444;
+            background: linear-gradient(135deg, #fef2f2, #ffffff);
+        }
+
+        .test-card.running {
+            border-color: #f59e0b;
+            background: linear-gradient(135deg, #fffbeb, #ffffff);
+        }
+
+        .test-header {
+            display: flex;
+            justify-content: between;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+
+        .test-title {
+            font-size: 1.4rem;
+            font-weight: 700;
+            color: #1f2937;
+            margin-bottom: 8px;
+        }
+
+        .test-description {
+            color: #6b7280;
+            font-size: 0.95rem;
+            line-height: 1.5;
+            margin-bottom: 20px;
+        }
+
+        .test-status {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 8px 16px;
+            border-radius: 50px;
+            font-size: 0.85rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+
+        .test-status.pending {
+            background: #f3f4f6;
+            color: #6b7280;
+        }
+
+        .test-status.running {
+            background: #fef3c7;
+            color: #d97706;
+        }
+
+        .test-status.passed {
+            background: #d1fae5;
+            color: #065f46;
+        }
+
+        .test-status.failed {
+            background: #fee2e2;
+            color: #dc2626;
+        }
+
+        .test-btn {
+            width: 100%;
+            background: linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%);
+            color: white;
+            border: none;
+            padding: 14px 24px;
+            border-radius: 12px;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            margin-top: 16px;
+        }
+
+        .test-btn:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 8px 16px rgba(79, 70, 229, 0.3);
+        }
+
+        .test-btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+            box-shadow: none;
+        }
+
+        .test-results {
+            margin-top: 20px;
+            padding: 16px;
+            background: #f8fafc;
+            border-radius: 12px;
+            font-family: 'Monaco', 'Menlo', monospace;
+            font-size: 0.85rem;
+            max-height: 200px;
+            overflow-y: auto;
+            white-space: pre-wrap;
+        }
+
+        .progress-bar {
+            background: #e5e7eb;
+            height: 8px;
+            border-radius: 4px;
+            overflow: hidden;
+            margin: 20px 0;
+        }
+
+        .progress-fill {
+            background: linear-gradient(90deg, #10b981, #059669);
+            height: 100%;
+            width: 0%;
+            transition: width 0.3s ease;
+        }
+
+        .summary-section {
+            background: white;
+            border-radius: 20px;
+            padding: 30px;
+            box-shadow: 0 12px 24px rgba(0, 0, 0, 0.1);
+            margin-top: 40px;
+        }
+
+        .summary-title {
+            font-size: 1.8rem;
+            font-weight: 700;
+            color: #1f2937;
+            margin-bottom: 20px;
+            text-align: center;
+        }
+
+        .metrics-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+
+        .metric-card {
+            background: linear-gradient(135deg, #f8fafc, #ffffff);
+            padding: 20px;
+            border-radius: 16px;
+            text-align: center;
+            border: 1px solid #e2e8f0;
+        }
+
+        .metric-value {
+            font-size: 2rem;
+            font-weight: 700;
+            margin-bottom: 8px;
+        }
+
+        .metric-label {
+            color: #6b7280;
+            font-size: 0.9rem;
+            font-weight: 500;
+        }
+
+        .log-section {
+            margin-top: 30px;
+        }
+
+        .log-container {
+            background: #1f2937;
+            color: #f9fafb;
+            border-radius: 16px;
+            padding: 24px;
+            font-family: 'Monaco', 'Menlo', monospace;
+            font-size: 0.85rem;
+            max-height: 400px;
+            overflow-y: auto;
+        }
+
+        .log-entry {
+            margin-bottom: 8px;
+            padding: 4px 0;
+        }
+
+        .log-timestamp {
+            color: #9ca3af;
+            margin-right: 12px;
+        }
+
+        .log-level {
+            margin-right: 12px;
+            font-weight: 600;
+        }
+
+        .log-level.info { color: #60a5fa; }
+        .log-level.success { color: #34d399; }
+        .log-level.warning { color: #fbbf24; }
+        .log-level.error { color: #f87171; }
+
+        .spinner {
+            display: inline-block;
+            width: 16px;
+            height: 16px;
+            border: 2px solid #f3f3f3;
+            border-top: 2px solid #3498db;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .api-endpoint {
+            background: #f1f5f9;
+            padding: 8px 12px;
+            border-radius: 8px;
+            font-family: monospace;
+            font-size: 0.85rem;
+            margin: 8px 0;
+            word-break: break-all;
+        }
+
+        .response-time {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            font-size: 0.8rem;
+            color: #6b7280;
+            margin-top: 8px;
+        }
+
+        @media (max-width: 768px) {
+            .container {
+                margin: 10px;
+                border-radius: 16px;
+            }
+            
+            .header {
+                padding: 24px;
+            }
+            
+            .header h1 {
+                font-size: 2rem;
+            }
+            
+            .main-content {
+                padding: 24px;
+            }
+            
+            .test-grid {
+                grid-template-columns: 1fr;
+                gap: 20px;
+            }
+            
+            .test-controls {
+                flex-direction: column;
+                align-items: center;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <div class="header-content">
+                <h1>🧪 Voice Notes Pro v2.0</h1>
+                <p>Comprehensive AI Features Testing Dashboard</p>
+                <div class="status-bar">
+                    <div class="status-item">
+                        <span>🔄</span>
+                        <span id="app-status">Checking Status...</span>
+                    </div>
+                    <div class="status-item">
+                        <span>⏱️</span>
+                        <span id="test-duration">0s</span>
+                    </div>
+                    <div class="status-item">
+                        <span>🎯</span>
+                        <span id="success-rate">0%</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="main-content">
+            <div class="test-controls">
+                <button class="control-btn" onclick="runAllTests()">
+                    🚀 Run All Tests
+                </button>
+                <button class="control-btn secondary" onclick="runQuickTests()">
+                    ⚡ Quick Test
+                </button>
+                <button class="control-btn secondary" onclick="clearResults()">
+                    🗑️ Clear Results
+                </button>
+                <button class="control-btn secondary" onclick="exportResults()">
+                    📊 Export Report
+                </button>
+            </div>
+
+            <div class="progress-bar">
+                <div class="progress-fill" id="overall-progress"></div>
+            </div>
+
+            <div class="test-grid" id="test-grid">
+                <!-- Test cards will be dynamically generated -->
+            </div>
+
+            <div class="summary-section">
+                <h2 class="summary-title">📈 Testing Results Summary</h2>
+                
+                <div class="metrics-grid">
+                    <div class="metric-card">
+                        <div class="metric-value" id="total-tests" style="color: #6366f1;">0</div>
+                        <div class="metric-label">Total Tests</div>
+                    </div>
+                    <div class="metric-card">
+                        <div class="metric-value" id="passed-tests" style="color: #10b981;">0</div>
+                        <div class="metric-label">Passed</div>
+                    </div>
+                    <div class="metric-card">
+                        <div class="metric-value" id="failed-tests" style="color: #ef4444;">0</div>
+                        <div class="metric-label">Failed</div>
+                    </div>
+                    <div class="metric-card">
+                        <div class="metric-value" id="avg-response-time" style="color: #f59e0b;">0ms</div>
+                        <div class="metric-label">Avg Response Time</div>
+                    </div>
+                </div>
+
+                <div class="log-section">
+                    <h3 style="margin-bottom: 16px; color: #374151;">📋 Test Execution Log</h3>
+                    <div class="log-container" id="log-container">
+                        <!-- Logs will be dynamically added -->
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Test configuration
+        const BASE_URL = 'https://voice-notes-pro-v2.netlify.app';
+        const API_BASE = `${BASE_URL}/api`;
+        
+        // Test definitions
+        const testSuites = [
+            {
+                id: 'health-check',
+                title: '🩺 API Health Check',
+                description: 'Verify that the API is responsive and healthy',
+                endpoint: '/api/health',
+                method: 'GET',
+                critical: true
+            },
+            {
+                id: 'transcription-api',
+                title: '🎙️ Speech Transcription API',
+                description: 'Test audio transcription capabilities using speech-to-text',
+                endpoint: '/api/transcribe',
+                method: 'POST',
+                testData: {
+                    audio: 'base64_audio_sample',
+                    format: 'webm'
+                }
+            },
+            {
+                id: 'polish-text',
+                title: '✨ AI Text Polishing',
+                description: 'Test AI-powered text improvement and polishing features',
+                endpoint: '/api/polish',
+                method: 'POST',
+                testData: {
+                    text: 'this is a sample text that needs polishing and improvement for testing purposes'
+                }
+            },
+            {
+                id: 'generate-charts',
+                title: '📊 Chart Generation',
+                description: 'Test AI-powered chart and visualization generation',
+                endpoint: '/api/generate-chart',
+                method: 'POST',
+                testData: {
+                    data: 'Sample transcription data for chart generation testing',
+                    chartType: 'sentiment'
+                }
+            },
+            {
+                id: 'content-analysis',
+                title: '🔍 Content Analysis',
+                description: 'Test AI content analysis including sentiment, topics, and insights',
+                endpoint: '/api/analyze',
+                method: 'POST',
+                testData: {
+                    content: 'This is a test content for analyzing sentiment, topics, and generating insights using AI capabilities.'
+                }
+            },
+            {
+                id: 'topic-detection',
+                title: '🏷️ Topic Detection',
+                description: 'Test AI-powered topic extraction and categorization',
+                endpoint: '/api/topics',
+                method: 'POST',
+                testData: {
+                    text: 'We discussed artificial intelligence, machine learning, and natural language processing in our meeting today.'
+                }
+            },
+            {
+                id: 'sentiment-analysis',
+                title: '😊 Sentiment Analysis',
+                description: 'Test AI sentiment analysis and emotion detection',
+                endpoint: '/api/sentiment',
+                method: 'POST',
+                testData: {
+                    text: 'I am very excited about this new feature and think it will be amazing for our users!'
+                }
+            },
+            {
+                id: 'word-frequency',
+                title: '📈 Word Frequency Analysis',
+                description: 'Test AI-powered word frequency and keyword extraction',
+                endpoint: '/api/word-frequency',
+                method: 'POST',
+                testData: {
+                    text: 'The quick brown fox jumps over the lazy dog. The fox is quick and the dog is lazy.'
+                }
+            },
+            {
+                id: 'gemini-integration',
+                title: '🤖 Gemini AI Integration',
+                description: 'Test direct integration with Google Gemini AI API',
+                endpoint: '/api/gemini',
+                method: 'POST',
+                testData: {
+                    prompt: 'Test prompt for Gemini AI integration',
+                    task: 'general'
+                }
+            },
+            {
+                id: 'real-time-processing',
+                title: '⚡ Real-time Processing',
+                description: 'Test real-time AI processing capabilities and response times',
+                endpoint: '/api/process-realtime',
+                method: 'POST',
+                testData: {
+                    stream: true,
+                    content: 'Real-time processing test content'
+                }
+            }
+        ];
+
+        // Global state
+        let testResults = {};
+        let testStartTime = null;
+        let testsRunning = 0;
+        let totalTestsRun = 0;
+
+        // Initialize dashboard
+        document.addEventListener('DOMContentLoaded', function() {
+            initializeDashboard();
+            checkApplicationStatus();
+        });
+
+        function initializeDashboard() {
+            const testGrid = document.getElementById('test-grid');
+            testGrid.innerHTML = '';
+
+            testSuites.forEach(test => {
+                const testCard = createTestCard(test);
+                testGrid.appendChild(testCard);
+                testResults[test.id] = { status: 'pending', results: null, responseTime: null };
+            });
+
+            updateMetrics();
+            log('info', 'Testing dashboard initialized');
+        }
+
+        function createTestCard(test) {
+            const card = document.createElement('div');
+            card.className = 'test-card';
+            card.id = `test-${test.id}`;
+
+            card.innerHTML = `
+                <div class="test-header">
+                    <div>
+                        <div class="test-title">${test.title}</div>
+                        <div class="test-description">${test.description}</div>
+                        ${test.critical ? '<span style="color: #dc2626; font-weight: 600; font-size: 0.8rem;">⚠️ CRITICAL</span>' : ''}
+                    </div>
+                    <div class="test-status pending" id="status-${test.id}">
+                        ⏳ Pending
+                    </div>
+                </div>
+                
+                <div class="api-endpoint">
+                    <strong>${test.method}</strong> ${test.endpoint}
+                </div>
+                
+                <button class="test-btn" onclick="runSingleTest('${test.id}')" id="btn-${test.id}">
+                    Run Test
+                </button>
+                
+                <div class="response-time" id="time-${test.id}" style="display: none;">
+                    ⏱️ <span>0ms</span>
+                </div>
+                
+                <div class="test-results" id="results-${test.id}" style="display: none;"></div>
+            `;
+
+            return card;
+        }
+
+        async function checkApplicationStatus() {
+            try {
+                log('info', 'Checking application status...');
+                const response = await fetch(`${API_BASE}/health`);
+                const data = await response.json();
+                
+                if (response.ok && data.status === 'healthy') {
+                    document.getElementById('app-status').textContent = '✅ Healthy';
+                    log('success', `Application is healthy - Version ${data.version}`);
+                } else {
+                    document.getElementById('app-status').textContent = '❌ Unhealthy';
+                    log('error', 'Application health check failed');
+                }
+            } catch (error) {
+                document.getElementById('app-status').textContent = '❌ Offline';
+                log('error', `Application status check failed: ${error.message}`);
+            }
+        }
+
+        async function runAllTests() {
+            if (testsRunning > 0) {
+                log('warning', 'Tests already running, please wait...');
+                return;
+            }
+
+            log('info', 'Starting comprehensive AI features testing...');
+            testStartTime = Date.now();
+            
+            const controlBtn = event.target;
+            controlBtn.disabled = true;
+            controlBtn.innerHTML = '<span class="spinner"></span> Running Tests...';
+
+            // Reset all test results
+            testSuites.forEach(test => {
+                testResults[test.id] = { status: 'pending', results: null, responseTime: null };
+                updateTestCard(test.id, 'pending');
+            });
+
+            let completedTests = 0;
+            const totalTests = testSuites.length;
+
+            // Run tests sequentially for better control
+            for (let test of testSuites) {
+                await runTestSuite(test);
+                completedTests++;
+                updateProgress(completedTests / totalTests * 100);
+            }
+
+            // Re-enable button
+            controlBtn.disabled = false;
+            controlBtn.innerHTML = '🚀 Run All Tests';
+            
+            const duration = ((Date.now() - testStartTime) / 1000).toFixed(1);
+            document.getElementById('test-duration').textContent = `${duration}s`;
+            
+            log('success', `All tests completed in ${duration} seconds`);
+            updateMetrics();
+        }
+
+        async function runQuickTests() {
+            const criticalTests = testSuites.filter(test => test.critical);
+            log('info', `Running ${criticalTests.length} critical tests...`);
+
+            for (let test of criticalTests) {
+                await runTestSuite(test);
+            }
+
+            updateMetrics();
+        }
+
+        async function runSingleTest(testId) {
+            const test = testSuites.find(t => t.id === testId);
+            if (!test) return;
+
+            log('info', `Running individual test: ${test.title}`);
+            await runTestSuite(test);
+            updateMetrics();
+        }
+
+        async function runTestSuite(test) {
+            testsRunning++;
+            const startTime = Date.now();
+            
+            updateTestCard(test.id, 'running');
+            log('info', `Testing ${test.title}...`);
+
+            try {
+                const url = `${BASE_URL}${test.endpoint}`;
+                const options = {
+                    method: test.method,
+                    headers: {
+                        'Content-Type': 'application/json',
+                    }
+                };
+
+                if (test.method === 'POST' && test.testData) {
+                    options.body = JSON.stringify(test.testData);
+                }
+
+                const response = await fetch(url);
+                const responseTime = Date.now() - startTime;
+                
+                let responseData;
+                try {
+                    responseData = await response.json();
+                } catch (e) {
+                    responseData = await response.text();
+                }
+
+                if (response.ok) {
+                    testResults[test.id] = {
+                        status: 'passed',
+                        results: responseData,
+                        responseTime: responseTime,
+                        statusCode: response.status
+                    };
+                    updateTestCard(test.id, 'passed', responseData, responseTime);
+                    log('success', `✅ ${test.title} passed (${responseTime}ms)`);
+                } else {
+                    testResults[test.id] = {
+                        status: 'failed',
+                        results: responseData,
+                        responseTime: responseTime,
+                        statusCode: response.status,
+                        error: `HTTP ${response.status}`
+                    };
+                    updateTestCard(test.id, 'failed', responseData, responseTime);
+                    log('error', `❌ ${test.title} failed - HTTP ${response.status} (${responseTime}ms)`);
+                }
+            } catch (error) {
+                const responseTime = Date.now() - startTime;
+                testResults[test.id] = {
+                    status: 'failed',
+                    results: null,
+                    responseTime: responseTime,
+                    error: error.message
+                };
+                updateTestCard(test.id, 'failed', `Error: ${error.message}`, responseTime);
+                log('error', `❌ ${test.title} failed - ${error.message} (${responseTime}ms)`);
+            }
+
+            testsRunning--;
+            totalTestsRun++;
+        }
+
+        function updateTestCard(testId, status, results = null, responseTime = null) {
+            const card = document.getElementById(`test-${testId}`);
+            const statusElement = document.getElementById(`status-${testId}`);
+            const resultsElement = document.getElementById(`results-${testId}`);
+            const timeElement = document.getElementById(`time-${testId}`);
+            const btnElement = document.getElementById(`btn-${testId}`);
+
+            // Update card class
+            card.className = `test-card ${status}`;
+            if (status === 'running') {
+                card.classList.add('active');
+            }
+
+            // Update status
+            const statusMap = {
+                pending: '⏳ Pending',
+                running: '<span class="spinner"></span> Running...',
+                passed: '✅ Passed',
+                failed: '❌ Failed'
+            };
+            statusElement.innerHTML = statusMap[status];
+            statusElement.className = `test-status ${status}`;
+
+            // Update button
+            btnElement.disabled = status === 'running';
+            if (status === 'running') {
+                btnElement.innerHTML = '<span class="spinner"></span> Testing...';
+            } else {
+                btnElement.innerHTML = 'Run Test';
+            }
+
+            // Update response time
+            if (responseTime !== null) {
+                timeElement.style.display = 'flex';
+                timeElement.querySelector('span').textContent = `${responseTime}ms`;
+            }
+
+            // Update results
+            if (results !== null) {
+                resultsElement.style.display = 'block';
+                resultsElement.textContent = typeof results === 'object' 
+                    ? JSON.stringify(results, null, 2) 
+                    : results;
+            }
+        }
+
+        function updateProgress(percentage) {
+            document.getElementById('overall-progress').style.width = `${percentage}%`;
+        }
+
+        function updateMetrics() {
+            const total = Object.keys(testResults).length;
+            const passed = Object.values(testResults).filter(r => r.status === 'passed').length;
+            const failed = Object.values(testResults).filter(r => r.status === 'failed').length;
+            const responseTimes = Object.values(testResults)
+                .filter(r => r.responseTime !== null)
+                .map(r => r.responseTime);
+            const avgResponseTime = responseTimes.length > 0 
+                ? Math.round(responseTimes.reduce((a, b) => a + b, 0) / responseTimes.length)
+                : 0;
+            const successRate = total > 0 ? Math.round((passed / total) * 100) : 0;
+
+            document.getElementById('total-tests').textContent = total;
+            document.getElementById('passed-tests').textContent = passed;
+            document.getElementById('failed-tests').textContent = failed;
+            document.getElementById('avg-response-time').textContent = `${avgResponseTime}ms`;
+            document.getElementById('success-rate').textContent = `${successRate}%`;
+        }
+
+        function log(level, message) {
+            const logContainer = document.getElementById('log-container');
+            const timestamp = new Date().toLocaleTimeString();
+            
+            const logEntry = document.createElement('div');
+            logEntry.className = 'log-entry';
+            logEntry.innerHTML = `
+                <span class="log-timestamp">[${timestamp}]</span>
+                <span class="log-level ${level}">${level.toUpperCase()}</span>
+                ${message}
+            `;
+            
+            logContainer.appendChild(logEntry);
+            logContainer.scrollTop = logContainer.scrollHeight;
+        }
+
+        function clearResults() {
+            testSuites.forEach(test => {
+                testResults[test.id] = { status: 'pending', results: null, responseTime: null };
+                updateTestCard(test.id, 'pending');
+            });
+            
+            document.getElementById('log-container').innerHTML = '';
+            updateProgress(0);
+            updateMetrics();
+            
+            log('info', 'Test results cleared');
+        }
+
+        function exportResults() {
+            const report = {
+                timestamp: new Date().toISOString(),
+                applicationUrl: BASE_URL,
+                totalTests: Object.keys(testResults).length,
+                results: testResults,
+                summary: {
+                    passed: Object.values(testResults).filter(r => r.status === 'passed').length,
+                    failed: Object.values(testResults).filter(r => r.status === 'failed').length,
+                    avgResponseTime: Object.values(testResults)
+                        .filter(r => r.responseTime !== null)
+                        .reduce((acc, r, _, arr) => acc + r.responseTime / arr.length, 0)
+                }
+            };
+
+            const blob = new Blob([JSON.stringify(report, null, 2)], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `voice-notes-pro-ai-test-results-${new Date().toISOString().split('T')[0]}.json`;
+            a.click();
+            URL.revokeObjectURL(url);
+
+            log('success', 'Test results exported successfully');
+        }
+
+        // Keyboard shortcuts
+        document.addEventListener('keydown', function(e) {
+            if (e.ctrlKey || e.metaKey) {
+                switch(e.key) {
+                    case 'r':
+                        e.preventDefault();
+                        runAllTests();
+                        break;
+                    case 'q':
+                        e.preventDefault();
+                        runQuickTests();
+                        break;
+                    case 'c':
+                        e.preventDefault();
+                        clearResults();
+                        break;
+                }
+            }
+        });
+
+        // Auto-refresh app status every 30 seconds
+        setInterval(checkApplicationStatus, 30000);
+    </script>
+</body>
+</html>

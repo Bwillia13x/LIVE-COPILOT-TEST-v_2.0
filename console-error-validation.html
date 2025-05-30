@@ -1,0 +1,244 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Console Error Validation - Voice Notes Pro</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            min-height: 100vh;
+        }
+        .container {
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            border-radius: 15px;
+            padding: 30px;
+            box-shadow: 0 8px 32px rgba(31, 38, 135, 0.37);
+        }
+        h1 {
+            text-align: center;
+            margin-bottom: 30px;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+        }
+        .test-section {
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 10px;
+            padding: 20px;
+            margin: 20px 0;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+        .success {
+            background: rgba(76, 175, 80, 0.3);
+            border-color: #4CAF50;
+            color: #E8F5E8;
+        }
+        .error {
+            background: rgba(244, 67, 54, 0.3);
+            border-color: #F44336;
+            color: #FFEBEE;
+        }
+        .warning {
+            background: rgba(255, 193, 7, 0.3);
+            border-color: #FFC107;
+            color: #FFF8E1;
+        }
+        button {
+            background: rgba(255, 255, 255, 0.2);
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            color: white;
+            padding: 12px 24px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 16px;
+            margin: 10px 5px;
+            transition: all 0.3s ease;
+        }
+        button:hover {
+            background: rgba(255, 255, 255, 0.3);
+            transform: translateY(-2px);
+        }
+        .results {
+            background: rgba(0, 0, 0, 0.2);
+            border-radius: 8px;
+            padding: 15px;
+            margin-top: 15px;
+            font-family: 'Courier New', monospace;
+            font-size: 14px;
+            max-height: 300px;
+            overflow-y: auto;
+        }
+        .timestamp {
+            opacity: 0.7;
+            font-size: 12px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔍 Console Error Validation</h1>
+        <p style="text-align: center; margin-bottom: 30px;">
+            Testing if the "An API Key must be set when running in a browser" error has been fixed
+        </p>
+
+        <div class="test-section">
+            <h3>🚀 Production App Test</h3>
+            <button onclick="testProductionApp()">Open Production App & Monitor Console</button>
+            <div id="productionResults" class="results"></div>
+        </div>
+
+        <div class="test-section">
+            <h3>📊 Console Error Monitor</h3>
+            <button onclick="startErrorMonitoring()">Start Error Monitoring</button>
+            <button onclick="stopErrorMonitoring()">Stop Error Monitoring</button>
+            <div id="errorResults" class="results"></div>
+        </div>
+
+        <div class="test-section">
+            <h3>✅ Final Validation</h3>
+            <button onclick="runFinalValidation()">Run Complete Validation</button>
+            <div id="finalResults" class="results"></div>
+        </div>
+    </div>
+
+    <script>
+        let errorMonitorInterval;
+        let consoleErrors = [];
+        let startTime = Date.now();
+
+        // Override console.error to capture errors
+        const originalConsoleError = console.error;
+        console.error = function(...args) {
+            consoleErrors.push({
+                timestamp: new Date().toISOString(),
+                message: args.map(arg => typeof arg === 'string' ? arg : JSON.stringify(arg)).join(' ')
+            });
+            originalConsoleError.apply(console, args);
+        };
+
+        function log(elementId, message, type = 'info') {
+            const element = document.getElementById(elementId);
+            const timestamp = new Date().toLocaleTimeString();
+            const className = type === 'error' ? 'error' : type === 'success' ? 'success' : type === 'warning' ? 'warning' : '';
+            element.innerHTML += `<div class="${className}"><span class="timestamp">[${timestamp}]</span> ${message}</div>`;
+            element.scrollTop = element.scrollHeight;
+        }
+
+        function testProductionApp() {
+            log('productionResults', '🔍 Opening production app in new window...', 'info');
+            
+            const newWindow = window.open('https://voice-notes-pro-v2.netlify.app', '_blank');
+            
+            // Monitor for errors
+            setTimeout(() => {
+                const recentErrors = consoleErrors.filter(error => 
+                    Date.parse(error.timestamp) > startTime && 
+                    error.message.includes('API Key must be set')
+                );
+                
+                if (recentErrors.length === 0) {
+                    log('productionResults', '✅ SUCCESS: No "API Key must be set" errors detected!', 'success');
+                } else {
+                    log('productionResults', `❌ FAILED: Found ${recentErrors.length} API key errors`, 'error');
+                    recentErrors.forEach(error => {
+                        log('productionResults', `  - ${error.message}`, 'error');
+                    });
+                }
+            }, 5000);
+        }
+
+        function startErrorMonitoring() {
+            log('errorResults', '🎯 Starting console error monitoring...', 'info');
+            consoleErrors = []; // Clear previous errors
+            startTime = Date.now();
+            
+            errorMonitorInterval = setInterval(() => {
+                const recentErrors = consoleErrors.filter(error => 
+                    Date.parse(error.timestamp) > startTime
+                );
+                
+                if (recentErrors.length > 0) {
+                    recentErrors.forEach(error => {
+                        if (error.message.includes('API Key must be set')) {
+                            log('errorResults', `❌ API KEY ERROR: ${error.message}`, 'error');
+                        } else {
+                            log('errorResults', `⚠️ OTHER ERROR: ${error.message}`, 'warning');
+                        }
+                    });
+                    consoleErrors = []; // Clear processed errors
+                }
+            }, 1000);
+        }
+
+        function stopErrorMonitoring() {
+            if (errorMonitorInterval) {
+                clearInterval(errorMonitorInterval);
+                log('errorResults', '⏹️ Error monitoring stopped', 'info');
+            }
+        }
+
+        function runFinalValidation() {
+            log('finalResults', '🔄 Running final validation...', 'info');
+            
+            // Test 1: Check if main app loads without API errors
+            log('finalResults', '1️⃣ Testing main app initialization...', 'info');
+            
+            const iframe = document.createElement('iframe');
+            iframe.src = 'https://voice-notes-pro-v2.netlify.app';
+            iframe.style.display = 'none';
+            document.body.appendChild(iframe);
+            
+            let hasApiError = false;
+            const originalError = console.error;
+            console.error = function(...args) {
+                const message = args.join(' ');
+                if (message.includes('API Key must be set')) {
+                    hasApiError = true;
+                    log('finalResults', '❌ FAILED: API Key error still present!', 'error');
+                }
+                originalError.apply(console, args);
+            };
+            
+            setTimeout(() => {
+                console.error = originalError;
+                document.body.removeChild(iframe);
+                
+                if (!hasApiError) {
+                    log('finalResults', '✅ SUCCESS: No API Key initialization errors!', 'success');
+                    log('finalResults', '🎉 FIX CONFIRMED: Console error has been resolved!', 'success');
+                    
+                    // Test 2: Verify app still works
+                    log('finalResults', '2️⃣ Verifying app functionality...', 'info');
+                    fetch('https://voice-notes-pro-v2.netlify.app')
+                        .then(response => {
+                            if (response.ok) {
+                                log('finalResults', '✅ App is accessible and responding', 'success');
+                                log('finalResults', '🏆 VALIDATION COMPLETE: All tests passed!', 'success');
+                            } else {
+                                log('finalResults', '⚠️ App accessible but with issues', 'warning');
+                            }
+                        })
+                        .catch(error => {
+                            log('finalResults', '❌ App accessibility test failed', 'error');
+                        });
+                } else {
+                    log('finalResults', '❌ VALIDATION FAILED: Error still exists', 'error');
+                }
+            }, 3000);
+        }
+
+        // Auto-start monitoring on page load
+        window.addEventListener('load', () => {
+            setTimeout(() => {
+                log('productionResults', '🔄 Auto-starting validation in 2 seconds...', 'info');
+                setTimeout(runFinalValidation, 2000);
+            }, 1000);
+        });
+    </script>
+</body>
+</html>

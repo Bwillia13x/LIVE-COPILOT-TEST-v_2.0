@@ -5,7 +5,7 @@
 
 import { GoogleGenAI } from '@google/genai';
 import { APIResponse } from '../types/index.js';
-import { API_CONFIG, ERROR_MESSAGES } from '../constants.js';
+import { ERROR_MESSAGES } from '../constants.js';
 import { ErrorHandler } from '../utils.js';
 
 const MODEL_NAME = 'gemini-2.5-flash-preview-04-17';
@@ -20,12 +20,31 @@ export class APIService {
 
   private async initializeAPI(): Promise<void> {
     try {
-      this.apiKey = localStorage.getItem('geminiApiKey') || import.meta.env.VITE_GEMINI_API_KEY;
-      if (this.apiKey) {
-        this.genAI = new GoogleGenAI(this.apiKey);
+      // Get API key from localStorage or environment variables
+      const storedKey = localStorage.getItem('geminiApiKey');
+      const envKey = import.meta.env.VITE_GEMINI_API_KEY;
+      
+      // Only use the key if it's not null, undefined, or empty
+      this.apiKey = (storedKey && storedKey.trim()) || (envKey && envKey.trim()) || null;
+      
+      if (this.apiKey && this.apiKey.length > 10) { // Basic validation for API key format
+        try {
+          this.genAI = new GoogleGenAI(this.apiKey as any);
+          console.log('🔑 API service initialized with API key');
+        } catch (genAIError: any) {
+          console.log('❌ Failed to initialize GoogleGenAI:', genAIError?.message || 'Unknown error');
+          this.genAI = null;
+          this.apiKey = null;
+        }
+      } else {
+        console.log('ℹ️ No valid API key available - API service ready for key configuration');
+        this.genAI = null;
+        this.apiKey = null;
       }
-    } catch (error) {
-      ErrorHandler.logError('API initialization failed', error);
+    } catch (error: any) {
+      console.log('❌ API initialization failed:', error?.message || 'Unknown error');
+      this.genAI = null;
+      this.apiKey = null;
     }
   }
 
@@ -34,21 +53,21 @@ export class APIService {
       if (!this.genAI) {
         return {
           success: false,
-          error: ERROR_MESSAGES.API_KEY_MISSING
+          error: ERROR_MESSAGES.API.API_KEY_MISSING
         };
       }
 
-      const model = this.genAI.getGenerativeModel({ model: MODEL_NAME });
+      const model = (this.genAI as any).getGenerativeModel({ model: MODEL_NAME });
       const result = await model.generateContent('Test connection');
       
       return {
         success: true,
         data: true
       };
-    } catch (error) {
+    } catch (error: any) {
       return {
         success: false,
-        error: `API connection failed: ${error.message}`
+        error: `API connection failed: ${error?.message || 'Unknown error'}`
       };
     }
   }
@@ -56,10 +75,10 @@ export class APIService {
   public async polishTranscription(rawText: string): Promise<APIResponse<string>> {
     try {
       if (!this.genAI) {
-        throw new Error(ERROR_MESSAGES.API_KEY_MISSING);
+        throw new Error(ERROR_MESSAGES.API.API_KEY_MISSING);
       }
 
-      const model = this.genAI.getGenerativeModel({ model: MODEL_NAME });
+      const model = (this.genAI as any).getGenerativeModel({ model: MODEL_NAME });
       const prompt = `Please improve the following transcription by:
 1. Correcting grammar and spelling
 2. Adding proper punctuation
@@ -78,11 +97,11 @@ Please provide only the improved text without any additional comments or explana
         success: true,
         data: polishedText
       };
-    } catch (error) {
+    } catch (error: any) {
       ErrorHandler.logError('Transcription polishing failed', error);
       return {
         success: false,
-        error: `Failed to polish transcription: ${error.message}`
+        error: `Failed to polish transcription: ${error?.message || 'Unknown error'}`
       };
     }
   }
@@ -90,10 +109,10 @@ Please provide only the improved text without any additional comments or explana
   public async generateChartData(transcription: string, chartType: string): Promise<APIResponse<any>> {
     try {
       if (!this.genAI) {
-        throw new Error(ERROR_MESSAGES.API_KEY_MISSING);
+        throw new Error(ERROR_MESSAGES.API.API_KEY_MISSING);
       }
 
-      const model = this.genAI.getGenerativeModel({ model: MODEL_NAME });
+      const model = (this.genAI as any).getGenerativeModel({ model: MODEL_NAME });
       
       let prompt = '';
       switch (chartType) {
@@ -118,11 +137,11 @@ Please provide only the improved text without any additional comments or explana
         success: true,
         data: chartData
       };
-    } catch (error) {
+    } catch (error: any) {
       ErrorHandler.logError(`Chart generation failed for type: ${chartType}`, error);
       return {
         success: false,
-        error: `Failed to generate chart data: ${error.message}`
+        error: `Failed to generate chart data: ${error?.message || 'Unknown error'}`
       };
     }
   }
@@ -161,9 +180,21 @@ Transcription: "${transcription}"`;
   }
 
   public setApiKey(apiKey: string): void {
-    this.apiKey = apiKey;
-    localStorage.setItem('geminiApiKey', apiKey);
-    this.genAI = new GoogleGenAI(apiKey);
+    if (!apiKey || !apiKey.trim() || apiKey.trim().length < 10) {
+      console.log('❌ Invalid API key provided');
+      return;
+    }
+    
+    try {
+      this.apiKey = apiKey.trim();
+      localStorage.setItem('geminiApiKey', this.apiKey);
+      this.genAI = new GoogleGenAI(this.apiKey as any);
+      console.log('🔑 API key set and service initialized successfully');
+    } catch (error: any) {
+      console.log('❌ Failed to set API key:', error?.message || 'Unknown error');
+      this.apiKey = null;
+      this.genAI = null;
+    }
   }
 
   public hasValidApiKey(): boolean {

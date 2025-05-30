@@ -1,0 +1,284 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Theme Toggle & Chart Generation Test</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        .test-section {
+            border: 1px solid #ddd;
+            margin: 20px 0;
+            padding: 20px;
+            border-radius: 8px;
+        }
+        .test-result {
+            margin: 10px 0;
+            padding: 10px;
+            border-radius: 4px;
+        }
+        .success { background-color: #d4edda; color: #155724; }
+        .error { background-color: #f8d7da; color: #721c24; }
+        .info { background-color: #d1ecf1; color: #0c5460; }
+        button {
+            margin: 5px;
+            padding: 10px 20px;
+            background: #007bff;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        button:hover { background: #0056b3; }
+        #console-output {
+            background: #f8f9fa;
+            padding: 15px;
+            border: 1px solid #dee2e6;
+            border-radius: 5px;
+            font-family: monospace;
+            white-space: pre-wrap;
+            max-height: 400px;
+            overflow-y: auto;
+            margin-top: 10px;
+        }
+    </style>
+</head>
+<body>
+    <h1>Voice Notes Pro v2.0 - Fix Validation Test</h1>
+    
+    <div class="test-section">
+        <h2>🎨 Theme Toggle Test</h2>
+        <div id="themeTestResult" class="test-result info">Ready to test theme toggle...</div>
+        <button onclick="testThemeToggle()">Test Theme Toggle</button>
+        <button onclick="checkThemeState()">Check Current Theme</button>
+    </div>
+
+    <div class="test-section">
+        <h2>📊 Chart Generation Test</h2>
+        <div id="chartTestResult" class="test-result info">Ready to test chart generation...</div>
+        <button onclick="testBasicCharts()">Test Basic Charts</button>
+        <button onclick="testSampleCharts()">Test Sample Charts</button>
+        <button onclick="checkChartArea()">Check Chart Area</button>
+    </div>
+
+    <div class="test-section">
+        <h2>🔍 Application Status</h2>
+        <div id="appStatusResult" class="test-result info">Checking application status...</div>
+        <button onclick="checkAppStatus()">Check App Status</button>
+        <button onclick="openMainApp()">Open Main App</button>
+    </div>
+
+    <div class="test-section">
+        <h2>📝 Console Output</h2>
+        <div id="console-output"></div>
+        <button onclick="clearConsole()">Clear Console</button>
+    </div>
+
+    <script>
+        const consoleOutput = document.getElementById('console-output');
+        
+        function log(message, type = 'info') {
+            const timestamp = new Date().toLocaleTimeString();
+            const prefix = type === 'error' ? '❌' : type === 'success' ? '✅' : '📝';
+            consoleOutput.textContent += `[${timestamp}] ${prefix} ${message}\n`;
+            consoleOutput.scrollTop = consoleOutput.scrollHeight;
+            console.log(message);
+        }
+
+        function updateResult(elementId, message, type) {
+            const element = document.getElementById(elementId);
+            element.textContent = message;
+            element.className = `test-result ${type}`;
+        }
+
+        function clearConsole() {
+            consoleOutput.textContent = '';
+        }
+
+        function checkAppStatus() {
+            log('🔍 Checking main application status...');
+            
+            fetch('http://localhost:5178/')
+                .then(response => {
+                    if (response.ok) {
+                        log('✅ Main application server is responding', 'success');
+                        updateResult('appStatusResult', '✅ Main application is accessible', 'success');
+                        return response.text();
+                    } else {
+                        throw new Error(`Server responded with status ${response.status}`);
+                    }
+                })
+                .then(html => {
+                    const hasThemeButton = html.includes('themeToggleButton');
+                    const hasChartButtons = html.includes('testChartButton') && html.includes('sampleChartsButton');
+                    const hasChartArea = html.includes('aiChartDisplayArea');
+                    
+                    log(`Theme toggle button found: ${hasThemeButton}`);
+                    log(`Chart buttons found: ${hasChartButtons}`);
+                    log(`Chart display area found: ${hasChartArea}`);
+                    
+                    if (hasThemeButton && hasChartButtons && hasChartArea) {
+                        updateResult('appStatusResult', '✅ All required elements found in main app', 'success');
+                    } else {
+                        updateResult('appStatusResult', '⚠️ Some elements missing in main app', 'error');
+                    }
+                })
+                .catch(error => {
+                    log(`❌ Failed to check main app: ${error.message}`, 'error');
+                    updateResult('appStatusResult', `❌ Cannot access main app: ${error.message}`, 'error');
+                });
+        }
+
+        function testThemeToggle() {
+            log('🎨 Testing theme toggle functionality...');
+            
+            // Try to access the main app's theme toggle function
+            const mainAppWindow = window.open('http://localhost:5178/', 'mainApp', 'width=1200,height=800');
+            
+            setTimeout(() => {
+                try {
+                    const themeButton = mainAppWindow.document.getElementById('themeToggleButton');
+                    if (themeButton) {
+                        log('✅ Theme toggle button found in main app', 'success');
+                        
+                        // Test clicking the theme button
+                        themeButton.click();
+                        log('🎨 Clicked theme toggle button');
+                        
+                        setTimeout(() => {
+                            const bodyClasses = mainAppWindow.document.body.className;
+                            log(`Theme state after click: ${bodyClasses || 'dark mode (no classes)'}`);
+                            updateResult('themeTestResult', '✅ Theme toggle test completed - check console for details', 'success');
+                        }, 1000);
+                        
+                    } else {
+                        log('❌ Theme toggle button not found', 'error');
+                        updateResult('themeTestResult', '❌ Theme toggle button not found', 'error');
+                    }
+                } catch (error) {
+                    log(`❌ Theme toggle test error: ${error.message}`, 'error');
+                    updateResult('themeTestResult', `❌ Theme toggle test failed: ${error.message}`, 'error');
+                }
+            }, 2000);
+        }
+
+        function checkThemeState() {
+            log('🔍 Checking current theme state...');
+            
+            // Check localStorage for saved theme
+            const savedTheme = localStorage.getItem('voice-notes-theme');
+            log(`Saved theme in localStorage: ${savedTheme || 'none'}`);
+            updateResult('themeTestResult', `Current saved theme: ${savedTheme || 'default (dark)'}`, 'info');
+        }
+
+        function testBasicCharts() {
+            log('📊 Testing basic chart generation...');
+            
+            const mainAppWindow = window.open('http://localhost:5178/', 'mainApp', 'width=1200,height=800');
+            
+            setTimeout(() => {
+                try {
+                    const testButton = mainAppWindow.document.getElementById('testChartButton');
+                    if (testButton) {
+                        log('✅ Test chart button found', 'success');
+                        testButton.click();
+                        log('📊 Clicked test chart button');
+                        
+                        setTimeout(() => {
+                            const chartArea = mainAppWindow.document.getElementById('aiChartDisplayArea');
+                            const chartCount = chartArea ? chartArea.querySelectorAll('canvas').length : 0;
+                            log(`Charts found after test: ${chartCount}`);
+                            
+                            if (chartCount > 0) {
+                                updateResult('chartTestResult', `✅ Basic chart test successful - ${chartCount} chart(s) created`, 'success');
+                            } else {
+                                updateResult('chartTestResult', '⚠️ Basic chart test completed but no charts visible', 'error');
+                            }
+                        }, 3000);
+                        
+                    } else {
+                        log('❌ Test chart button not found', 'error');
+                        updateResult('chartTestResult', '❌ Test chart button not found', 'error');
+                    }
+                } catch (error) {
+                    log(`❌ Basic chart test error: ${error.message}`, 'error');
+                    updateResult('chartTestResult', `❌ Basic chart test failed: ${error.message}`, 'error');
+                }
+            }, 2000);
+        }
+
+        function testSampleCharts() {
+            log('📊 Testing sample chart generation...');
+            
+            const mainAppWindow = window.open('http://localhost:5178/', 'mainApp', 'width=1200,height=800');
+            
+            setTimeout(() => {
+                try {
+                    const sampleButton = mainAppWindow.document.getElementById('sampleChartsButton');
+                    if (sampleButton) {
+                        log('✅ Sample charts button found', 'success');
+                        sampleButton.click();
+                        log('📊 Clicked sample charts button');
+                        
+                        setTimeout(() => {
+                            const chartArea = mainAppWindow.document.getElementById('aiChartDisplayArea');
+                            const chartCount = chartArea ? chartArea.querySelectorAll('canvas').length : 0;
+                            log(`Charts found after sample test: ${chartCount}`);
+                            
+                            if (chartCount >= 3) {
+                                updateResult('chartTestResult', `✅ Sample charts test successful - ${chartCount} chart(s) created`, 'success');
+                            } else {
+                                updateResult('chartTestResult', `⚠️ Sample charts test completed - expected 3+ charts, found ${chartCount}`, 'error');
+                            }
+                        }, 3000);
+                        
+                    } else {
+                        log('❌ Sample charts button not found', 'error');
+                        updateResult('chartTestResult', '❌ Sample charts button not found', 'error');
+                    }
+                } catch (error) {
+                    log(`❌ Sample charts test error: ${error.message}`, 'error');
+                    updateResult('chartTestResult', `❌ Sample charts test failed: ${error.message}`, 'error');
+                }
+            }, 2000);
+        }
+
+        function checkChartArea() {
+            log('🔍 Checking chart display area...');
+            
+            fetch('http://localhost:5178/')
+                .then(response => response.text())
+                .then(html => {
+                    const hasChartArea = html.includes('aiChartDisplayArea');
+                    const hasChartCSS = html.includes('chart-container') || html.includes('ai-chart');
+                    
+                    log(`Chart display area found: ${hasChartArea}`);
+                    log(`Chart CSS classes found: ${hasChartCSS}`);
+                    
+                    if (hasChartArea) {
+                        updateResult('chartTestResult', '✅ Chart display area is present in HTML', 'success');
+                    } else {
+                        updateResult('chartTestResult', '❌ Chart display area not found in HTML', 'error');
+                    }
+                })
+                .catch(error => {
+                    log(`❌ Error checking chart area: ${error.message}`, 'error');
+                    updateResult('chartTestResult', `❌ Cannot check chart area: ${error.message}`, 'error');
+                });
+        }
+
+        function openMainApp() {
+            window.open('http://localhost:5178/', '_blank');
+            log('🔗 Opened main application in new tab');
+        }
+
+        // Auto-check app status on load
+        setTimeout(checkAppStatus, 1000);
+    </script>
+</body>
+</html>

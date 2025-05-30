@@ -1,0 +1,380 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Button Functionality Test</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: #1a1a1a;
+            color: #ffffff;
+            padding: 20px;
+            margin: 0;
+        }
+        .test-container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        .test-section {
+            background: #2a2a2a;
+            border-radius: 12px;
+            padding: 20px;
+            margin-bottom: 20px;
+            border: 1px solid #444;
+        }
+        .test-button {
+            background: #007bff;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 8px;
+            cursor: pointer;
+            margin: 5px;
+            font-size: 14px;
+            font-weight: 500;
+            transition: all 0.2s;
+        }
+        .test-button:hover {
+            background: #0056b3;
+            transform: translateY(-1px);
+        }
+        .test-button.success {
+            background: #28a745;
+        }
+        .test-button.warning {
+            background: #ffc107;
+            color: #000;
+        }
+        .test-button.error {
+            background: #dc3545;
+        }
+        .results {
+            background: #1e1e1e;
+            border: 1px solid #555;
+            border-radius: 8px;
+            padding: 15px;
+            margin-top: 15px;
+            font-family: 'Courier New', monospace;
+            font-size: 14px;
+            max-height: 300px;
+            overflow-y: auto;
+        }
+        .status {
+            padding: 10px;
+            border-radius: 6px;
+            margin: 10px 0;
+            font-weight: 500;
+        }
+        .status.success { background: #1e4d3e; border-left: 3px solid #28a745; }
+        .status.error { background: #4d1e1e; border-left: 3px solid #dc3545; }
+        .status.warning { background: #4d3e1e; border-left: 3px solid #ffc107; }
+        .status.info { background: #1e3a4d; border-left: 3px solid #17a2b8; }
+        .app-frame {
+            width: 100%;
+            height: 500px;
+            border: 2px solid #444;
+            border-radius: 8px;
+            margin-top: 15px;
+        }
+        .quick-test {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+            align-items: center;
+        }
+    </style>
+</head>
+<body>
+    <div class="test-container">
+        <h1>🔧 Voice Notes Pro - Button Functionality Test</h1>
+        <p>This tool helps diagnose and fix button functionality issues in the Voice Notes Pro application.</p>
+        
+        <div class="test-section">
+            <h3>📱 Application Status</h3>
+            <div class="quick-test">
+                <button class="test-button" onclick="checkAppStatus()">Check App Status</button>
+                <button class="test-button" onclick="openMainApp()">Open Main App</button>
+                <button class="test-button" onclick="runDebugScript()">Run Debug Script</button>
+                <button class="test-button" onclick="testButtonClicks()">Test Button Clicks</button>
+            </div>
+            <div id="appStatus" class="results">App status will appear here...</div>
+        </div>
+
+        <div class="test-section">
+            <h3>🎯 Quick Button Tests</h3>
+            <div class="quick-test">
+                <button class="test-button" onclick="testRecordButton()">Test Record Button</button>
+                <button class="test-button" onclick="testSettingsButton()">Test Settings Button</button>
+                <button class="test-button" onclick="testAllButtons()">Test All Buttons</button>
+                <button class="test-button" onclick="fixEventListeners()">Fix Event Listeners</button>
+            </div>
+            <div id="buttonTests" class="results">Button test results will appear here...</div>
+        </div>
+
+        <div class="test-section">
+            <h3>🔍 Diagnostic Information</h3>
+            <div class="quick-test">
+                <button class="test-button" onclick="checkConsoleErrors()">Check Console Errors</button>
+                <button class="test-button" onclick="checkDOMElements()">Check DOM Elements</button>
+                <button class="test-button" onclick="checkEventListeners()">Check Event Listeners</button>
+                <button class="test-button" onclick="clearResults()">Clear Results</button>
+            </div>
+            <div id="diagnostics" class="results">Diagnostic information will appear here...</div>
+        </div>
+
+        <div class="test-section">
+            <h3>🌐 Main Application (Live Test)</h3>
+            <p>Use this embedded version to test buttons directly:</p>
+            <iframe id="appFrame" class="app-frame" src="http://localhost:5177"></iframe>
+        </div>
+    </div>
+
+    <script>
+        let mainAppWindow = null;
+        
+        function log(containerId, message, type = 'info') {
+            const container = document.getElementById(containerId);
+            const timestamp = new Date().toLocaleTimeString();
+            const statusClass = type;
+            
+            container.innerHTML += `<div class="status ${statusClass}">[${timestamp}] ${message}</div>`;
+            container.scrollTop = container.scrollHeight;
+        }
+
+        function clearResults() {
+            document.querySelectorAll('.results').forEach(el => {
+                el.innerHTML = 'Results cleared...';
+            });
+        }
+
+        function checkAppStatus() {
+            log('appStatus', '🔍 Checking application status...', 'info');
+            
+            // Test server connectivity
+            fetch('http://localhost:5177')
+                .then(response => {
+                    if (response.ok) {
+                        log('appStatus', '✅ Development server is running on port 5177', 'success');
+                        return response.text();
+                    } else {
+                        throw new Error(`Server responded with ${response.status}`);
+                    }
+                })
+                .then(html => {
+                    const hasRecordButton = html.includes('id="recordButton"');
+                    const hasMainScript = html.includes('main.ts') || html.includes('main.js');
+                    
+                    log('appStatus', `📄 HTML contains record button: ${hasRecordButton ? '✅' : '❌'}`, hasRecordButton ? 'success' : 'error');
+                    log('appStatus', `📜 Main script referenced: ${hasMainScript ? '✅' : '❌'}`, hasMainScript ? 'success' : 'error');
+                })
+                .catch(error => {
+                    log('appStatus', `❌ Server connection failed: ${error.message}`, 'error');
+                    log('appStatus', '💡 Make sure "npm run dev" is running', 'warning');
+                });
+        }
+
+        function openMainApp() {
+            log('appStatus', '🌐 Opening main application in new window...', 'info');
+            mainAppWindow = window.open('http://localhost:5177', 'voiceNotesApp', 'width=1200,height=800');
+            
+            if (mainAppWindow) {
+                log('appStatus', '✅ Main app window opened', 'success');
+                log('appStatus', '💡 Switch to the new window to test buttons manually', 'info');
+            } else {
+                log('appStatus', '❌ Failed to open main app window (popup blocked?)', 'error');
+            }
+        }
+
+        function runDebugScript() {
+            log('appStatus', '🔧 Running debug script...', 'info');
+            
+            if (mainAppWindow && !mainAppWindow.closed) {
+                // Inject the debug script into the main app window
+                const script = \`
+                    console.log('🔧 INJECTED DEBUG SCRIPT RUNNING...');
+                    
+                    // Check app instance
+                    if (window.app) {
+                        console.log('✅ App instance found:', window.app.constructor.name);
+                    } else {
+                        console.error('❌ No app instance found');
+                    }
+                    
+                    // Check record button
+                    const recordButton = document.getElementById('recordButton');
+                    if (recordButton) {
+                        console.log('✅ Record button found');
+                        console.log('   Disabled:', recordButton.disabled);
+                        console.log('   Classes:', recordButton.className);
+                        
+                        // Test click
+                        let clicked = false;
+                        recordButton.addEventListener('click', () => { clicked = true; });
+                        recordButton.click();
+                        setTimeout(() => {
+                            console.log('Click test result:', clicked ? '✅ Working' : '❌ Not working');
+                        }, 100);
+                    } else {
+                        console.error('❌ Record button not found');
+                    }
+                \`;
+                
+                try {
+                    mainAppWindow.eval(script);
+                    log('appStatus', '✅ Debug script injected - check main app console', 'success');
+                } catch (error) {
+                    log('appStatus', `❌ Failed to inject debug script: ${error.message}`, 'error');
+                }
+            } else {
+                log('appStatus', '⚠️ Main app window not available - open it first', 'warning');
+            }
+        }
+
+        function testRecordButton() {
+            log('buttonTests', '🎤 Testing record button functionality...', 'info');
+            
+            const iframe = document.getElementById('appFrame');
+            if (iframe && iframe.contentWindow) {
+                try {
+                    const iframeDoc = iframe.contentWindow.document;
+                    const recordButton = iframeDoc.getElementById('recordButton');
+                    
+                    if (recordButton) {
+                        log('buttonTests', '✅ Record button found in iframe', 'success');
+                        
+                        // Test click
+                        recordButton.click();
+                        log('buttonTests', '📌 Record button clicked', 'info');
+                        
+                        setTimeout(() => {
+                            const isRecording = recordButton.classList.contains('recording');
+                            log('buttonTests', `Recording state: ${isRecording ? 'Started' : 'No change'}`, 
+                                isRecording ? 'success' : 'warning');
+                        }, 500);
+                    } else {
+                        log('buttonTests', '❌ Record button not found in iframe', 'error');
+                    }
+                } catch (error) {
+                    log('buttonTests', `❌ Cannot access iframe content: ${error.message}`, 'error');
+                    log('buttonTests', '💡 Try testing in the main app window instead', 'info');
+                }
+            }
+        }
+
+        function testAllButtons() {
+            log('buttonTests', '🔄 Testing all buttons...', 'info');
+            
+            const buttonIds = [
+                'recordButton', 'settingsButton', 'polishButton', 
+                'generateChartsButton', 'saveButton', 'clearButton'
+            ];
+            
+            buttonIds.forEach(buttonId => {
+                const iframe = document.getElementById('appFrame');
+                if (iframe && iframe.contentWindow) {
+                    try {
+                        const button = iframe.contentWindow.document.getElementById(buttonId);
+                        if (button) {
+                            log('buttonTests', `✅ ${buttonId}: Found`, 'success');
+                        } else {
+                            log('buttonTests', `❌ ${buttonId}: Missing`, 'error');
+                        }
+                    } catch (error) {
+                        log('buttonTests', `⚠️ ${buttonId}: Cannot access`, 'warning');
+                    }
+                }
+            });
+        }
+
+        function fixEventListeners() {
+            log('buttonTests', '🔧 Attempting to fix event listeners...', 'info');
+            
+            if (mainAppWindow && !mainAppWindow.closed) {
+                const fixScript = \`
+                    if (window.app && typeof window.app.setupEventListeners === 'function') {
+                        try {
+                            window.app.setupEventListeners();
+                            console.log('✅ Event listeners rebound successfully');
+                        } catch (error) {
+                            console.error('❌ Failed to rebind event listeners:', error);
+                        }
+                    } else {
+                        console.warn('⚠️ Cannot rebind - app instance or method not found');
+                    }
+                \`;
+                
+                try {
+                    mainAppWindow.eval(fixScript);
+                    log('buttonTests', '✅ Event listener fix script executed', 'success');
+                } catch (error) {
+                    log('buttonTests', `❌ Fix script failed: ${error.message}`, 'error');
+                }
+            } else {
+                log('buttonTests', '⚠️ Main app window not available', 'warning');
+            }
+        }
+
+        function checkConsoleErrors() {
+            log('diagnostics', '🔍 Checking for console errors...', 'info');
+            
+            // Monitor our own console for errors
+            let errorCount = 0;
+            const originalError = console.error;
+            
+            console.error = function(...args) {
+                errorCount++;
+                log('diagnostics', `Console Error #${errorCount}: ${args.join(' ')}`, 'error');
+                originalError.apply(console, args);
+            };
+            
+            setTimeout(() => {
+                console.error = originalError;
+                if (errorCount === 0) {
+                    log('diagnostics', '✅ No console errors detected in test page', 'success');
+                }
+            }, 2000);
+        }
+
+        function checkDOMElements() {
+            log('diagnostics', '📋 Checking DOM elements in iframe...', 'info');
+            
+            const iframe = document.getElementById('appFrame');
+            if (iframe && iframe.contentWindow) {
+                try {
+                    const iframeDoc = iframe.contentWindow.document;
+                    const buttons = iframeDoc.querySelectorAll('button');
+                    
+                    log('diagnostics', `Found ${buttons.length} button elements`, 'info');
+                    
+                    buttons.forEach((button, index) => {
+                        const id = button.id || `unnamed-${index}`;
+                        const disabled = button.disabled ? '(disabled)' : '';
+                        log('diagnostics', `  ${index + 1}. ${id} ${disabled}`, 'info');
+                    });
+                } catch (error) {
+                    log('diagnostics', `❌ Cannot access iframe DOM: ${error.message}`, 'error');
+                }
+            }
+        }
+
+        function checkEventListeners() {
+            log('diagnostics', '🎯 Checking event listeners...', 'info');
+            log('diagnostics', '💡 This test requires browser dev tools access', 'warning');
+            log('diagnostics', '1. Open browser dev tools (F12)', 'info');
+            log('diagnostics', '2. Go to main app at http://localhost:5177', 'info');
+            log('diagnostics', '3. Run: getEventListeners(document.getElementById("recordButton"))', 'info');
+        }
+
+        // Auto-check app status on load
+        window.addEventListener('load', () => {
+            setTimeout(checkAppStatus, 1000);
+        });
+
+        // Monitor iframe load
+        document.getElementById('appFrame').addEventListener('load', () => {
+            log('appStatus', '✅ Main app loaded in iframe', 'success');
+        });
+    </script>
+</body>
+</html>

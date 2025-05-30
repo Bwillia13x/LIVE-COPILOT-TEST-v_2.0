@@ -36,8 +36,8 @@ export class AudioTranscriptionApp {
   // DOM element references
   private elements: {
     recordButton?: HTMLButtonElement;
-    transcriptionArea?: HTMLTextAreaElement;
-    polishedNoteArea?: HTMLTextAreaElement;
+    transcriptionArea?: HTMLDivElement;
+    polishedNoteArea?: HTMLDivElement;
     statusDisplay?: HTMLElement;
     chartContainer?: HTMLElement;
     apiKeyInput?: HTMLInputElement;
@@ -82,6 +82,13 @@ export class AudioTranscriptionApp {
       
       this.setupDOMReferences();
       this.setupEventListeners();
+      
+      // Initialize theme system
+      this.initTheme();
+      
+      // Initialize API key from localStorage
+      await this.initializeAPIKey();
+      
       this.setupAudioRecorder();
       this.loadExistingNotes();
       this.updateUI();
@@ -92,7 +99,7 @@ export class AudioTranscriptionApp {
       // Set up periodic UI updates
       this.setupPeriodicUpdates();
       
-      // Test API connection
+      // Test API connection if API key is available
       await this.testAPIConnection();
       
       console.log('🎙️ Audio Transcription App initialized successfully');
@@ -109,13 +116,13 @@ export class AudioTranscriptionApp {
   private setupDOMReferences(): void {
     this.elements = {
       recordButton: document.getElementById('recordButton') as HTMLButtonElement,
-      transcriptionArea: document.getElementById('transcriptionArea') as HTMLTextAreaElement,
-      polishedNoteArea: document.getElementById('polishedNoteArea') as HTMLTextAreaElement,
-      statusDisplay: document.getElementById('statusDisplay') as HTMLElement,
-      chartContainer: document.getElementById('chartContainer') as HTMLElement,
+      transcriptionArea: document.getElementById('rawTranscription') as HTMLDivElement,
+      polishedNoteArea: document.getElementById('polishedNote') as HTMLDivElement,
+      statusDisplay: document.getElementById('recordingStatus') as HTMLElement,
+      chartContainer: document.getElementById('aiChartDisplayArea') as HTMLElement,
       apiKeyInput: document.getElementById('apiKeyInput') as HTMLInputElement,
       notesContainer: document.getElementById('notesContainer') as HTMLElement,
-      exportButton: document.getElementById('exportButton') as HTMLButtonElement,
+      exportButton: document.getElementById('confirmExport') as HTMLButtonElement,
     };
 
     // Validate that required elements exist
@@ -142,28 +149,78 @@ export class AudioTranscriptionApp {
       }
     });
 
-    // Polish button
-    const polishButton = document.getElementById('polishButton');
-    polishButton?.addEventListener('click', () => {
-      this.polishCurrentTranscription();
+    // Settings modal
+    const settingsButton = document.getElementById('settingsButton');
+    const settingsModal = document.getElementById('settingsModal');
+    const closeSettingsModal = document.getElementById('closeSettingsModal');
+    const cancelSettings = document.getElementById('cancelSettings');
+    const saveSettings = document.getElementById('saveSettings');
+
+    settingsButton?.addEventListener('click', () => {
+      settingsModal?.style.setProperty('display', 'flex');
+      // Load current API key if saved
+      const savedApiKey = localStorage.getItem('geminiApiKey');
+      if (savedApiKey && this.elements.apiKeyInput) {
+        this.elements.apiKeyInput.value = savedApiKey;
+      }
     });
 
-    // Generate charts button
-    const generateChartsButton = document.getElementById('generateChartsButton');
-    generateChartsButton?.addEventListener('click', () => {
+    closeSettingsModal?.addEventListener('click', () => {
+      settingsModal?.style.setProperty('display', 'none');
+    });
+
+    cancelSettings?.addEventListener('click', () => {
+      settingsModal?.style.setProperty('display', 'none');
+    });
+
+    saveSettings?.addEventListener('click', () => {
+      if (this.elements.apiKeyInput) {
+        const apiKey = this.elements.apiKeyInput.value;
+        const rememberKey = (document.getElementById('rememberApiKey') as HTMLInputElement)?.checked;
+        
+        if (apiKey) {
+          if (rememberKey) {
+            localStorage.setItem('geminiApiKey', apiKey);
+          } else {
+            localStorage.removeItem('geminiApiKey');
+          }
+          this.apiService.setApiKey(apiKey);
+          this.testAPIConnection();
+        }
+        settingsModal?.style.setProperty('display', 'none');
+      }
+    });
+
+    // Close modal when clicking outside
+    settingsModal?.addEventListener('click', (e) => {
+      if (e.target === settingsModal) {
+        settingsModal?.style.setProperty('display', 'none');
+      }
+    });
+
+    // Test Chart button (replaces generateChartsButton)
+    const testChartButton = document.getElementById('testChartButton');
+    testChartButton?.addEventListener('click', () => {
       this.generateCharts();
     });
 
-    // Save note button
-    const saveButton = document.getElementById('saveButton');
-    saveButton?.addEventListener('click', () => {
-      this.saveCurrentNote();
+    // Sample Charts button (additional chart generation)
+    const sampleChartsButton = document.getElementById('sampleChartsButton');
+    sampleChartsButton?.addEventListener('click', () => {
+      this.generateSampleCharts();
     });
 
-    // Clear button
-    const clearButton = document.getElementById('clearButton');
-    clearButton?.addEventListener('click', () => {
+    // New/Clear button (replaces clearButton)
+    const newButton = document.getElementById('newButton');
+    newButton?.addEventListener('click', () => {
       this.clearCurrentNote();
+    });
+
+    // Tab switching for polished notes (replaces polishButton)
+    const polishedTab = document.querySelector('[data-tab="note"]') as HTMLButtonElement;
+    polishedTab?.addEventListener('click', () => {
+      // Switch to polished tab and trigger polishing if needed
+      this.switchToPolishedTab();
     });
 
     // Export button
@@ -177,6 +234,12 @@ export class AudioTranscriptionApp {
       this.togglePerformanceIndicator();
     });
 
+    // Theme toggle button
+    const themeToggleButton = document.getElementById('themeToggleButton');
+    themeToggleButton?.addEventListener('click', () => {
+      this.toggleTheme();
+    });
+
     // Window events
     window.addEventListener('beforeunload', () => {
       this.cleanup();
@@ -185,6 +248,32 @@ export class AudioTranscriptionApp {
     window.addEventListener('resize', () => {
       this.chartManager.resizeAllCharts();
     });
+  }
+
+  private async initializeAPIKey(): Promise<void> {
+    try {
+      // Load API key from localStorage
+      const savedApiKey = localStorage.getItem('geminiApiKey');
+      if (savedApiKey) {
+        console.log('🔑 Loading saved API key from localStorage');
+        this.apiService.setApiKey(savedApiKey);
+        
+        // Update the API key input field if it exists
+        if (this.elements.apiKeyInput) {
+          this.elements.apiKeyInput.value = savedApiKey;
+        }
+        
+        // Also update the "remember key" checkbox
+        const rememberKeyCheckbox = document.getElementById('rememberApiKey') as HTMLInputElement;
+        if (rememberKeyCheckbox) {
+          rememberKeyCheckbox.checked = true;
+        }
+      } else {
+        console.log('⚠️ No API key found in localStorage - user will need to configure one');
+      }
+    } catch (error) {
+      ErrorHandler.logError('Failed to initialize API key', error);
+    }
   }
 
   private setupAudioRecorder(): void {
@@ -315,74 +404,40 @@ export class AudioTranscriptionApp {
   }
 
   private async generateCharts(): Promise<void> {
-    return await this.performanceMonitor.measureOperation('generateCharts', async () => {
+    if (!this.isSampleData) {
+      this.showLoading('Generating charts...');
       try {
-        if (!this.state.currentNote?.polishedNote) {
-          this.showToast({
-            type: 'warning',
-            title: 'No Content',
-            message: 'Please polish a transcription first.',
-          });
-          return;
-        }
-
-        if (!this.apiService.hasValidApiKey()) {
-          this.showToast({
-            type: 'warning',
-            title: 'API Key Required',
-            message: 'Please enter your Gemini API key.',
-          });
-          return;
-        }
-
-        this.state.isProcessing = true;
-        this.updateUI();
-
-        const content = this.state.currentNote.polishedNote;
-
-        // Load charting module lazily for optimal performance
-        await this.bundleOptimizer.loadModule('charting');
-
-        // Generate different types of charts with performance tracking
-        const chartTypes = ['topics', 'sentiment', 'wordFrequency'];
-        const chartPromises = chartTypes.map(type => 
-          this.performanceMonitor.measureOperation(`generateChartData_${type}`, () =>
-            this.apiService.generateChartData(content, type)
-          )
+        const chartData = await this.performanceMonitor.measureOperation(
+          () => this.apiService.generateChartData(this.fullTranscription),
+          'apiResponseTime',
+          'generateChartData_full'
         );
-
-        const results = await Promise.all(chartPromises);
-
-        // Create charts from results with performance monitoring
-        const chartCreationPromises = results.map(async (result, index) => {
-          if (result.success && result.data) {
-            const chartType = chartTypes[index];
-            const canvasId = `${chartType}Chart`;
-            
-            return await this.performanceMonitor.measureOperation(`createChart_${chartType}`, async () => {
-              switch (chartType) {
-                case 'topics':
-                  this.chartManager.createTopicChart(canvasId, result.data);
-                  break;
-                case 'sentiment':
-                  this.chartManager.createSentimentChart(canvasId, result.data);
-                  break;
-                case 'wordFrequency':
-                  this.chartManager.createWordFrequencyChart(canvasId, result.data);
-                  break;
+        if (chartData) {
+          await this.performanceMonitor.measureOperation(
+            async () => {
+              const chartTypes = Object.keys(chartData) as (keyof typeof chartData)[];
+              for (const type of chartTypes) {
+                const specificChartData = chartData[type];
+                if (specificChartData) {
+                  // Ensure this.chartInstances[type] is properly initialized if needed
+                  // or handle its potential undefined state.
+                  // For now, assuming it's expected to be there or created by createChart.
+                  await this.performanceMonitor.measureOperation(
+                    () => this.chartService.createChart(
+                      `${type}Chart`,
+                      specificChartData,
+                      this.chartInstances[type] // Pass existing instance or undefined
+                    ),
+                    'chartRenderTime',
+                    `createChart_${type}`
+                  );
+                }
               }
-            });
-          }
-        });
-
-        await Promise.all(chartCreationPromises);
-
-        this.showToast({
-          type: 'success',
-          title: 'Charts Generated',
-          message: 'Analysis charts have been created.',
-        });
-
+            },
+            'chartGeneration',
+            'generateCharts_Overall'
+          );
+        }
       } catch (error) {
         ErrorHandler.logError('Failed to generate charts', error);
         this.showToast({
@@ -394,7 +449,7 @@ export class AudioTranscriptionApp {
         this.state.isProcessing = false;
         this.updateUI();
       }
-    });
+    }
   }
 
   private saveCurrentNote(): void {
@@ -475,21 +530,31 @@ export class AudioTranscriptionApp {
   }
 
   private async testAPIConnection(): Promise<void> {
-    const result = await this.apiService.testConnection();
-    
-    if (result.success) {
-      this.showToast({
-        type: 'success',
-        title: 'API Connected',
-        message: 'Gemini API connection successful.',
-        duration: 3000,
-      });
-    } else {
-      this.showToast({
-        type: 'error',
-        title: 'API Connection Failed',
-        message: result.error || 'Unknown error',
-      });
+    try {
+      const result = await this.apiService.testConnection();
+      
+      if (result.success) {
+        this.showToast({
+          type: 'success',
+          title: 'API Connected',
+          message: 'Gemini API connection successful.',
+          duration: 3000,
+        });
+      } else {
+        // Check if it's specifically an API key issue
+        if (result.error?.includes('API Key must be set')) {
+          console.log('ℹ️ No API key configured - user can set one in settings');
+          // Don't show error toast on initial load if no API key is set
+        } else {
+          this.showToast({
+            type: 'error',
+            title: 'API Connection Failed',
+            message: result.error || 'Unknown error',
+          });
+        }
+      }
+    } catch (error) {
+      ErrorHandler.logError('API connection test failed', error);
     }
   }
 
@@ -500,13 +565,13 @@ export class AudioTranscriptionApp {
 
   private updateTranscriptionArea(): void {
     if (this.elements.transcriptionArea) {
-      this.elements.transcriptionArea.value = this.transcriptBuffer;
+      this.elements.transcriptionArea.textContent = this.transcriptBuffer;
     }
   }
 
   private updatePolishedNoteArea(): void {
     if (this.elements.polishedNoteArea && this.state.currentNote) {
-      this.elements.polishedNoteArea.value = this.state.currentNote.polishedNote;
+      this.elements.polishedNoteArea.textContent = this.state.currentNote.polishedNote;
     }
   }
 
@@ -696,7 +761,7 @@ export class AudioTranscriptionApp {
       // Update CPU usage indicator (using operation durations as proxy)
       const cpuElement = document.getElementById('cpuUsage');
       if (cpuElement) {
-        const recentOperations = this.performanceMonitor.getRecentOperations(5);
+        const recentOperations = this.performanceMonitor.getRecentOperations();
         const avgDuration = recentOperations.length > 0 
           ? recentOperations.reduce((sum, op) => sum + op.duration, 0) / recentOperations.length
           : 0;
@@ -807,5 +872,266 @@ export class AudioTranscriptionApp {
 
   public async getHealthStatus() {
     return await this.healthCheckService.getHealthStatus();
+  }
+
+  /**
+   * Generate sample charts for demonstration purposes
+   */
+  private async generateSampleCharts(): Promise<void> {
+    this.isSampleData = true;
+    this.showLoading('Generating sample charts...');
+    try {
+      const sampleChartData = await this.performanceMonitor.measureOperation(
+        () => this.apiService.generateSampleChartData(),
+        'apiResponseTime',
+        'generateSampleChartData'
+      );
+      if (sampleChartData) {
+        await this.performanceMonitor.measureOperation(
+          async () => {
+            const chartTypes = Object.keys(sampleChartData) as (keyof typeof sampleChartData)[];
+            for (const type of chartTypes) {
+              const specificChartData = sampleChartData[type];
+              if (specificChartData) {
+                await this.performanceMonitor.measureOperation(
+                  () => this.chartService.createChart(
+                    `${type}Chart`,
+                    specificChartData,
+                    this.chartInstances[type] // Pass existing instance or undefined
+                  ),
+                  'chartRenderTime',
+                  `createSampleChart_${type}`
+                );
+              }
+            }
+          },
+          'chartGeneration',
+          'generateSampleCharts_Overall'
+        );
+      }
+      this.logMessage('Sample charts generated successfully.');
+    } catch (error) {
+      ErrorHandler.logError('Failed to generate sample charts', error);
+      this.showToast({
+        type: 'error',
+        title: 'Chart Generation Failed',
+        message: 'Failed to generate sample charts. Please try again.',
+      });
+
+      if (this.productionMonitor) {
+        this.productionMonitor.trackError('sample_charts_generation_failed', error);
+      }
+    } finally {
+      this.state.isProcessing = false;
+      this.updateUI();
+    }
+  }
+
+  /**
+   * Switch to the polished tab view
+   */
+  private switchToPolishedTab(): void {
+    try {
+      const tabNav = document.querySelector('.tab-navigation');
+      if (!tabNav) {
+        console.error('Tab navigation not found');
+        return;
+      }
+
+      // Find the polished tab button
+      const polishedTabButton = tabNav.querySelector('.tab-button[data-tab="note"]') as HTMLButtonElement;
+      const rawTabButton = tabNav.querySelector('.tab-button[data-tab="raw"]') as HTMLButtonElement;
+
+      if (!polishedTabButton) {
+        console.error('Polished tab button not found');
+        return;
+      }
+
+      // Update tab button states
+      polishedTabButton.classList.add('active');
+      if (rawTabButton) {
+        rawTabButton.classList.remove('active');
+      }
+
+      // Show polished note content
+      const polishedNote = document.getElementById('polishedNote');
+      const rawTranscription = document.getElementById('rawTranscription');
+
+      if (polishedNote) {
+        polishedNote.classList.add('active');
+        polishedNote.style.display = 'block';
+      }
+
+      if (rawTranscription) {
+        rawTranscription.classList.remove('active');
+        rawTranscription.style.display = 'none';
+      }
+
+      // Update the active tab indicator position
+      const activeTabIndicator = tabNav.querySelector('.active-tab-indicator') as HTMLElement;
+      if (activeTabIndicator && polishedTabButton) {
+        const buttonRect = polishedTabButton.getBoundingClientRect();
+        const navRect = tabNav.getBoundingClientRect();
+        const relativeLeft = buttonRect.left - navRect.left;
+        
+        activeTabIndicator.style.left = `${relativeLeft}px`;
+        activeTabIndicator.style.width = `${buttonRect.width}px`;
+      }
+
+      console.log('Switched to polished tab successfully');
+
+      // Track tab switch
+      if (this.productionMonitor) {
+        this.productionMonitor.trackEvent('tab_switched', {
+          tab: 'polished',
+          timestamp: Date.now()
+        });
+      }
+
+    } catch (error) {
+      console.error('Error switching to polished tab:', error);
+      this.showToast({
+        type: 'error',
+        title: 'Tab Switch Failed',
+        message: 'Unable to switch to polished tab.',
+      });
+
+      if (this.productionMonitor) {
+        this.productionMonitor.trackError('tab_switch_failed', error);
+      }
+    }
+  }
+
+  // Theme system methods
+  private initTheme(): void {
+    console.log('Initializing theme system...');
+    
+    try {
+      // Check saved theme preference
+      const savedTheme = localStorage.getItem('voice-notes-theme') || 'dark';
+      
+      // Apply the saved theme
+      document.body.className = savedTheme === 'light' ? 'light-mode' : '';
+      
+      // Update theme toggle icon
+      const themeToggleButton = document.getElementById('themeToggleButton');
+      if (themeToggleButton) {
+        const icon = themeToggleButton.querySelector('i');
+        if (icon) {
+          icon.className = savedTheme === 'light' ? 'fas fa-moon' : 'fas fa-sun';
+        }
+      }
+      
+      console.log(`Theme initialized: ${savedTheme}`);
+      
+    } catch (error) {
+      console.error('Failed to initialize theme:', error);
+      // Fallback to dark theme
+      document.body.className = '';
+      this.showToast({
+        type: 'error',
+        title: 'Theme Error',
+        message: 'Failed to initialize theme system',
+      });
+    }
+  }
+
+  private toggleTheme(): void {
+    console.log('Toggling theme...');
+    
+    try {
+      const isLightMode = document.body.classList.contains('light-mode');
+      const newTheme = isLightMode ? 'dark' : 'light';
+      
+      // Toggle the theme
+      if (isLightMode) {
+        document.body.classList.remove('light-mode');
+      } else {
+        document.body.classList.add('light-mode');
+      }
+      
+      // Save theme preference
+      localStorage.setItem('voice-notes-theme', newTheme);
+      
+      // Update theme toggle icon
+      const themeToggleButton = document.getElementById('themeToggleButton');
+      if (themeToggleButton) {
+        const icon = themeToggleButton.querySelector('i');
+        if (icon) {
+          icon.className = newTheme === 'light' ? 'fas fa-moon' : 'fas fa-sun';
+        }
+      }
+      
+      this.showToast({
+        type: 'success',
+        title: 'Theme Changed',
+        message: `Switched to ${newTheme} mode`,
+      });
+      
+      console.log(`Theme toggled to: ${newTheme}`);
+      
+      // Track theme toggle
+      if (this.productionMonitor) {
+        this.productionMonitor.trackEvent('theme_toggled', {
+          theme: newTheme,
+          timestamp: Date.now()
+        });
+      }
+      
+    } catch (error) {
+      console.error('Failed to toggle theme:', error);
+      this.showToast({
+        type: 'error',
+        title: 'Theme Error',
+        message: 'Failed to change theme',
+      });
+    }
+  }
+
+  // Helper methods for chart creation
+  private createChartContainer(canvasId: string, title: string, description: string): void {
+    const chartDisplayArea = document.getElementById('aiChartDisplayArea');
+    if (!chartDisplayArea) {
+      console.error('Chart display area not found');
+      return;
+    }
+
+    const chartContainer = document.createElement('div');
+    chartContainer.className = 'chart-container';
+    chartContainer.innerHTML = `
+      <div class="chart-header">
+        <h4>${title}</h4>
+        <p class="chart-description">${description}</p>
+      </div>
+      <canvas id="${canvasId}" width="400" height="200"></canvas>
+    `;
+
+    chartDisplayArea.appendChild(chartContainer);
+  }
+
+  private getChartTitle(chartType: string): string {
+    switch (chartType) {
+      case 'topics':
+        return 'Topic Distribution';
+      case 'sentiment':
+        return 'Sentiment Analysis';
+      case 'wordFrequency':
+        return 'Word Frequency';
+      default:
+        return 'Chart';
+    }
+  }
+
+  private getChartDescription(chartType: string): string {
+    switch (chartType) {
+      case 'topics':
+        return 'Main topics identified in your transcription';
+      case 'sentiment':
+        return 'Emotional tone breakdown of your content';
+      case 'wordFrequency':
+        return 'Most frequently used words in your transcription';
+      default:
+        return 'Data visualization';
+    }
   }
 }

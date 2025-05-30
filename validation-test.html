@@ -1,0 +1,317 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Voice Notes Pro v2.0 - Fix Validation</title>
+    <link rel="stylesheet" href="index.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+</head>
+<body>
+    <div class="app-container">
+        <header class="app-header">
+            <div class="header-content">
+                <div class="app-branding">
+                    <h1 class="app-title">
+                        <i class="fas fa-microphone"></i>
+                        Voice Notes Pro v2.0
+                    </h1>
+                    <p class="app-subtitle">Fix Validation Test</p>
+                </div>
+                <div class="header-controls">
+                    <button id="themeToggleButton" class="icon-button" title="Toggle Theme">
+                        <i class="fas fa-sun"></i>
+                    </button>
+                </div>
+            </div>
+        </header>
+
+        <main class="main-content">
+            <div class="validation-tests">
+                <h2>🧪 Validation Tests</h2>
+                
+                <div class="test-section">
+                    <h3>🎨 Theme Toggle Test</h3>
+                    <p>Click the theme toggle button in the header to test theme switching.</p>
+                    <div class="test-status" id="themeTestStatus">Click theme button to test...</div>
+                </div>
+
+                <div class="test-section">
+                    <h3>📊 Chart Generation Test</h3>
+                    <p>Click the buttons below to test chart generation functionality.</p>
+                    <div class="button-group">
+                        <button id="sampleChartsButton" class="primary-button">
+                            <i class="fas fa-chart-bar"></i>
+                            Generate Sample Charts
+                        </button>
+                        <button id="testChartButton" class="secondary-button">
+                            <i class="fas fa-vial"></i>
+                            Test Chart (Requires API Key)
+                        </button>
+                    </div>
+                    <div class="test-status" id="chartTestStatus">Click buttons to test chart generation...</div>
+                </div>
+
+                <div class="test-section">
+                    <h3>📋 Test Results</h3>
+                    <div id="testResults" class="test-results">
+                        <div class="result-item">
+                            <span class="result-label">Theme Toggle:</span>
+                            <span id="themeResult" class="result-status pending">⏳ Pending</span>
+                        </div>
+                        <div class="result-item">
+                            <span class="result-label">Chart Generation:</span>
+                            <span id="chartResult" class="result-status pending">⏳ Pending</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Chart Display Area -->
+            <div class="note-area">
+                <div class="tab-navigation">
+                    <button class="tab-button active" data-tab="raw">
+                        <i class="fas fa-microphone"></i>
+                        Raw Transcription
+                    </button>
+                    <button class="tab-button" data-tab="note">
+                        <i class="fas fa-magic"></i>
+                        Polished Note
+                    </button>
+                    <div class="active-tab-indicator"></div>
+                </div>
+                
+                <div class="note-content-wrapper">
+                    <div id="rawTranscription" class="editable-content active">
+                        <div class="placeholder-content">
+                            <p>Charts will appear below when you test chart generation...</p>
+                        </div>
+                        <div id="aiChartDisplayArea" class="ai-chart-raw-display">
+                            <!-- Charts will be dynamically inserted here -->
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <!-- Toast Container -->
+    <div id="toastContainer" class="toast-container"></div>
+
+    <script type="module" src="main.ts"></script>
+    <script>
+        // Test monitoring and validation
+        let themeToggleCount = 0;
+        let chartsGenerated = 0;
+
+        // Monitor theme changes
+        function monitorThemeChanges() {
+            const observer = new MutationObserver(() => {
+                const isLightMode = document.body.classList.contains('light-mode');
+                const themeResult = document.getElementById('themeResult');
+                const themeStatus = document.getElementById('themeTestStatus');
+                
+                themeToggleCount++;
+                
+                if (themeToggleCount > 0) {
+                    themeResult.textContent = '✅ Working';
+                    themeResult.className = 'result-status success';
+                    themeStatus.textContent = `Theme toggled ${themeToggleCount} times. Currently: ${isLightMode ? 'Light' : 'Dark'} mode`;
+                    
+                    console.log('✅ Theme Toggle Test: PASSED');
+                    console.log(`Current theme: ${isLightMode ? 'Light' : 'Dark'} mode`);
+                }
+            });
+            
+            observer.observe(document.body, {
+                attributes: true,
+                attributeFilter: ['class']
+            });
+        }
+
+        // Monitor chart generation
+        function monitorChartGeneration() {
+            const chartArea = document.getElementById('aiChartDisplayArea');
+            if (!chartArea) return;
+
+            const observer = new MutationObserver(() => {
+                const chartContainers = chartArea.querySelectorAll('.chart-container');
+                const canvasElements = chartArea.querySelectorAll('canvas');
+                
+                if (chartContainers.length > 0 || canvasElements.length > 0) {
+                    chartsGenerated = Math.max(chartContainers.length, canvasElements.length);
+                    
+                    const chartResult = document.getElementById('chartResult');
+                    const chartStatus = document.getElementById('chartTestStatus');
+                    
+                    chartResult.textContent = '✅ Working';
+                    chartResult.className = 'result-status success';
+                    chartStatus.textContent = `${chartsGenerated} chart(s) generated successfully!`;
+                    
+                    console.log('✅ Chart Generation Test: PASSED');
+                    console.log(`Generated ${chartsGenerated} chart(s)`);
+                }
+            });
+            
+            observer.observe(chartArea, {
+                childList: true,
+                subtree: true
+            });
+        }
+
+        // Initialize monitoring
+        document.addEventListener('DOMContentLoaded', () => {
+            console.log('🧪 Starting Voice Notes Pro v2.0 fix validation...');
+            
+            monitorThemeChanges();
+            monitorChartGeneration();
+            
+            // Add click listeners for better tracking
+            const themeButton = document.getElementById('themeToggleButton');
+            if (themeButton) {
+                themeButton.addEventListener('click', () => {
+                    console.log('🎨 Theme toggle button clicked');
+                });
+            }
+
+            const sampleChartsButton = document.getElementById('sampleChartsButton');
+            if (sampleChartsButton) {
+                sampleChartsButton.addEventListener('click', () => {
+                    console.log('📊 Sample charts button clicked');
+                    const chartStatus = document.getElementById('chartTestStatus');
+                    chartStatus.textContent = 'Generating sample charts...';
+                });
+            }
+
+            const testChartButton = document.getElementById('testChartButton');
+            if (testChartButton) {
+                testChartButton.addEventListener('click', () => {
+                    console.log('🧪 Test chart button clicked');
+                    const chartStatus = document.getElementById('chartTestStatus');
+                    chartStatus.textContent = 'Testing chart generation...';
+                });
+            }
+            
+            console.log('✅ Validation monitoring initialized');
+        });
+    </script>
+
+    <style>
+        .validation-tests {
+            max-width: 800px;
+            margin: 2rem auto;
+            padding: 2rem;
+            background: var(--color-bg-secondary);
+            border-radius: 12px;
+            border: 1px solid var(--glass-border);
+        }
+
+        .test-section {
+            margin-bottom: 2rem;
+            padding: 1.5rem;
+            background: var(--color-bg);
+            border-radius: 8px;
+            border: 1px solid var(--glass-border);
+        }
+
+        .test-section h3 {
+            margin: 0 0 1rem 0;
+            color: var(--color-text);
+            font-size: 1.2rem;
+        }
+
+        .test-status {
+            margin-top: 1rem;
+            padding: 0.75rem;
+            background: var(--color-bg-alt);
+            border-radius: 6px;
+            font-family: var(--font-mono);
+            color: var(--color-text-secondary);
+        }
+
+        .button-group {
+            display: flex;
+            gap: 1rem;
+            margin: 1rem 0;
+        }
+
+        .primary-button, .secondary-button {
+            padding: 0.75rem 1.5rem;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 0.9rem;
+            font-weight: 500;
+            transition: all var(--transition-normal);
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .primary-button {
+            background: var(--color-primary);
+            color: white;
+        }
+
+        .primary-button:hover {
+            background: var(--color-primary-hover);
+        }
+
+        .secondary-button {
+            background: var(--color-bg-alt);
+            color: var(--color-text);
+            border: 1px solid var(--glass-border);
+        }
+
+        .secondary-button:hover {
+            background: var(--glass-highlight);
+        }
+
+        .test-results {
+            background: var(--color-bg);
+            border-radius: 8px;
+            padding: 1.5rem;
+            border: 1px solid var(--glass-border);
+        }
+
+        .result-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 0.75rem 0;
+            border-bottom: 1px solid var(--glass-border);
+        }
+
+        .result-item:last-child {
+            border-bottom: none;
+        }
+
+        .result-label {
+            font-weight: 500;
+            color: var(--color-text);
+        }
+
+        .result-status {
+            padding: 0.25rem 0.75rem;
+            border-radius: 4px;
+            font-size: 0.85rem;
+            font-weight: 500;
+        }
+
+        .result-status.pending {
+            background: var(--color-warning);
+            color: var(--color-bg);
+        }
+
+        .result-status.success {
+            background: var(--color-success);
+            color: white;
+        }
+
+        .result-status.error {
+            background: var(--color-error);
+            color: white;
+        }
+    </style>
+</body>
+</html>

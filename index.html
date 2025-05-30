@@ -19,7 +19,6 @@
         }
       }
     </script>
-    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.9/dist/chart.min.js"></script>
     <!-- Load the refactored modular application -->
     <script type="module" src="main.ts"></script>
   </head>
@@ -301,6 +300,10 @@
 
             <button class="action-button" id="themeToggleButton" title="Toggle Theme">
               <i class="fas fa-sun"></i>
+            </button>
+
+            <button class="action-button" id="settingsButton" title="Settings & API Key">
+              <i class="fas fa-cog"></i>
             </button>
 
             <button id="recordButton" class="record-button" title="Start/Stop Recording">
@@ -676,10 +679,51 @@
         </div>
       </div>
     </div>
-
-    <!-- Debug script for recording issues -->
-    <script src="debug-recorder.js"></script>
-    <script src="test-app.js"></script>
+    
+    <!-- Settings Modal -->
+    <div class="modal-overlay" id="settingsModal" style="display: none">
+      <div class="modal-container">
+        <div class="modal-header">
+          <h3><i class="fas fa-cog"></i> Settings</h3>
+          <button class="btn-close" id="closeSettingsModal">
+            <i class="fas fa-times"></i>
+          </button>
+        </div>
+        <div class="modal-content">
+          <div class="form-group">
+            <label for="apiKeyInput">
+              <i class="fas fa-key"></i> Gemini AI API Key
+            </label>
+            <input 
+              type="password" 
+              id="apiKeyInput" 
+              class="form-input" 
+              placeholder="Enter your Gemini API key..."
+              autocomplete="off"
+            >
+            <div class="form-help">
+              Your API key is stored locally and never sent to our servers. 
+              <a href="https://aistudio.google.com/app/apikey" target="_blank" rel="noopener">
+                Get your free API key from Google AI Studio
+              </a>
+            </div>
+          </div>
+          <div class="form-group">
+            <label>
+              <input type="checkbox" id="rememberApiKey" checked>
+              Remember API key for this browser
+            </label>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button class="btn btn-secondary" id="cancelSettings">Cancel</button>
+          <button class="btn btn-primary" id="saveSettings">
+            <i class="fas fa-save"></i>
+            Save Settings
+          </button>
+        </div>
+      </div>
+    </div>
     
     <script>
       document.addEventListener("DOMContentLoaded", () => {
@@ -742,7 +786,5 @@
         });
       });
     </script>
-    <!-- Enterprise Test Suite -->
-    <script src="enterprise-test-suite.js" type="module"></script>
   </body>
 </html>

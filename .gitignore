@@ -2,6 +2,7 @@
 # Security: Exclude sensitive files from version control
 
 # Environment files
+.env
 .env.local
 .env.production.local
 .env.development.local

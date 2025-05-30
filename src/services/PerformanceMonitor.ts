@@ -44,6 +44,8 @@ export class PerformanceMonitor {
     maxListeners: 100,
   };
 
+  private recentOperations: { name: string; duration: number }[] = [];
+
   private constructor() {
     this.startMonitoring();
   }
@@ -169,6 +171,10 @@ export class PerformanceMonitor {
     }
   }
 
+  public getRecentOperations(): { name: string; duration: number }[] {
+    return this.recentOperations;
+  }
+
   public measureOperation<T>(
     operation: () => T | Promise<T>,
     operationType: keyof PerformanceMetrics,
@@ -204,6 +210,14 @@ export class PerformanceMonitor {
       return result.then((value) => {
         const duration = performance.now() - startTime;
         updateMetrics(duration);
+
+        // Store the operation details
+        this.recentOperations.push({ name: operationName || '', duration });
+        // Keep only the last 10 operations, for example
+        if (this.recentOperations.length > 10) {
+          this.recentOperations.shift();
+        }
+
         return value;
       }).catch((error) => {
         const duration = performance.now() - startTime;
@@ -216,11 +230,26 @@ export class PerformanceMonitor {
           threshold: 0,
           timestamp: Date.now(),
         });
+
+        // Store the error operation details
+        this.recentOperations.push({ name: `${operationName} (Error)`, duration: 0 });
+        if (this.recentOperations.length > 10) {
+          this.recentOperations.shift();
+        }
+
         throw error;
       });
     } else {
       const duration = performance.now() - startTime;
       updateMetrics(duration);
+
+      // Store the operation details
+      this.recentOperations.push({ name: operationName || '', duration });
+      // Keep only the last 10 operations, for example
+      if (this.recentOperations.length > 10) {
+        this.recentOperations.shift();
+      }
+
       return result;
     }
   }

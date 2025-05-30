@@ -99,7 +99,29 @@ export const COLORS = {
     RECORDING: '#dc3545',
     PROCESSING: '#ffc107',
     IDLE: '#6c757d',
-  }
+  },
+  
+  // Chart helper arrays (for convenience)
+  chartBackgrounds: [
+    'rgba(255, 99, 132, 0.2)',
+    'rgba(54, 162, 235, 0.2)', 
+    'rgba(255, 205, 86, 0.2)',
+    'rgba(75, 192, 192, 0.2)',
+    'rgba(153, 102, 255, 0.2)',
+    'rgba(255, 159, 64, 0.2)',
+  ],
+  
+  chartBorders: [
+    'rgba(255, 99, 132, 1)',
+    'rgba(54, 162, 235, 1)',
+    'rgba(255, 205, 86, 1)',
+    'rgba(75, 192, 192, 1)',
+    'rgba(153, 102, 255, 1)',
+    'rgba(255, 159, 64, 1)',
+  ],
+  
+  primary: '#007bff',
+  primaryLight: 'rgba(0, 123, 255, 0.2)'
 } as const;
 
 // API Configuration
@@ -145,6 +167,12 @@ export const ERROR_MESSAGES = {
     QUOTA_EXCEEDED: 'Storage quota exceeded. Please clear some data.',
     NOT_AVAILABLE: 'Local storage is not available.',
     CORRUPTED: 'Stored data appears to be corrupted.',
+  },
+  
+  API: {
+    API_KEY_MISSING: 'API key is missing. Please configure your Gemini API key.',
+    CONNECTION_FAILED: 'Failed to connect to API. Please check your internet connection.',
+    RATE_LIMITED: 'API rate limit exceeded. Please try again later.',
   }
 } as const;
 

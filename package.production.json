@@ -1,0 +1,68 @@
+{
+  "name": "voice-notes-pro",
+  "version": "1.0.0",
+  "description": "Advanced Voice Notes Application with AI Integration",
+  "main": "main.ts",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "build:production": "NODE_ENV=production vite build",
+    "preview": "vite preview",
+    "serve": "vite preview --port 4173",
+    "analyze": "npx vite-bundle-analyzer",
+    "lint": "eslint . --ext .ts,.tsx --fix",
+    "type-check": "tsc --noEmit",
+    "deploy:netlify": "npm run build:production && netlify deploy --prod --dir=dist",
+    "deploy:vercel": "npm run build:production && vercel --prod",
+    "test": "echo \"Production tests not implemented\" && exit 0",
+    "health-check": "curl -f http://localhost:4173 || exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Bwillia13x/voice-notes-pro.git"
+  },
+  "keywords": [
+    "voice-notes",
+    "transcription",
+    "ai",
+    "productivity",
+    "speech-recognition",
+    "typescript",
+    "vite"
+  ],
+  "author": "Benjamin Williams",
+  "license": "Apache-2.0",
+  "homepage": "https://voicenotes.app",
+  "bugs": {
+    "url": "https://github.com/Bwillia13x/voice-notes-pro/issues"
+  },
+  "engines": {
+    "node": ">=18.0.0",
+    "npm": ">=8.0.0"
+  },
+  "dependencies": {
+    "@google/genai": "^0.8.0",
+    "chart.js": "^4.4.9",
+    "mammoth": "^1.9.1",
+    "marked": "^4.0.0",
+    "pdfjs-dist": "^5.2.133",
+    "tesseract.js": "^6.0.1"
+  },
+  "devDependencies": {
+    "@types/marked": "^4.0.8",
+    "@types/node": "^22.14.0",
+    "@typescript-eslint/eslint-plugin": "^6.0.0",
+    "@typescript-eslint/parser": "^6.0.0",
+    "eslint": "^8.0.0",
+    "typescript": "~5.7.2",
+    "vite": "^6.2.0",
+    "vite-bundle-analyzer": "^0.7.0"
+  },
+  "browserslist": [
+    "> 1%",
+    "last 2 versions",
+    "not dead",
+    "not ie 11"
+  ]
+}

@@ -1,0 +1,17 @@
+#!/usr/bin/env node
+
+// Production Health Check Endpoint
+// This file provides a simple health check endpoint for monitoring systems
+
+const healthCheck = {
+  status: "ok",
+  timestamp: new Date().toISOString(),
+  service: "voice-notes-pro",
+  version: "1.0.0"
+};
+
+if (typeof module !== 'undefined' && module.exports) {
+  module.exports = healthCheck;
+} else {
+  console.log(JSON.stringify(healthCheck, null, 2));
+}

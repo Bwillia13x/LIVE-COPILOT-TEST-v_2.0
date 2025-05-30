@@ -1,12 +1,23 @@
 {
-  "name": "copy-of-dictation-app",
+  "name": "voice-notes-pro",
   "private": true,
-  "version": "0.0.0",
+  "version": "1.0.0",
   "type": "module",
+  "main": "main.ts",
   "scripts": {
     "dev": "vite",
     "build": "vite build",
-    "preview": "vite preview"
+    "build:production": "NODE_ENV=production vite build",
+    "preview": "vite preview",
+    "serve": "vite preview --port 4173",
+    "analyze": "npx vite-bundle-analyzer",
+    "lint": "echo 'Linting not configured' && exit 0",
+    "type-check": "tsc --noEmit",
+    "deploy": "./deploy.sh",
+    "deploy:netlify": "./deploy.sh --platform netlify",
+    "deploy:vercel": "./deploy.sh --platform vercel",
+    "health-check": "curl -f http://localhost:4173 || exit 1",
+    "test": "echo 'Tests not implemented yet' && exit 0"
   },
   "dependencies": {
     "@google/genai": "^0.8.0",

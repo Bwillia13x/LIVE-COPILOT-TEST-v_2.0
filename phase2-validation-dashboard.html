@@ -1,0 +1,506 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Phase 2 Performance Optimization Validation</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            color: #333;
+        }
+        
+        .container {
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 15px;
+            padding: 30px;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+            backdrop-filter: blur(10px);
+        }
+        
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+            padding-bottom: 20px;
+            border-bottom: 2px solid #e0e0e0;
+        }
+        
+        .header h1 {
+            color: #2c3e50;
+            margin: 0;
+            font-size: 2.5em;
+            background: linear-gradient(45deg, #667eea, #764ba2);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+        
+        .header p {
+            color: #666;
+            margin: 10px 0 0 0;
+            font-size: 1.1em;
+        }
+        
+        .test-controls {
+            display: flex;
+            gap: 15px;
+            margin-bottom: 30px;
+            justify-content: center;
+            flex-wrap: wrap;
+        }
+        
+        .btn {
+            padding: 12px 24px;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 16px;
+            font-weight: 600;
+            transition: all 0.3s ease;
+            text-decoration: none;
+            display: inline-block;
+        }
+        
+        .btn-primary {
+            background: linear-gradient(45deg, #667eea, #764ba2);
+            color: white;
+        }
+        
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px rgba(102, 126, 234, 0.3);
+        }
+        
+        .btn-secondary {
+            background: #6c757d;
+            color: white;
+        }
+        
+        .btn-secondary:hover {
+            background: #5a6268;
+            transform: translateY(-2px);
+        }
+        
+        .status-display {
+            background: #f8f9fa;
+            border-radius: 10px;
+            padding: 20px;
+            margin-bottom: 20px;
+            border-left: 4px solid #667eea;
+        }
+        
+        .results-container {
+            background: #f8f9fa;
+            border-radius: 10px;
+            padding: 20px;
+            margin-top: 20px;
+            max-height: 600px;
+            overflow-y: auto;
+        }
+        
+        .result-item {
+            background: white;
+            margin: 10px 0;
+            padding: 15px;
+            border-radius: 8px;
+            border-left: 4px solid #28a745;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        }
+        
+        .result-item.failed {
+            border-left-color: #dc3545;
+        }
+        
+        .result-category {
+            font-weight: 600;
+            color: #495057;
+            font-size: 0.9em;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        
+        .result-test {
+            font-weight: 600;
+            margin: 5px 0;
+            color: #2c3e50;
+        }
+        
+        .result-details {
+            color: #666;
+            font-size: 0.9em;
+            margin-top: 5px;
+        }
+        
+        .result-status {
+            display: inline-block;
+            padding: 3px 8px;
+            border-radius: 4px;
+            font-size: 0.8em;
+            font-weight: 600;
+            margin-left: 10px;
+        }
+        
+        .status-passed {
+            background: #d4edda;
+            color: #155724;
+        }
+        
+        .status-failed {
+            background: #f8d7da;
+            color: #721c24;
+        }
+        
+        .summary-stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin: 20px 0;
+        }
+        
+        .stat-card {
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            text-align: center;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+        }
+        
+        .stat-value {
+            font-size: 2em;
+            font-weight: 700;
+            color: #667eea;
+            margin-bottom: 5px;
+        }
+        
+        .stat-label {
+            color: #666;
+            font-weight: 500;
+        }
+        
+        .app-frame {
+            width: 100%;
+            height: 300px;
+            border: 2px solid #e0e0e0;
+            border-radius: 10px;
+            margin: 20px 0;
+        }
+        
+        .loading {
+            text-align: center;
+            padding: 40px;
+            color: #666;
+        }
+        
+        .spinner {
+            border: 3px solid #f3f3f3;
+            border-top: 3px solid #667eea;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 20px;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        
+        .console-output {
+            background: #1e1e1e;
+            color: #f0f0f0;
+            font-family: 'Courier New', monospace;
+            padding: 15px;
+            border-radius: 8px;
+            max-height: 300px;
+            overflow-y: auto;
+            margin-top: 20px;
+            font-size: 0.9em;
+            line-height: 1.4;
+        }
+        
+        .performance-metrics {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 10px;
+            margin: 15px 0;
+        }
+        
+        .metric-item {
+            background: #e8f4f8;
+            padding: 10px;
+            border-radius: 6px;
+            text-align: center;
+            border: 1px solid #bee5eb;
+        }
+        
+        .metric-value {
+            font-weight: 600;
+            font-size: 1.2em;
+            color: #0c5460;
+        }
+        
+        .metric-label {
+            font-size: 0.8em;
+            color: #6c757d;
+            margin-top: 3px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🚀 Phase 2 Performance Optimization</h1>
+            <p>Comprehensive validation of performance improvements, monitoring, and bundle optimization</p>
+        </div>
+        
+        <div class="test-controls">
+            <button class="btn btn-primary" onclick="runValidation()">
+                🔍 Run Performance Validation
+            </button>
+            <button class="btn btn-secondary" onclick="toggleApp()">
+                📱 Toggle App View
+            </button>
+            <button class="btn btn-secondary" onclick="clearResults()">
+                🗑️ Clear Results
+            </button>
+            <a class="btn btn-secondary" href="http://localhost:5174/" target="_blank">
+                🌐 Open App in New Tab
+            </a>
+        </div>
+        
+        <div class="status-display">
+            <div id="status">
+                <div class="loading">
+                    <div class="spinner"></div>
+                    Ready to run Phase 2 performance validation tests
+                </div>
+            </div>
+        </div>
+        
+        <iframe id="appFrame" class="app-frame" src="http://localhost:5174/" style="display: none;"></iframe>
+        
+        <div id="summaryStats" class="summary-stats" style="display: none;"></div>
+        
+        <div id="performanceMetrics" class="performance-metrics" style="display: none;"></div>
+        
+        <div id="resultsContainer" class="results-container" style="display: none;"></div>
+        
+        <div id="consoleOutput" class="console-output" style="display: none;"></div>
+    </div>
+
+    <script>
+        let validationRunning = false;
+        let appVisible = false;
+        let consoleLog = [];
+        
+        // Capture console output
+        const originalConsole = {
+            log: console.log,
+            error: console.error,
+            warn: console.warn,
+            info: console.info
+        };
+        
+        function captureConsole() {
+            ['log', 'error', 'warn', 'info'].forEach(method => {
+                console[method] = function(...args) {
+                    consoleLog.push(`[${method.toUpperCase()}] ${args.join(' ')}`);
+                    updateConsoleOutput();
+                    originalConsole[method].apply(console, args);
+                };
+            });
+        }
+        
+        function updateConsoleOutput() {
+            const consoleOutput = document.getElementById('consoleOutput');
+            consoleOutput.innerHTML = consoleLog.slice(-50).map(line => 
+                `<div>${line}</div>`
+            ).join('');
+            consoleOutput.scrollTop = consoleOutput.scrollHeight;
+        }
+        
+        function toggleApp() {
+            const frame = document.getElementById('appFrame');
+            appVisible = !appVisible;
+            frame.style.display = appVisible ? 'block' : 'none';
+            
+            if (appVisible) {
+                document.querySelector('[onclick="toggleApp()"]').textContent = '📱 Hide App View';
+            } else {
+                document.querySelector('[onclick="toggleApp()"]').textContent = '📱 Show App View';
+            }
+        }
+        
+        function clearResults() {
+            document.getElementById('resultsContainer').style.display = 'none';
+            document.getElementById('summaryStats').style.display = 'none';
+            document.getElementById('performanceMetrics').style.display = 'none';
+            document.getElementById('consoleOutput').style.display = 'none';
+            consoleLog = [];
+            
+            document.getElementById('status').innerHTML = `
+                <div class="loading">
+                    <div class="spinner"></div>
+                    Ready to run Phase 2 performance validation tests
+                </div>
+            `;
+        }
+        
+        async function runValidation() {
+            if (validationRunning) return;
+            
+            validationRunning = true;
+            captureConsole();
+            
+            document.getElementById('status').innerHTML = `
+                <div class="loading">
+                    <div class="spinner"></div>
+                    Running Phase 2 performance validation tests...
+                </div>
+            `;
+            
+            document.getElementById('consoleOutput').style.display = 'block';
+            
+            try {
+                // Load the validation script into the app frame
+                const frame = document.getElementById('appFrame');
+                const appWindow = frame.contentWindow;
+                
+                if (!appWindow) {
+                    throw new Error('App frame not accessible');
+                }
+                
+                // Inject validation script
+                const script = appWindow.document.createElement('script');
+                script.src = '/phase2-performance-validation.js';
+                appWindow.document.head.appendChild(script);
+                
+                // Wait for validation to complete
+                let attempts = 0;
+                const maxAttempts = 60; // 30 seconds
+                
+                while (attempts < maxAttempts) {
+                    if (appWindow.phase2ValidationResults) {
+                        displayResults(appWindow.phase2ValidationResults);
+                        break;
+                    }
+                    
+                    await new Promise(resolve => setTimeout(resolve, 500));
+                    attempts++;
+                }
+                
+                if (attempts >= maxAttempts) {
+                    throw new Error('Validation timeout - tests did not complete within 30 seconds');
+                }
+                
+            } catch (error) {
+                console.error('Validation failed:', error);
+                document.getElementById('status').innerHTML = `
+                    <div style="color: #dc3545;">
+                        ❌ Validation failed: ${error.message}
+                    </div>
+                `;
+            } finally {
+                validationRunning = false;
+            }
+        }
+        
+        function displayResults(results) {
+            const { summary, details } = results;
+            
+            // Update status
+            document.getElementById('status').innerHTML = `
+                <div style="color: ${summary.successRate >= 80 ? '#28a745' : '#dc3545'};">
+                    ${summary.successRate >= 80 ? '✅' : '❌'} 
+                    Validation completed: ${summary.passedTests}/${summary.totalTests} tests passed 
+                    (${summary.successRate}% success rate)
+                </div>
+            `;
+            
+            // Show summary stats
+            document.getElementById('summaryStats').innerHTML = `
+                <div class="stat-card">
+                    <div class="stat-value">${summary.totalTests}</div>
+                    <div class="stat-label">Total Tests</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-value" style="color: #28a745;">${summary.passedTests}</div>
+                    <div class="stat-label">Passed</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-value" style="color: #dc3545;">${summary.failedTests}</div>
+                    <div class="stat-label">Failed</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-value">${summary.successRate}%</div>
+                    <div class="stat-label">Success Rate</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-value">${summary.duration.toFixed(1)}s</div>
+                    <div class="stat-label">Duration</div>
+                </div>
+            `;
+            document.getElementById('summaryStats').style.display = 'grid';
+            
+            // Show detailed results
+            const resultsHTML = details.map(result => `
+                <div class="result-item ${result.status === 'FAILED' ? 'failed' : ''}">
+                    <div class="result-category">${result.category}</div>
+                    <div class="result-test">
+                        ${result.test}
+                        <span class="result-status status-${result.status.toLowerCase()}">${result.status}</span>
+                    </div>
+                    <div class="result-details">${result.details}</div>
+                </div>
+            `).join('');
+            
+            document.getElementById('resultsContainer').innerHTML = resultsHTML;
+            document.getElementById('resultsContainer').style.display = 'block';
+            
+            // Show performance metrics if available
+            displayPerformanceMetrics();
+        }
+        
+        function displayPerformanceMetrics() {
+            const frame = document.getElementById('appFrame');
+            const appWindow = frame.contentWindow;
+            
+            if (appWindow && appWindow.audioApp && appWindow.audioApp.performanceMonitor) {
+                const metrics = appWindow.audioApp.performanceMonitor.getLatestMetrics();
+                
+                if (metrics) {
+                    document.getElementById('performanceMetrics').innerHTML = `
+                        <div class="metric-item">
+                            <div class="metric-value">${(metrics.memoryUsage / 1024 / 1024).toFixed(2)}</div>
+                            <div class="metric-label">Memory (MB)</div>
+                        </div>
+                        <div class="metric-item">
+                            <div class="metric-value">${Math.round(metrics.frameRate)}</div>
+                            <div class="metric-label">Frame Rate</div>
+                        </div>
+                        <div class="metric-item">
+                            <div class="metric-value">${metrics.operationCount || 0}</div>
+                            <div class="metric-label">Operations</div>
+                        </div>
+                        <div class="metric-item">
+                            <div class="metric-value">${(metrics.averageOperationTime || 0).toFixed(2)}</div>
+                            <div class="metric-label">Avg Op Time (ms)</div>
+                        </div>
+                    `;
+                    document.getElementById('performanceMetrics').style.display = 'grid';
+                }
+            }
+        }
+        
+        // Auto-load app frame when page loads
+        window.addEventListener('load', () => {
+            console.log('Phase 2 Performance Validation Dashboard loaded');
+        });
+    </script>
+</body>
+</html>

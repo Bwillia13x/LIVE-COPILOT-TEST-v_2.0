@@ -541,6 +541,66 @@ body.light-mode .active-tab-indicator {
 .recording-interface.is-live .status-indicator { display: none; }
 .status-text { font-size: 14px; color: var(--color-text-tertiary); text-align: center; transition: color var(--transition-normal); font-family: var(--font-primary); }
 
+/* Performance Indicator Styles */
+.performance-indicator {
+  margin-top: 12px;
+  padding: 8px 12px;
+  background: var(--glass-bg);
+  border: 1px solid var(--glass-border);
+  border-radius: 8px;
+  font-size: 12px;
+  color: var(--color-text-secondary);
+}
+
+.performance-label {
+  font-weight: 500;
+  margin-bottom: 6px;
+  color: var(--color-text);
+}
+
+.performance-stats {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.stat-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  flex: 1;
+}
+
+.stat-label {
+  font-size: 10px;
+  color: var(--color-text-tertiary);
+  margin-bottom: 2px;
+}
+
+.stat-value {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--color-text);
+}
+
+.performance-alert {
+  margin-top: 6px;
+  padding: 4px 8px;
+  background: rgba(255, 69, 58, 0.1);
+  border: 1px solid rgba(255, 69, 58, 0.3);
+  border-radius: 4px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 10px;
+  color: var(--color-recording);
+}
+
+.performance-alert i {
+  font-size: 10px;
+}
+
 /* Elements specific to the live recording view */
 .live-recording-title,
 #liveWaveformCanvas,
@@ -2521,6 +2581,19 @@ body.light-mode .record-button.recording .record-button-inner { color: white; }
   border-radius: 12px;
   padding: 20px;
   margin-bottom: 16px;
+  max-width: 100%;
+  width: 100%;
+  position: relative;
+  /* Constrain chart dimensions to prevent infinite growth */
+  max-height: 500px;
+  overflow: hidden;
+}
+
+.chart-container canvas {
+  max-width: 100% !important;
+  max-height: 400px !important;
+  width: auto !important;
+  height: auto !important;
 }
 
 .chart-container h4 {

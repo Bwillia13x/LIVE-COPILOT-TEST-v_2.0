@@ -27,6 +27,10 @@ import { createWorker } from 'tesseract.js';
 import * as pdfjsLib from 'pdfjs-dist';
 import * as mammoth from 'mammoth';
 
+// Import utilities and constants for Phase 1 refactoring
+import { APP_CONFIG, COLORS, API_CONFIG, ERROR_MESSAGES, SUCCESS_MESSAGES } from './src/constants.js';
+import { LoggerService, MemoryManager, ErrorHandler, PerformanceUtils } from './src/utils.js';
+
 // Enhanced imports for Gemma integration (commented out for now)
 // import { GemmaIntegration } from './src/gemma-integration.js';
 // import { EnhancedVoiceNotesApp } from './src/enhanced-voice-app.js';
@@ -641,6 +645,11 @@ class VoiceNotesApp {
   private syncInProgress = false;
   private lastSyncTimestamp: Date | null = null;
 
+  // Initialize utility services
+  private memoryManager = MemoryManager.getInstance();
+  private logger = LoggerService.getInstance();
+  private errorHandler = ErrorHandler.getInstance();
+
   constructor() {
     console.log('VoiceNotesApp constructor called');
     
@@ -650,11 +659,11 @@ class VoiceNotesApp {
     console.log('🔍 VITE_GEMINI_API_KEY specifically:', import.meta.env.VITE_GEMINI_API_KEY);
     
     // Make AI initialization optional for now
-    const apiKey = import.meta.env.VITE_GEMINI_API_KEY || 'AIzaSyDE1gzCeTw42daw84Y-Lh_P7XurdLCZHoI';
+    const apiKey = import.meta.env.VITE_GEMINI_API_KEY || API_CONFIG.FALLBACK_API_KEY;
     console.log('🔍 Environment API Key (import.meta.env.VITE_GEMINI_API_KEY):', import.meta.env.VITE_GEMINI_API_KEY);
     console.log('🔍 Final API Key used:', apiKey ? apiKey.substring(0, 12) + '...' : 'null');
     console.log('🔍 API Key length:', apiKey ? apiKey.length : 0);
-    
+
     if (apiKey) {
       try {
         // Try different initialization approaches for browser compatibility
@@ -685,9 +694,8 @@ class VoiceNotesApp {
       this.genAI = null;
     }
 
-    this.recordButton = document.getElementById(
-      'recordButton',
-    ) as HTMLButtonElement;
+    // Initialize DOM elements
+    this.recordButton = document.getElementById('recordButton') as HTMLButtonElement;
     
     console.log('🔍 Record button element search result:', this.recordButton);
     console.log('🔍 Record button exists:', !!this.recordButton);
@@ -701,59 +709,38 @@ class VoiceNotesApp {
       console.log('🔍 All elements with recordButton ID:', document.querySelectorAll('#recordButton'));
       console.log('🔍 All button elements:', document.querySelectorAll('button').length);
     }
-    this.recordingStatus = document.getElementById(
-      'recordingStatus',
-    ) as HTMLDivElement;
-    this.rawTranscription = document.getElementById(
-      'rawTranscription',
-    ) as HTMLDivElement;
-    this.polishedNote = document.getElementById(
-      'polishedNote',
-    ) as HTMLDivElement;
+
+    // Initialize all DOM elements
+    this.recordingStatus = document.getElementById('recordingStatus') as HTMLDivElement;
+    this.rawTranscription = document.getElementById('rawTranscription') as HTMLDivElement;
+    this.polishedNote = document.getElementById('polishedNote') as HTMLDivElement;
     this.aiChartDisplayArea = document.getElementById('aiChartDisplayArea') as HTMLDivElement;
+    
     if (!this.aiChartDisplayArea) {
       console.warn('⚠️ aiChartDisplayArea element not found. Charts will not be displayed in raw section.');
       // Create a dummy div to prevent errors if it's missing, though it won't be visible
-      this.aiChartDisplayArea = document.createElement('div'); 
-    } else {
-      console.log('✅ aiChartDisplayArea found and initialized');
+      this.aiChartDisplayArea = document.createElement('div');
+      this.aiChartDisplayArea.id = 'aiChartDisplayArea';
+      this.aiChartDisplayArea.style.display = 'none';
     }
+
     this.newButton = document.getElementById('newButton') as HTMLButtonElement;
-    this.themeToggleButton = document.getElementById(
-      'themeToggleButton',
-    ) as HTMLButtonElement;
-    this.themeToggleIcon = this.themeToggleButton.querySelector(
-      'i',
-    ) as HTMLElement;
-    this.editorTitle = document.querySelector(
-      '.editor-title',
-    ) as HTMLDivElement;
-
-    this.recordingInterface = document.querySelector(
-      '.recording-interface',
-    ) as HTMLDivElement;
-    this.liveRecordingTitle = document.getElementById(
-      'liveRecordingTitle',
-    ) as HTMLDivElement;
-    this.liveWaveformCanvas = document.getElementById(
-      'liveWaveformCanvas',
-    ) as HTMLCanvasElement;
-    this.liveRecordingTimerDisplay = document.getElementById(
-      'liveRecordingTimerDisplay',
-    ) as HTMLDivElement;
-
+    this.themeToggleButton = document.getElementById('themeToggleButton') as HTMLButtonElement;
+    this.themeToggleIcon = this.themeToggleButton?.querySelector('i') as HTMLElement;
+    this.editorTitle = document.getElementById('editorTitle') as HTMLDivElement;
+    this.recordingInterface = document.getElementById('recordingInterface') as HTMLDivElement;
+    this.liveRecordingTitle = document.getElementById('liveRecordingTitle') as HTMLDivElement;
+    this.liveRecordingTimerDisplay = document.getElementById('liveRecordingTimerDisplay') as HTMLDivElement;
+    this.liveWaveformCanvas = document.getElementById('liveWaveformCanvas') as HTMLCanvasElement;
+    
     if (this.liveWaveformCanvas) {
       this.liveWaveformCtx = this.liveWaveformCanvas.getContext('2d');
     } else {
-      console.warn(
-        'Live waveform canvas element not found. Visualizer will not work.',
-      );
+      console.warn('Live waveform canvas element not found. Visualizer will not work.');
     }
 
     if (this.recordingInterface) {
-      this.statusIndicatorDiv = this.recordingInterface.querySelector(
-        '.status-indicator',
-      ) as HTMLDivElement;
+      this.statusIndicatorDiv = this.recordingInterface.querySelector('.status-indicator') as HTMLDivElement;
     } else {
       console.warn('Recording interface element not found.');
       this.statusIndicatorDiv = null;
@@ -789,6 +776,7 @@ class VoiceNotesApp {
     this.filesList = document.getElementById('filesList') as HTMLDivElement;
     this.workflowsList = document.getElementById('workflowsList') as HTMLDivElement;
 
+    // Initialize core systems
     this.initializeErrorHandling();
     this.bindEventListeners();
     this.initTheme();
@@ -801,45 +789,18 @@ class VoiceNotesApp {
     this.checkNetworkStatus();
     this.initializePerformanceOptimizations();
     this.initializeStorage();
-    this.initializeAnalytics(); // Initialize analytics
-    this.initializePriority3Features(); // Initialize Priority 3: Advanced AI Integration
-    this.initializePriority4Features(); // Initialize Priority 4: Multi-modal Integration & Advanced Workflows
+    this.initializeAnalytics();
+    this.initializePriority3Features();
+    this.initializePriority4Features();
     
-    // Priority 5 features will be initialized after authentication is complete
-    // This is handled in initializeAuthenticationSystem() and initializeUserSession()
-    
-    // ⚠️ AUTO-TESTING DISABLED TO PREVENT INFINITE CHART GENERATION
-    // The duplicate setTimeout calls below have been commented out to prevent
-    // automatic testing functions from running that could trigger chart generation
-    /*
-    // Run initialization tests and performance monitoring after basic setup
-    setTimeout(() => {
-      this.testPriority3Features();
-      this.testCrossFeatureIntegration();
-      this.testPriority4Features(); // Test Priority 4 features
-      
-      // Set up periodic performance optimization
-      setInterval(() => {
-        this.optimizePriority3Performance();
-        this.optimizePriority4Performance();
-      }, 30000); // Optimize every 30 seconds
-    }, 2000); // Wait 2 seconds for full initialization
-    */
-
     // Initialize feature status dashboard
     this.createFeatureStatusDashboard();
     
-    // ⚠️ FIXED: Set up SINGLE periodic performance optimization (preventing duplicate intervals)
-    setTimeout(() => {
-      // Only run performance optimization, not testing functions
-      if (this.performanceOptimizationInterval) {
-        clearInterval(this.performanceOptimizationInterval);
-      }
-      this.performanceOptimizationInterval = setInterval(() => {
-        this.optimizePriority3Performance();
-        this.optimizePriority4Performance();
-      }, 30000); // Optimize every 30 seconds
-    }, 2000); // Wait 2 seconds for full initialization
+    // Set up SINGLE periodic performance optimization with proper memory management
+    this.setupPerformanceOptimization();
+
+    // Set up cleanup handlers for memory leak prevention
+    this.setupCleanupHandlers();
   }
 
   private escapeHtml(unsafe: string): string {
@@ -1672,14 +1633,44 @@ class VoiceNotesApp {
   }
 
   private clearActiveCharts(): void {
-    this.activeAiChartInstances.forEach(chart => {
-      chart.destroy();
+    this.logger.debug('Clearing active charts', { 
+      chartCount: this.activeAiChartInstances.length 
     });
+    
+    // Destroy all chart instances to prevent memory leaks
+    this.activeAiChartInstances.forEach((chart, index) => {
+      try {
+        chart.destroy();
+        this.logger.debug(`Destroyed chart ${index + 1}`);
+      } catch (error) {
+        this.errorHandler.handleError(error, {
+          context: 'clearActiveCharts',
+          chartIndex: index
+        });
+      }
+    });
+    
     this.activeAiChartInstances = [];
     
+    // Clear chart display area and remove canvas elements to prevent memory leaks
     if (this.aiChartDisplayArea) {
+      // Remove all canvas elements to ensure proper cleanup
+      const canvases = this.aiChartDisplayArea.querySelectorAll('canvas');
+      canvases.forEach(canvas => canvas.remove());
+      
+      // Clear the entire content area
       this.aiChartDisplayArea.innerHTML = '';
+      
+      // Limit chart instances using APP_CONFIG constants
+      if (this.activeAiChartInstances.length > APP_CONFIG.MAX_CHART_INSTANCES) {
+        this.logger.warn('Chart instance limit exceeded', {
+          current: this.activeAiChartInstances.length,
+          max: APP_CONFIG.MAX_CHART_INSTANCES
+        });
+      }
     }
+    
+    this.logger.debug('Chart cleanup completed');
   }
 
   private resetCurrentSession(): void {
@@ -2301,8 +2292,10 @@ class VoiceNotesApp {
       }
       
       this.rawTranscription.innerHTML = displayContent || '<span style="color: var(--color-text-tertiary);">Start speaking to see transcription...</span>';
-      
-           
+
+
+
+
       // Scroll to bottom to show latest content
       this.rawTranscription.scrollTop = this.rawTranscription.scrollHeight;
     }
@@ -2587,7 +2580,7 @@ class VoiceNotesApp {
         <h4>Direct Chart Test</h4>
         <p class="chart-description">Testing Chart.js directly without AI service</p>
       </div>
-      <canvas id="${chartId}" width="400" height="200"></canvas>
+      <canvas id="${chartId}"></canvas>
     `;
     
     this.aiChartDisplayArea.appendChild(chartContainer);
@@ -2634,11 +2627,21 @@ class VoiceNotesApp {
         },
         options: {
           responsive: true,
-          maintainAspectRatio: false,
+          maintainAspectRatio: true,
+          aspectRatio: 2,
+          plugins: {
+            legend: {
+              display: true,
+              position: 'top'
+            }
+          },
           scales: {
             y: {
               beginAtZero: true
             }
+          },
+          layout: {
+            padding: 10
           }
         }
       });
@@ -2968,7 +2971,7 @@ class VoiceNotesApp {
         <h4>${chartSuggestion.title || 'AI Generated Chart'}</h4>
         <p class="chart-description">${chartSuggestion.description || ''}</p>
       </div>
-      <canvas id="${chartId}" width="400" height="200"></canvas>
+      <canvas id="${chartId}"></canvas>
     `;
     console.log('🔍 Set chart container innerHTML');
     
@@ -3009,7 +3012,8 @@ class VoiceNotesApp {
       data: chartSuggestion.data,
       options: {
         responsive: true,
-        maintainAspectRatio: false,
+        maintainAspectRatio: true,
+        aspectRatio: 2,
         plugins: {
           title: {
             display: true,
@@ -3019,6 +3023,14 @@ class VoiceNotesApp {
             display: true,
             position: 'top' as const
           }
+        },
+        scales: {
+          y: {
+            beginAtZero: true
+          }
+        },
+        layout: {
+          padding: 10
         }
       }
     };
@@ -3530,13 +3542,16 @@ class VoiceNotesApp {
     console.log('Network status:', this.isOnline ? 'online' : 'offline');
   }
 
-  // Auto-save setup
+  // Auto-save setup with MemoryManager integration
   private setupAutoSave(): void {
+    // Clear existing auto-save interval using MemoryManager
     if (this.autoSaveIntervalId) {
-      clearInterval(this.autoSaveIntervalId);
+      this.memoryManager.clearInterval(this.autoSaveIntervalId);
+      this.autoSaveIntervalId = null;
     }
     
-    this.autoSaveIntervalId = window.setInterval(() => {
+    // Create new auto-save interval and track it with MemoryManager
+    this.autoSaveIntervalId = this.memoryManager.trackInterval(() => {
       if (this.finalTranscript.trim()) {
         this.saveCurrentNote();
         
@@ -3548,10 +3563,15 @@ class VoiceNotesApp {
             if (this.autoSaveIndicator) {
               this.autoSaveIndicator.style.opacity = '0';
             }
-          }, 2000);
+          }, APP_CONFIG.AUTO_SAVE_DISPLAY_DURATION);
         }
       }
-    }, 30000); // Auto-save every 30 seconds
+    }, APP_CONFIG.AUTO_SAVE_INTERVAL);
+    
+    this.logger.debug('Auto-save interval configured', {
+      interval: APP_CONFIG.AUTO_SAVE_INTERVAL,
+      displayDuration: APP_CONFIG.AUTO_SAVE_DISPLAY_DURATION
+    });
   }
 
   // Utility functions for performance
@@ -3602,60 +3622,95 @@ class VoiceNotesApp {
     console.log('Feature status dashboard created');
   }
 
-  // Cleanup method to prevent memory leaks and stop intervals
-  private cleanup(): void {
-    // Clear all intervals
-    if (this.autoSaveIntervalId) {
-      clearInterval(this.autoSaveIntervalId);
-      this.autoSaveIntervalId = null;
-    }
+  // Setup performance optimization with proper memory management
+  private setupPerformanceOptimization(): void {
+    console.log('Setting up performance optimization...');
     
+    // Clear any existing intervals
     if (this.performanceOptimizationInterval) {
-      clearInterval(this.performanceOptimizationInterval);
-      this.performanceOptimizationInterval = null;
+      this.memoryManager.clearInterval(this.performanceOptimizationInterval);
     }
     
-    if (this.timerIntervalId) {
-      clearInterval(this.timerIntervalId);
-      this.timerIntervalId = null;
+    // Set up a single interval for performance optimization
+    const timeoutId = setTimeout(() => {
+      const intervalId = setInterval(() => {
+        this.optimizePriority3Performance();
+        this.optimizePriority4Performance();
+        this.performMemoryCleanup();
+      }, APP_CONFIG.PERFORMANCE.CLEANUP_INTERVAL);
+      
+      this.performanceOptimizationInterval = intervalId;
+      this.memoryManager.trackInterval(intervalId);
+    }, APP_CONFIG.TIMING.PERFORMANCE_OPTIMIZATION_DELAY);
+    
+    this.memoryManager.trackTimeout(timeoutId);
+  }
+
+  private performMemoryCleanup(): void {
+    // Clean up expired cache entries
+    const now = Date.now();
+    for (const [key, entry] of this.responseCache.entries()) {
+      if (now > entry.expiresAt) {
+        this.responseCache.delete(key);
+      }
     }
     
-    // Clear all chart instances
-    this.clearActiveCharts();
+    // Limit cache size
+    if (this.responseCache.size > APP_CONFIG.PERFORMANCE.MAX_CACHE_ENTRIES) {
+      const entries = Array.from(this.responseCache.entries());
+      const toDelete = entries.slice(0, entries.length - APP_CONFIG.PERFORMANCE.MAX_CACHE_ENTRIES);
+      toDelete.forEach(([key]) => this.responseCache.delete(key));
+    }
     
-    console.log('✅ Cleanup completed - all intervals cleared');
+    // Limit performance metrics arrays
+    const maxEntries = APP_CONFIG.PERFORMANCE.MAX_HISTORY_ENTRIES;
+    if (this.performanceMetrics.apiCallDuration.length > maxEntries) {
+      this.performanceMetrics.apiCallDuration = this.performanceMetrics.apiCallDuration.slice(-maxEntries);
+    }
+    if (this.performanceMetrics.transcriptionProcessingTime.length > maxEntries) {
+      this.performanceMetrics.transcriptionProcessingTime = this.performanceMetrics.transcriptionProcessingTime.slice(-maxEntries);
+    }
+    if (this.performanceMetrics.chartRenderingTime.length > maxEntries) {
+      this.performanceMetrics.chartRenderingTime = this.performanceMetrics.chartRenderingTime.slice(-maxEntries);
+    }
+    if (this.performanceMetrics.memoryUsage.length > maxEntries) {
+      this.performanceMetrics.memoryUsage = this.performanceMetrics.memoryUsage.slice(-maxEntries);
+    }
+    
+    this.logger.debug('Memory cleanup performed', this.memoryManager.getStats());
+  }
+
+  private cleanupAudioResources(): void {
+    // Stop audio visualization
+    if (this.waveformDrawingId) {
+      cancelAnimationFrame(this.waveformDrawingId);
+      this.waveformDrawingId = null;
+    }
+    
+    // Clean up audio context
+    if (this.audioContext && this.audioContext.state !== 'closed') {
+      this.audioContext.close().catch(error => {
+        this.logger.error('Failed to close audio context:', error);
+      });
+      this.audioContext = null;
+    }
+    
+    // Clean up analyser node
+    this.analyserNode = null;
+    this.waveformDataArray = null;
+    
+    // Stop media stream tracks
+    if (this.stream) {
+      this.stream.getTracks().forEach(track => {
+        track.stop();
+      });
+      this.stream = null;
+    }
+    
+    // Clean up media recorder
+    if (this.mediaRecorder && this.mediaRecorder.state !== 'inactive') {
+      this.mediaRecorder.stop();
+    }
+    this.mediaRecorder = null;
   }
 }
-
-// Initialize the application when DOM is ready
-document.addEventListener('DOMContentLoaded', () => {
-  console.log('DOM loaded, initializing VoiceNotesApp...');
-  try {
-    const app = new VoiceNotesApp();
-    
-    // Expose app to global scope for debugging and external scripts
-    (window as any).app = app;
-    
-    console.log('VoiceNotesApp initialized successfully');
-    
-    // ⚠️ AUTO-TESTING DISABLED TO PREVENT INFINITE CHART GENERATION
-    // Uncomment the lines below if you want to test chart functionality manually
-    /*
-    // Auto-test chart generation after 2 seconds to allow page to fully load
-    setTimeout(() => {
-      console.log('🧪 Auto-testing chart generation...');
-      app.testChartGeneration();
-      
-      // Also test AI polishing with sample data that should trigger charts
-      setTimeout(() => {
-        app.testAIPolishingWithCharts();
-      }, 3000);
-    }, 2000); // Wait 2 seconds for full initialization
-    */
-    
-    console.log('App available at window.app');
-    console.log('💡 To test charts manually, use: window.app.testChartGeneration() or click the red chart button');
-  } catch (error) {
-    console.error('Failed to initialize VoiceNotesApp:', error);
-  }
-});

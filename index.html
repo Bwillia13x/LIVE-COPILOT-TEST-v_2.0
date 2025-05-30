@@ -20,11 +20,8 @@
       }
     </script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.9/dist/chart.min.js"></script>
-    <script src="chart-test-runner.js"></script>
-    <script src="manual-chart-trigger.js"></script>
-    <script src="chart-canvas-fix-test.js"></script>
-    <script src="final-canvas-fix-validation.js"></script>
-    <script type="module" src="comprehensive-fix.js"></script>
+    <!-- Load the refactored modular application -->
+    <script type="module" src="main.ts"></script>
   </head>
   <body>
     <div class="app-container">
@@ -269,11 +266,37 @@
                 <div class="voice-activity-bar"></div>
               </div>
             </div>
+            <!-- Performance Monitoring Section -->
+            <div id="performanceIndicator" class="performance-indicator" style="display: none">
+              <div class="performance-label">Performance:</div>
+              <div class="performance-stats">
+                <div class="stat-item">
+                  <span class="stat-label">Memory:</span>
+                  <span id="memoryUsage" class="stat-value">-- MB</span>
+                </div>
+                <div class="stat-item">
+                  <span class="stat-label">CPU:</span>
+                  <span id="cpuUsage" class="stat-value">--%</span>
+                </div>
+                <div class="stat-item">
+                  <span class="stat-label">FPS:</span>
+                  <span id="frameRate" class="stat-value">--</span>
+                </div>
+              </div>
+              <div class="performance-alert" id="performanceAlert" style="display: none">
+                <i class="fas fa-exclamation-triangle"></i>
+                <span id="performanceAlertText">Performance warning</span>
+              </div>
+            </div>
           </div>
 
           <div class="recording-controls">
             <button class="action-button" id="analyticsButton" title="Show Analytics">
               <i class="fas fa-chart-line"></i>
+            </button>
+
+            <button class="action-button" id="performanceToggleButton" title="Toggle Performance Monitor">
+              <i class="fas fa-tachometer-alt"></i>
             </button>
 
             <button class="action-button" id="themeToggleButton" title="Toggle Theme">
@@ -721,7 +744,5 @@
     </script>
     <!-- Enterprise Test Suite -->
     <script src="enterprise-test-suite.js" type="module"></script>
-    <!-- Main TypeScript entry point (handled by Vite) -->
-    <script type="module" src="/index.tsx"></script>
   </body>
 </html>

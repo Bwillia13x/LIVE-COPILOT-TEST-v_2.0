@@ -12,9 +12,16 @@ const mockChartInstance = {
   data: {},
 };
 jest.mock('chart.js', () => ({
-  ...jest.requireActual('chart.js'), // import and retain default behavior
+  // ...jest.requireActual('chart.js'), // Try removing or being more specific
   Chart: jest.fn().mockImplementation(() => mockChartInstance),
-  // Mock any other specific Chart.js named exports if needed by ChartManager's top-level registration
+  // Ensure the static 'register' method is also mocked on the Chart constructor mock
+  // And that Chart itself is what's returned for the 'Chart' named export.
+  // The mock should look like: moduleFactory['Chart'] = MockedChartConstructor
+  // And MockedChartConstructor.register should be a jest.fn()
+
+  // Let's construct a more deliberate mock for Chart
+  // Keep other named exports if they are directly used by ChartManager static init,
+  // otherwise they might not need to be explicitly mocked if Chart.register handles them.
   LineController: jest.fn(),
   LineElement: jest.fn(),
   PointElement: jest.fn(),
@@ -27,7 +34,52 @@ jest.mock('chart.js', () => ({
   Legend: jest.fn(),
   Tooltip: jest.fn(),
   Title: jest.fn(),
+  // Add other necessary components if ChartManager.ts imports them directly for Chart.register
 }));
+
+// To fix the "Cannot access 'ActualChartJs' before initialization" error,
+// we need to ensure that ActualChartJs is defined before the jest.mock factory function is executed.
+// The module factory function in jest.mock gets hoisted.
+// A cleaner way to do this is to define all parts of the mock and then call jest.mock once.
+
+// Get the actual Chart.js module
+// const ActualChartJs = jest.requireActual('chart.js'); // Define inside mock factory if needed
+
+// Create our mock constructor with the static 'register' method
+// const MockedChartConstructor = jest.fn(() => mockChartInstance); // Define inside mock factory
+// MockedChartConstructor.register = jest.fn();
+// If other static methods from Chart are needed, they can be added here:
+// MockedChartConstructor.defaults = ActualChartJs.Chart.defaults; // For example
+
+// Now, mock 'chart.js'. This will be hoisted.
+jest.mock('chart.js', () => {
+  // Define MockedChartConstructor and its methods *inside* the factory
+  const LocalMockedChartConstructor = jest.fn(() => ({ // Return a NEW object each time
+    ...mockChartInstance, // Spread properties of the global mockInstance
+    // If specific instances need their own jest.fn() spies, create them here:
+    destroy: jest.fn(),
+    update: jest.fn(),
+    resize: jest.fn(),
+    // data will be part of ...mockChartInstance, can be overridden if needed
+  }));
+  LocalMockedChartConstructor.register = jest.fn();
+  // If you need to reference parts of the actual Chart.js for defaults or other static props:
+  // const OriginalChart = jest.requireActual('chart.js').Chart;
+  // LocalMockedChartConstructor.defaults = OriginalChart.defaults;
+
+  const originalChartJs = jest.requireActual('chart.js');
+
+  return {
+    ...originalChartJs, // Spread all actual named exports
+    Chart: LocalMockedChartConstructor, // Override the 'Chart' export with our local mock
+    // Explicitly list other named exports that ChartManager.ts might be importing at the top level,
+    // ensuring they are also mocked or actual as needed.
+    // The previous mock already listed these, so they should be covered if originalChartJs has them.
+    // LineController, PointElement, etc. are part of originalChartJs.
+    // Ensure all imported components in ChartManager.ts are available here
+    // e.g. LineController: originalChartJs.LineController, (or jest.fn() if needs mocking)
+  };
+});
 
 // Mock ErrorHandler
 jest.mock('../utils', () => ({
@@ -44,7 +96,9 @@ describe('ChartManager', () => {
   beforeEach(() => {
     chartManager = new ChartManager();
     mockCanvas = document.createElement('canvas');
-    mockCtx = mockCanvas.getContext('2d')!; // Non-null assertion
+    // Use a simple dummy object for mockCtx. If Chart.js internals need specific context properties,
+    // they would need to be added here. For just checking if getContext returns non-null, this is fine.
+    mockCtx = { canvas: mockCanvas } as CanvasRenderingContext2D;
 
     // Reset mocks before each test
     (ChartJS as jest.Mock).mockClear();
@@ -75,10 +129,14 @@ describe('ChartManager', () => {
     it('should create and store a new chart', () => {
       const chart = chartManager.createChart(canvasId, chartConfig as any); // Use 'as any' for simplified config
       expect(document.getElementById).toHaveBeenCalledWith(canvasId);
-      expect(mockCanvas.getContext).toHaveBeenCalledWith('2d');
+      // mockCanvas.getContext is not a spy. HTMLCanvasElement.prototype.getContext is.
+      expect(HTMLCanvasElement.prototype.getContext).toHaveBeenCalledWith('2d');
       expect(ChartJS).toHaveBeenCalledWith(mockCtx, expect.objectContaining({ type: 'bar' }));
-      expect((chartManager as any).charts.get(canvasId)).toBe(mockChartInstance);
-      expect(chart).toBe(mockChartInstance);
+      // Check that the chart in the map is the one returned by createChart
+      expect((chartManager as any).charts.get(canvasId)).toBe(chart);
+      // Check that the returned chart is truthy (not null) and has expected mocked methods
+      expect(chart).toBeTruthy();
+      expect(chart!.destroy).toBeDefined(); // Ensure it's one of our new mock instances
     });
 
     it('should destroy an existing chart with the same canvasId before creating a new one', () => {
@@ -149,12 +207,13 @@ describe('ChartManager', () => {
 
   describe('destroyChart', () => {
     it('should destroy the chart and remove it from the map', () => {
-      chartManager.createChart('chart1', { type: 'line', data: {} } as any);
+      const chart = chartManager.createChart('chart1', { type: 'line', data: {} } as any);
       expect((chartManager as any).charts.has('chart1')).toBe(true);
+      expect(chart).not.toBeNull(); // Ensure chart was created
 
       chartManager.destroyChart('chart1');
 
-      expect(mockChartInstance.destroy).toHaveBeenCalled();
+      expect(chart!.destroy).toHaveBeenCalled(); // Check destroy on the specific instance
       expect((chartManager as any).charts.has('chart1')).toBe(false);
     });
 
@@ -190,9 +249,10 @@ describe('ChartManager', () => {
 
   describe('getChart', () => {
     it('should return the chart instance if it exists', () => {
-      chartManager.createChart('chart1', { type: 'line', data: {} } as any);
-      const chart = chartManager.getChart('chart1');
-      expect(chart).toBe(mockChartInstance);
+      const createdChart = chartManager.createChart('chart1', { type: 'line', data: {} } as any);
+      const retrievedChart = chartManager.getChart('chart1');
+      expect(retrievedChart).toBe(createdChart); // Should be the same instance
+      expect(retrievedChart).toBeTruthy();
     });
 
     it('should return undefined if the chart does not exist', () => {
@@ -207,12 +267,14 @@ describe('ChartManager', () => {
     const newData = { labels: ['B'], datasets: [{ data: [2] }] };
 
     it('should update chart data and call chart.update()', () => {
-      chartManager.createChart(canvasId, { type: 'bar', data: initialData } as any);
+      const chart = chartManager.createChart(canvasId, { type: 'bar', data: initialData } as any);
+      expect(chart).not.toBeNull(); // Ensure chart created
       const result = chartManager.updateChart(canvasId, newData);
 
       expect(result).toBe(true);
-      expect(mockChartInstance.data).toEqual(newData);
-      expect(mockChartInstance.update).toHaveBeenCalled();
+      // Check data and update on the specific instance
+      expect(chart!.data).toEqual(newData);
+      expect(chart!.update).toHaveBeenCalled();
     });
 
     it('should return false if chart not found', () => {
@@ -222,13 +284,26 @@ describe('ChartManager', () => {
     });
 
     it('should log error and return false if update fails', () => {
-      chartManager.createChart(canvasId, { type: 'bar', data: initialData } as any);
-      mockChartInstance.update.mockImplementationOnce(() => {
+      const createdChart = chartManager.createChart(canvasId, { type: 'bar', data: initialData } as any);
+
+      if (!createdChart) {
+        // If createChart failed, let the assertion catch it.
+        // console.error("ErrorHandler was called with (updateChart test):", (ErrorHandler.logError as jest.Mock).mock.calls); // Removed diagnostic
+        expect(createdChart).not.toBeNull();
+      }
+
+      // Mock the 'update' method on the *specific instance* that was created
+      // This part of the test only runs if createdChart is not null.
+      (createdChart!.update as jest.Mock).mockImplementationOnce(() => {
         throw new Error('Update failed');
       });
+
       const result = chartManager.updateChart(canvasId, newData);
       expect(result).toBe(false);
-      expect(ErrorHandler.logError).toHaveBeenCalledWith(
+      // Now, this error log should be for the update failure.
+      // ErrorHandler.logError would have been called twice if createChart also failed.
+      // We want the *last* call to be for the update failure.
+      expect(ErrorHandler.logError).toHaveBeenLastCalledWith(
           `Failed to update chart: ${canvasId}`,
           expect.any(Error)
       );
@@ -237,9 +312,14 @@ describe('ChartManager', () => {
 
   describe('resizeChart', () => {
     it('should call resize on the specific chart', () => {
-      chartManager.createChart('resizableChart', { type: 'line', data: {} } as any);
+      const chart = chartManager.createChart('resizableChart', { type: 'line', data: {} } as any);
+      if (!chart) {
+        // console.error("ErrorHandler was called with (resizeChart test):", (ErrorHandler.logError as jest.Mock).mock.calls); // Removed diagnostic
+        expect(chart).not.toBeNull(); // Ensure chart is created
+      }
       chartManager.resizeChart('resizableChart');
-      expect(mockChartInstance.resize).toHaveBeenCalled();
+      // Test that the specific chart instance's resize was called
+      expect(chart!.resize).toHaveBeenCalled();
     });
 
     it('should not throw if chart does not exist', () => {

@@ -18,9 +18,9 @@ import {
   Tooltip,
   Title,
 } from 'chart.js';
-import { ChartConfig } from '../types/index.js';
-import { COLORS } from '../constants.js';
-import { ErrorHandler } from '../utils.js';
+import { ChartConfig } from '../types';
+import { COLORS } from '../constants';
+import { ErrorHandler } from '../utils';
 
 // Register Chart.js components
 Chart.register(

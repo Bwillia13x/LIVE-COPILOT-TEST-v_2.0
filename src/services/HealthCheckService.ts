@@ -3,7 +3,7 @@
  * Monitors application health and provides diagnostic information
  */
 
-import { APP_CONFIG, IS_PRODUCTION, getEnvironmentInfo } from '../config/environment.js';
+import { APP_CONFIG, IS_PRODUCTION, getEnvironmentInfo } from '../config/environment';
 
 export interface HealthCheckResult {
   status: 'healthy' | 'warning' | 'unhealthy';
@@ -38,31 +38,32 @@ export class HealthCheckService {
   }
 
   async performHealthCheck(): Promise<HealthCheckResult> {
-    const startTime = performance.now();
+    const perf = typeof performance !== 'undefined' ? performance : null;
+    const startTime = perf ? perf.now() : 0;
     const checks: HealthCheckResult['checks'] = {};
 
     // Browser compatibility check
-    checks.browserCompatibility = await this.checkBrowserCompatibility();
+    checks.browserCompatibility = await this.checkBrowserCompatibility(perf);
 
     // API connectivity check
-    checks.apiConnectivity = await this.checkApiConnectivity();
+    checks.apiConnectivity = await this.checkApiConnectivity(perf);
 
     // Local storage check
-    checks.localStorage = this.checkLocalStorage();
+    checks.localStorage = this.checkLocalStorage(perf);
 
     // WebAudio API check
-    checks.webAudio = this.checkWebAudio();
+    checks.webAudio = this.checkWebAudio(perf);
 
     // Service worker check (if applicable)
     if (IS_PRODUCTION) {
-      checks.serviceWorker = this.checkServiceWorker();
+      checks.serviceWorker = this.checkServiceWorker(perf);
     }
 
     // Performance check
-    checks.performance = this.checkPerformance();
+    checks.performance = this.checkPerformance(perf);
 
     // Memory usage check
-    checks.memory = this.checkMemoryUsage();
+    checks.memory = this.checkMemoryUsage(perf);
 
     // Determine overall status
     const failedChecks = Object.values(checks).filter(check => check.status === 'fail').length;
@@ -75,7 +76,7 @@ export class HealthCheckService {
       status = 'warning';
     }
 
-    const duration = performance.now() - startTime;
+    const duration = perf ? perf.now() - startTime : 0; // This was already correct
 
     return {
       status,
@@ -89,8 +90,8 @@ export class HealthCheckService {
     };
   }
 
-  private async checkBrowserCompatibility(): Promise<HealthCheckResult['checks'][string]> {
-    const start = performance.now();
+  private async checkBrowserCompatibility(perf: Performance | null): Promise<HealthCheckResult['checks'][string]> {
+    const start = perf ? perf.now() : 0;
     const required = [
       'fetch',
       'Promise',
@@ -119,7 +120,7 @@ export class HealthCheckService {
       }
     });
 
-    const duration = performance.now() - start;
+    const duration = perf ? perf.now() - start : 0;
 
     if (missing.length > 0) {
       return {
@@ -136,8 +137,8 @@ export class HealthCheckService {
     };
   }
 
-  private async checkApiConnectivity(): Promise<HealthCheckResult['checks'][string]> {
-    const start = performance.now();
+  private async checkApiConnectivity(perf: Performance | null): Promise<HealthCheckResult['checks'][string]> {
+    const start = perf ? perf.now() : 0;
 
     try {
       // Simple connectivity test - just check if we can make a basic request
@@ -147,7 +148,7 @@ export class HealthCheckService {
         signal: AbortSignal.timeout(5000)
       });
 
-      const duration = performance.now() - start;
+      const duration = perf ? perf.now() - start : 0;
 
       return {
         status: 'pass',
@@ -155,7 +156,7 @@ export class HealthCheckService {
         duration
       };
     } catch (error) {
-      const duration = performance.now() - start;
+      const duration = perf ? perf.now() - start : 0;
       return {
         status: 'warn',
         message: `Network connectivity issue: ${error instanceof Error ? error.message : 'Unknown error'}`,
@@ -164,8 +165,8 @@ export class HealthCheckService {
     }
   }
 
-  private checkLocalStorage(): HealthCheckResult['checks'][string] {
-    const start = performance.now();
+  private checkLocalStorage(perf: Performance | null): HealthCheckResult['checks'][string] {
+    const start = perf ? perf.now() : 0;
 
     try {
       const testKey = '__health_check_test__';
@@ -175,7 +176,7 @@ export class HealthCheckService {
       const retrieved = localStorage.getItem(testKey);
       localStorage.removeItem(testKey);
 
-      const duration = performance.now() - start;
+      const duration = perf ? perf.now() - start : 0;
 
       if (retrieved !== testValue) {
         return {
@@ -191,7 +192,7 @@ export class HealthCheckService {
         duration
       };
     } catch (error) {
-      const duration = performance.now() - start;
+      const duration = perf ? perf.now() - start : 0;
       return {
         status: 'fail',
         message: `localStorage error: ${error instanceof Error ? error.message : 'Unknown error'}`,
@@ -200,8 +201,8 @@ export class HealthCheckService {
     }
   }
 
-  private checkWebAudio(): HealthCheckResult['checks'][string] {
-    const start = performance.now();
+  private checkWebAudio(perf: Performance | null): HealthCheckResult['checks'][string] {
+    const start = perf ? perf.now() : 0;
 
     try {
       const AudioContext = window.AudioContext || (window as any).webkitAudioContext;
@@ -209,7 +210,7 @@ export class HealthCheckService {
         return {
           status: 'fail',
           message: 'WebAudio API not available',
-          duration: performance.now() - start
+          duration: perf ? perf.now() - start : 0
         };
       }
 
@@ -217,7 +218,7 @@ export class HealthCheckService {
       const context = new AudioContext();
       context.close();
 
-      const duration = performance.now() - start;
+      const duration = perf ? perf.now() - start : 0;
 
       return {
         status: 'pass',
@@ -225,7 +226,7 @@ export class HealthCheckService {
         duration
       };
     } catch (error) {
-      const duration = performance.now() - start;
+      const duration = perf ? perf.now() - start : 0;
       return {
         status: 'warn',
         message: `WebAudio API issue: ${error instanceof Error ? error.message : 'Unknown error'}`,
@@ -234,20 +235,20 @@ export class HealthCheckService {
     }
   }
 
-  private checkServiceWorker(): HealthCheckResult['checks'][string] {
-    const start = performance.now();
+  private checkServiceWorker(perf: Performance | null): HealthCheckResult['checks'][string] {
+    const start = perf ? perf.now() : 0;
 
-    if (!('serviceWorker' in navigator)) {
+    if (!navigator || !('serviceWorker' in navigator) || !navigator.serviceWorker) { // Added null check for navigator.serviceWorker
       return {
         status: 'warn',
         message: 'Service Worker not supported',
-        duration: performance.now() - start
+        duration: perf ? perf.now() - start : 0
       };
     }
 
     // Check if service worker is registered and active
     const registration = navigator.serviceWorker.controller;
-    const duration = performance.now() - start;
+    const duration = perf ? perf.now() - start : 0;
 
     if (!registration) {
       return {
@@ -264,35 +265,36 @@ export class HealthCheckService {
     };
   }
 
-  private checkPerformance(): HealthCheckResult['checks'][string] {
-    const start = performance.now();
+  private checkPerformance(perf: Performance | null): HealthCheckResult['checks'][string] {
+    const start = perf ? perf.now() : 0;
 
     try {
       // Check if performance API is available
-      if (!performance || !performance.now) {
+      if (!perf || !perf.now) { // Use passed perf
         return {
           status: 'warn',
           message: 'Performance API not available',
-          duration: 0
+          duration: 0 // Cannot calculate duration if perf.now is not available
         };
       }
 
       // Check memory usage if available
-      const memory = (performance as any).memory;
+      const memory = (perf as any).memory; // Use passed perf
       if (memory) {
         const usedMemory = memory.usedJSHeapSize / 1024 / 1024; // MB
-        const totalMemory = memory.totalJSHeapSize / 1024 / 1024; // MB
+        // totalMemory is not used in this check's logic, can be removed if not needed elsewhere
+        // const totalMemory = memory.totalJSHeapSize / 1024 / 1024;
         
         if (usedMemory > 100) { // More than 100MB
           return {
             status: 'warn',
             message: `High memory usage: ${usedMemory.toFixed(2)}MB`,
-            duration: performance.now() - start
+            duration: perf.now() - start
           };
         }
       }
 
-      const duration = performance.now() - start;
+      const duration = perf.now() - start;
 
       return {
         status: 'pass',
@@ -300,7 +302,7 @@ export class HealthCheckService {
         duration
       };
     } catch (error) {
-      const duration = performance.now() - start;
+      const duration = perf ? perf.now() - start : 0;
       return {
         status: 'warn',
         message: `Performance check error: ${error instanceof Error ? error.message : 'Unknown error'}`,
@@ -309,37 +311,38 @@ export class HealthCheckService {
     }
   }
 
-  private checkMemoryUsage(): HealthCheckResult['checks'][string] {
-    const start = performance.now();
+  private checkMemoryUsage(perf: Performance | null): HealthCheckResult['checks'][string] {
+    const start = perf ? perf.now() : 0;
 
     try {
-      const memory = (performance as any).memory;
+      const memory = (perf as any)?.memory; // Use passed perf, and optional chaining for memory
       
       if (!memory) {
         return {
           status: 'warn',
           message: 'Memory usage information not available',
-          duration: performance.now() - start
+          duration: perf ? perf.now() - start : 0
         };
       }
 
       const used = memory.usedJSHeapSize / 1024 / 1024; // MB
-      const total = memory.totalJSHeapSize / 1024 / 1024; // MB
+      // total is not used in logic, can remove
+      // const total = memory.totalJSHeapSize / 1024 / 1024; // MB
       const limit = memory.jsHeapSizeLimit / 1024 / 1024; // MB
 
       const usage = (used / limit) * 100;
-      const duration = performance.now() - start;
+      const duration = perf ? perf.now() - start : 0;
 
-      if (usage > 80) {
-        return {
-          status: 'warn',
-          message: `High memory usage: ${usage.toFixed(1)}% (${used.toFixed(2)}MB)`,
-          duration
-        };
-      } else if (usage > 95) {
+      if (usage > 95) { // Check for critical first
         return {
           status: 'fail',
           message: `Critical memory usage: ${usage.toFixed(1)}% (${used.toFixed(2)}MB)`,
+          duration
+        };
+      } else if (usage > 80) { // Then check for warning
+        return {
+          status: 'warn',
+          message: `High memory usage: ${usage.toFixed(1)}% (${used.toFixed(2)}MB)`,
           duration
         };
       }
@@ -350,7 +353,7 @@ export class HealthCheckService {
         duration
       };
     } catch (error) {
-      const duration = performance.now() - start;
+      const duration = perf ? perf.now() - start : 0; // Use guarded perf here
       return {
         status: 'warn',
         message: `Memory check error: ${error instanceof Error ? error.message : 'Unknown error'}`,

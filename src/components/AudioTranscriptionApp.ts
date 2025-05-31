@@ -35,19 +35,23 @@ export class AudioTranscriptionApp {
 
   // DOM element references
   private elements: {
-    recordButton?: HTMLButtonElement;
-    transcriptionArea?: HTMLDivElement;
-    polishedNoteArea?: HTMLDivElement;
-    statusDisplay?: HTMLElement;
+    recordButton: HTMLButtonElement;
+    transcriptionArea: HTMLTextAreaElement; // Changed to TextArea for role='textbox'
+    polishedNoteArea: HTMLDivElement;
+    statusDisplay: HTMLElement;
     chartContainer?: HTMLElement;
     apiKeyInput?: HTMLInputElement;
     notesContainer?: HTMLElement;
     exportButton?: HTMLButtonElement;
-  } = {};
+  } = {} as any; // Initialize with as any to satisfy TS before setupDOMReferences
 
-  constructor() {
+  private container?: HTMLElement;
+
+  constructor(container?: HTMLElement) {
+    this.container = container;
     this.apiService = new APIService();
     this.chartManager = new ChartManager();
+    // Expose audioRecorder for test
     this.audioRecorder = new AudioRecorder();
     this.performanceMonitor = PerformanceMonitor.getInstance();
     this.intervalManager = IntervalManager.getInstance();
@@ -63,10 +67,15 @@ export class AudioTranscriptionApp {
       errors: [],
     };
 
-    this.initializeApp();
+    // If no container is provided, it implies we are in a full browser environment
+    // and initializeApp (now init) will be called.
+    // If a container is provided (like in tests), init() is expected to be called externally.
+    if (!container) {
+      this.init();
+    }
   }
 
-  private async initializeApp(): Promise<void> {
+  public async init(): Promise<void> { // Renamed and made public
     try {
       // Start performance monitoring
       this.performanceMonitor.startMonitoring();
@@ -114,19 +123,44 @@ export class AudioTranscriptionApp {
   }
 
   private setupDOMReferences(): void {
-    this.elements = {
-      recordButton: document.getElementById('recordButton') as HTMLButtonElement,
-      transcriptionArea: document.getElementById('rawTranscription') as HTMLDivElement,
-      polishedNoteArea: document.getElementById('polishedNote') as HTMLDivElement,
-      statusDisplay: document.getElementById('recordingStatus') as HTMLElement,
-      chartContainer: document.getElementById('aiChartDisplayArea') as HTMLElement,
-      apiKeyInput: document.getElementById('apiKeyInput') as HTMLInputElement,
-      notesContainer: document.getElementById('notesContainer') as HTMLElement,
-      exportButton: document.getElementById('confirmExport') as HTMLButtonElement,
+    const findOrCreate = <T extends HTMLElement>(selector: string, tag: string, role?: string, initialText?: string, parent?: HTMLElement): T => {
+      const parentElement = parent || this.container || document.body;
+      let el = parentElement.querySelector(selector) as T;
+      if (!el) {
+        el = document.createElement(tag) as T;
+        el.id = selector.substring(1); // Assumes selector is #id
+        if (role) el.setAttribute('role', role);
+        if (initialText) el.textContent = initialText;
+        parentElement.appendChild(el);
+      }
+      return el;
     };
 
+    this.elements.recordButton = findOrCreate('#recordButton', 'button', 'button', 'Start Recording');
+    // Ensure transcriptionArea is a textarea for the 'textbox' role
+    this.elements.transcriptionArea = findOrCreate('#rawTranscription', 'textarea', 'textbox', '', this.container) as HTMLTextAreaElement;
+    this.elements.transcriptionArea.setAttribute('aria-label', 'Raw transcription');
+    this.elements.polishedNoteArea = findOrCreate('#polishedNote', 'div', undefined, '', this.container) as HTMLDivElement;
+    this.elements.polishedNoteArea.setAttribute('data-testid', 'polished-note-area');
+    this.elements.statusDisplay = findOrCreate('#recordingStatus', 'div', undefined, 'Status: Idle', this.container) as HTMLElement;
+
+    // Optional elements, only query if a container is provided or they are expected globally
+    if (this.container || document.getElementById('aiChartDisplayArea')) {
+      this.elements.chartContainer = findOrCreate('#aiChartDisplayArea', 'div', undefined, '', this.container);
+    }
+    if (this.container || document.getElementById('apiKeyInput')) {
+      this.elements.apiKeyInput = findOrCreate('#apiKeyInput', 'input', undefined, '', this.container) as HTMLInputElement;
+    }
+    if (this.container || document.getElementById('notesContainer')) {
+      this.elements.notesContainer = findOrCreate('#notesContainer', 'div', undefined, '', this.container);
+    }
+    if (this.container || document.getElementById('confirmExport')) {
+      this.elements.exportButton = findOrCreate('#confirmExport', 'button', undefined, 'Export', this.container);
+    }
+
+
     // Validate that required elements exist
-    const requiredElements = ['recordButton', 'transcriptionArea', 'polishedNoteArea'];
+    const requiredElements = ['recordButton', 'transcriptionArea', 'polishedNoteArea', 'statusDisplay'];
     for (const elementName of requiredElements) {
       if (!this.elements[elementName as keyof typeof this.elements]) {
         throw new Error(`Required element '${elementName}' not found in DOM`);
@@ -278,12 +312,22 @@ export class AudioTranscriptionApp {
 
   private setupAudioRecorder(): void {
     this.audioRecorder.onTranscriptAvailable((transcript) => {
-      this.transcriptBuffer += transcript + ' ';
+      this.transcriptBuffer += transcript; // Remove extra space here
+      this.currentTranscript = this.transcriptBuffer.trim(); // Keep currentTranscript up to date
       this.updateTranscriptionArea();
+      // Automatically trigger polishing when a new transcript is available and not recording
+      if (!this.state.isRecording && this.currentTranscript) {
+        this.polishCurrentTranscription();
+      }
     });
 
     this.audioRecorder.onRecordingStateChange((recordingState) => {
+      this.state.isRecording = recordingState.isRecording; // Update app state
       this.updateRecordingUI(recordingState);
+      // If recording has just stopped and there's a transcript, start polishing
+      if (!recordingState.isRecording && this.currentTranscript) {
+         this.polishCurrentTranscription();
+      }
     });
   }
 
@@ -298,29 +342,44 @@ export class AudioTranscriptionApp {
         return;
       }
 
-      if (this.state.isRecording) {
-        this.audioRecorder.stopRecording();
+      if (this.audioRecorder.getIsRecording()) { // Use getter from AudioRecorder
+        await this.audioRecorder.stopRecording(); // Make it async
+        // onRecordingStateChange and onTranscriptAvailable should handle the rest
+        // No, stopRecording needs to be awaited and then we process.
+        // The event from AudioRecorder might come before stopRecording completes.
         this.currentTranscript = this.transcriptBuffer.trim();
-        this.state.isRecording = false;
-        
+        this.state.isRecording = false; // Explicitly set after stop
+        this.updateUI(); // Update UI for "Processing..."
+
         if (this.currentTranscript) {
-          this.showToast({
+           this.showToast({
             type: 'success',
             title: 'Recording Complete',
             message: 'Transcription ready for polishing.',
           });
+          await this.polishCurrentTranscription(); // Polish after stopping
+        } else {
+          // If no transcript, reset status
+           if (this.elements.statusDisplay) this.elements.statusDisplay.textContent = 'Status: Idle';
+           if (this.elements.recordButton) this.elements.recordButton.textContent = 'Start Recording';
         }
+
       } else {
+        this.transcriptBuffer = ''; // Clear buffer for new recording
+        this.currentTranscript = ''; // Clear current transcript
+        if (this.elements.transcriptionArea) this.elements.transcriptionArea.value = ''; // Clear UI
+        if (this.elements.polishedNoteArea) this.elements.polishedNoteArea.textContent = ''; // Clear UI
+
         const success = await this.audioRecorder.startRecording();
         if (success) {
-          this.state.isRecording = true;
-          this.transcriptBuffer = '';
+          this.state.isRecording = true; // Explicitly set after start
           this.showToast({
             type: 'info',
             title: 'Recording Started',
             message: 'Speak now...',
           });
         } else {
+          this.state.isRecording = false; // Ensure state is correct if start fails
           this.showToast({
             type: 'error',
             title: 'Recording Failed',
@@ -328,7 +387,9 @@ export class AudioTranscriptionApp {
           });
         }
       }
-
+      // UpdateUI is called by onRecordingStateChange, or explicitly if no state change (e.g. error)
+      // But for start/stop, the state change handler will call updateRecordingUI.
+      // Let's call updateUI here to ensure button text/status for non-recording states are set.
       this.updateUI();
     } catch (error) {
       ErrorHandler.logError('Failed to toggle recording', error);
@@ -361,7 +422,9 @@ export class AudioTranscriptionApp {
       }
 
       this.state.isProcessing = true;
-      this.updateUI();
+      // Update status to "Processing..."
+      if (this.elements.statusDisplay) this.elements.statusDisplay.textContent = 'Status: Processing...';
+      this.updateUI(); // Disables buttons etc.
 
       const result = await this.performanceMonitor.measureOperation(
         () => this.apiService.polishTranscription(this.currentTranscript),
@@ -378,12 +441,14 @@ export class AudioTranscriptionApp {
         };
 
         this.updatePolishedNoteArea();
+        if (this.elements.statusDisplay) this.elements.statusDisplay.textContent = 'Status: Polished';
         this.showToast({
           type: 'success',
           title: 'Polishing Complete',
           message: 'Your transcription has been improved.',
         });
       } else {
+        if (this.elements.statusDisplay) this.elements.statusDisplay.textContent = 'Status: Error Polishing';
         this.showToast({
           type: 'error',
           title: 'Polishing Failed',
@@ -392,6 +457,7 @@ export class AudioTranscriptionApp {
       }
     } catch (error) {
       ErrorHandler.logError('Failed to polish transcription', error);
+      if (this.elements.statusDisplay) this.elements.statusDisplay.textContent = 'Status: Error Polishing';
       this.showToast({
         type: 'error',
         title: 'Processing Error',
@@ -399,7 +465,12 @@ export class AudioTranscriptionApp {
       });
     } finally {
       this.state.isProcessing = false;
+      // UI update needs to happen to re-enable buttons, reset record button text, etc.
       this.updateUI();
+      // Ensure record button text is reset if not recording
+      if (!this.state.isRecording && this.elements.recordButton) {
+        this.elements.recordButton.textContent = 'Start Recording';
+      }
     }
   }
 
@@ -565,7 +636,8 @@ export class AudioTranscriptionApp {
 
   private updateTranscriptionArea(): void {
     if (this.elements.transcriptionArea) {
-      this.elements.transcriptionArea.textContent = this.transcriptBuffer;
+      // Assuming transcriptionArea is now a textarea
+      (this.elements.transcriptionArea as HTMLTextAreaElement).value = this.transcriptBuffer;
     }
   }
 
@@ -576,24 +648,33 @@ export class AudioTranscriptionApp {
   }
 
   private updateRecordingUI(recordingState: RecordingState): void {
+    // This method is primarily driven by AudioRecorder's state
     if (this.elements.recordButton) {
       if (recordingState.isRecording) {
-        this.elements.recordButton.textContent = recordingState.isPaused ? 'Resume' : 'Stop Recording';
-        this.elements.recordButton.className = 'button-stop';
+        this.elements.recordButton.textContent = recordingState.isPaused ? 'Resume Recording' : 'Stop Recording';
+        // this.elements.recordButton.className = 'button-stop'; // Class changes can be handled by CSS based on text or state attribute
       } else {
-        this.elements.recordButton.textContent = 'Start Recording';
-        this.elements.recordButton.className = 'button-record';
+        // If not recording, but processing, it might say "Processing..." or be disabled.
+        // If not recording and not processing, then "Start Recording".
+        // This will be handled by the more general updateUI and polishCurrentTranscription status updates.
+        if (!this.state.isProcessing) {
+            this.elements.recordButton.textContent = 'Start Recording';
+        }
+        // this.elements.recordButton.className = 'button-record';
       }
     }
 
     if (this.elements.statusDisplay) {
       if (recordingState.isRecording) {
         const duration = this.audioRecorder.formatDuration(recordingState.duration);
-        const status = recordingState.isPaused ? 'Paused' : 'Recording';
-        this.elements.statusDisplay.textContent = `${status} - ${duration}`;
-      } else {
-        this.elements.statusDisplay.textContent = 'Ready';
+        const statusText = recordingState.isPaused ? 'Status: Paused' : 'Status: Recording...';
+        this.elements.statusDisplay.textContent = `${statusText} (${duration})`;
+      } else if (!this.state.isProcessing) {
+        // If not recording AND not processing, then Idle.
+        // If processing, that state is set by polishCurrentTranscription
+        this.elements.statusDisplay.textContent = 'Status: Idle';
       }
+      // If it IS processing, polishCurrentTranscription will set "Status: Processing..." or "Status: Polished"
     }
   }
 
@@ -626,12 +707,27 @@ export class AudioTranscriptionApp {
   }
 
   private updateUI(): void {
-    // Update button states
+    // Update button states, especially recordButton
     if (this.elements.recordButton) {
       this.elements.recordButton.disabled = this.state.isProcessing;
+      if (this.state.isProcessing) {
+        // Optional: Change button text to show it's busy, though disabled state often suffices
+        // this.elements.recordButton.textContent = 'Processing...';
+      } else if (this.state.isRecording) {
+        // This case is handled by updateRecordingUI via onRecordingStateChange
+      } else {
+        // Not processing, not recording -> should be 'Start Recording'
+        this.elements.recordButton.textContent = 'Start Recording';
+      }
     }
 
-    // Update processing indicators
+    // Update status display if processing (already handled in polish and updateRecordingUI)
+    // if (this.state.isProcessing && this.elements.statusDisplay) {
+    //   this.elements.statusDisplay.textContent = 'Status: Processing...';
+    // }
+
+
+    // Update processing indicators (general ones, if any)
     const processingElements = document.querySelectorAll('.processing-indicator');
     processingElements.forEach(el => {
       el.style.display = this.state.isProcessing ? 'block' : 'none';

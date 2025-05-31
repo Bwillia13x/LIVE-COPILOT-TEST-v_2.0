@@ -28,6 +28,9 @@ export class AudioTranscriptionApp {
   private state: AppState;
   private currentTranscript: string = '';
   private transcriptBuffer: string = '';
+  private chartInstances: Record<string, any> = {};
+  private isSampleData: boolean = false;
+  private fullTranscription: string = '';
 
   // Performance tracking
   private autoSaveInterval: number | null = null;
@@ -423,7 +426,7 @@ export class AudioTranscriptionApp {
                   // or handle its potential undefined state.
                   // For now, assuming it's expected to be there or created by createChart.
                   await this.performanceMonitor.measureOperation(
-                    () => this.chartService.createChart(
+                    () => this.chartManager.createChart(
                       `${type}Chart`,
                       specificChartData,
                       this.chartInstances[type] // Pass existing instance or undefined
@@ -894,7 +897,7 @@ export class AudioTranscriptionApp {
               const specificChartData = sampleChartData[type];
               if (specificChartData) {
                 await this.performanceMonitor.measureOperation(
-                  () => this.chartService.createChart(
+                  () => this.chartManager.createChart(
                     `${type}Chart`,
                     specificChartData,
                     this.chartInstances[type] // Pass existing instance or undefined
@@ -909,7 +912,7 @@ export class AudioTranscriptionApp {
           'generateSampleCharts_Overall'
         );
       }
-      this.logMessage('Sample charts generated successfully.');
+      console.log('Sample charts generated successfully.');
     } catch (error) {
       ErrorHandler.logError('Failed to generate sample charts', error);
       this.showToast({
@@ -1034,6 +1037,11 @@ export class AudioTranscriptionApp {
         message: 'Failed to initialize theme system',
       });
     }
+  }
+
+  // TODO: This method seems to be unused. Remove it or implement its usage.
+  private logMessage(message: string): void {
+    console.log(message);
   }
 
   private toggleTheme(): void {

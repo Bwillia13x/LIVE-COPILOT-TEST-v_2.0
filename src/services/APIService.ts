@@ -29,10 +29,11 @@ export class APIService {
       
       if (this.apiKey && this.apiKey.length > 10) { // Basic validation for API key format
         try {
-          this.genAI = new GoogleGenAI(this.apiKey as any);
+          this.genAI = new GoogleGenAI(this.apiKey);
           console.log('🔑 API service initialized with API key');
         } catch (genAIError: any) {
-          console.log('❌ Failed to initialize GoogleGenAI:', genAIError?.message || 'Unknown error');
+          // This case should ideally not be reached if apiKey is validated before this line
+          console.error("API Key is null, cannot initialize GoogleGenAI");
           this.genAI = null;
           this.apiKey = null;
         }
@@ -57,7 +58,8 @@ export class APIService {
         };
       }
 
-      const model = (this.genAI as any).getGenerativeModel({ model: MODEL_NAME });
+      // Assuming getGenerativeModel is a method on GoogleGenAI instance
+      const model = this.genAI.getGenerativeModel({ model: MODEL_NAME });
       const result = await model.generateContent('Test connection');
       
       return {
@@ -78,7 +80,8 @@ export class APIService {
         throw new Error(ERROR_MESSAGES.API.API_KEY_MISSING);
       }
 
-      const model = (this.genAI as any).getGenerativeModel({ model: MODEL_NAME });
+      // genAI is now guaranteed to be non-null
+      const model = this.genAI.getGenerativeModel({ model: MODEL_NAME });
       const prompt = `Please improve the following transcription by:
 1. Correcting grammar and spelling
 2. Adding proper punctuation
@@ -112,7 +115,8 @@ Please provide only the improved text without any additional comments or explana
         throw new Error(ERROR_MESSAGES.API.API_KEY_MISSING);
       }
 
-      const model = (this.genAI as any).getGenerativeModel({ model: MODEL_NAME });
+      // genAI is now guaranteed to be non-null
+      const model = this.genAI.getGenerativeModel({ model: MODEL_NAME });
       
       let prompt = '';
       switch (chartType) {

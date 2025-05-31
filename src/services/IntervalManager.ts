@@ -3,13 +3,13 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import { LoggerService, MemoryManager } from '../utils.js';
+import { LoggerService, MemoryManager } from '../utils';
 
 export interface TimerConfig {
   interval: number;
   immediate?: boolean;
   maxExecutions?: number;
-  onExecute: () => void | Promise<void>;
+  onExecute: (timerId: number) => void | Promise<void>; // Added timerId parameter
   onComplete?: () => void;
   onError?: (error: Error) => void;
 }
@@ -46,37 +46,44 @@ export class IntervalManager {
   }
 
   public createInterval(config: TimerConfig): number {
-    const id = this.nextId++;
+    const internalId = this.nextId++; // Our internal ID for logging/distinction if needed
     const now = Date.now();
 
+    // timerInfo will be mutated with the browser's intervalId later
     const timerInfo: TimerInfo = {
-      id,
+      id: 0, // Placeholder, will be updated to browserIntervalId
       type: 'interval',
       config,
       executionCount: 0,
       created: now,
-      isActive: true,
+      isActive: true
     };
 
     // Create the actual interval
     const executeFunction = async () => {
+      // Check isActive at the very beginning. If cleared, especially by maxExecutions, do nothing.
       if (!timerInfo.isActive) return;
 
       try {
-        timerInfo.executionCount++;
+        timerInfo.executionCount++; // Increment before execution for accurate count
         timerInfo.lastExecution = Date.now();
         
-        await config.onExecute();
+        await config.onExecute(timerInfo.id); // Pass browserIntervalId (timerInfo.id)
 
-        // Check if we've reached max executions
-        if (config.maxExecutions && timerInfo.executionCount >= config.maxExecutions) {
-          this.clearInterval(id);
+        // Check if we've reached max executions AFTER current execution
+        // Only proceed if timer is still active (not cleared by onExecute itself)
+        if (timerInfo.isActive && config.maxExecutions && timerInfo.executionCount >= config.maxExecutions) {
+          // Pass browserIntervalId (which is timerInfo.id) to clearInterval
+          this.clearInterval(timerInfo.id); // This will set timerInfo.isActive = false
           if (config.onComplete) {
             config.onComplete();
           }
+          // No return needed here, as the isActive check at the top will handle future calls
+          // if any were queued before clearInterval fully takes effect with fake timers.
         }
       } catch (error) {
-        this.logger.error(`Timer ${id} execution failed:`, error);
+        // Use timerInfo.id (browserId) or internalId for logging
+        this.logger.error(`Timer ${timerInfo.id} (internal: ${internalId}) execution failed:`, error);
         if (config.onError) {
           config.onError(error instanceof Error ? error : new Error(String(error)));
         }
@@ -89,27 +96,28 @@ export class IntervalManager {
     }
 
     // Create the interval
-    const intervalId = window.setInterval(executeFunction, config.interval);
+    const browserIntervalId = window.setInterval(executeFunction, config.interval);
+    timerInfo.id = browserIntervalId; // Update timerInfo with the actual browser ID
     
     // Track with memory manager
-    this.memoryManager.trackInterval(intervalId);
+    this.memoryManager.trackInterval(browserIntervalId);
     
-    // Store timer info with the browser interval ID
-    this.timers.set(intervalId, { ...timerInfo, id: intervalId });
+    // Store the direct reference to timerInfo, keyed by browserIntervalId
+    this.timers.set(browserIntervalId, timerInfo);
 
-    this.logger.debug(`Created interval ${intervalId} with ${config.interval}ms interval`);
-    return intervalId;
+    this.logger.debug(`Created interval (internal: ${internalId}, browser: ${browserIntervalId}) with ${config.interval}ms interval`);
+    return browserIntervalId;
   }
 
   public createTimeout(delay: number, callback: () => void | Promise<void>): number {
-    const id = this.nextId++;
+    const internalId = this.nextId++;
     const now = Date.now();
 
     const timerInfo: TimerInfo = {
-      id,
+      id: 0, // Placeholder, will be updated to browserTimeoutId
       type: 'timeout',
       config: {
-        interval: delay,
+        interval: delay, // delay is used as interval for consistency in TimerConfig
         maxExecutions: 1,
         onExecute: callback,
       },
@@ -119,7 +127,7 @@ export class IntervalManager {
     };
 
     const executeFunction = async () => {
-      if (!timerInfo.isActive) return;
+      if (!timerInfo.isActive) return; // This timerInfo is from the closure
 
       try {
         timerInfo.executionCount++;
@@ -127,26 +135,29 @@ export class IntervalManager {
         
         await callback();
         
-        // Remove from tracking after execution
-        this.timers.delete(timeoutId);
       } catch (error) {
-        this.logger.error(`Timeout ${id} execution failed:`, error);
+        this.logger.error(`Timeout ${timerInfo.id} (internal: ${internalId}) execution failed:`, error);
+      } finally {
+        // Ensure state is updated and timer is removed
+        timerInfo.isActive = false;
+        this.timers.delete(timerInfo.id); // Use browserTimeoutId (timerInfo.id)
       }
     };
 
-    const timeoutId = window.setTimeout(executeFunction, delay);
+    const browserTimeoutId = window.setTimeout(executeFunction, delay);
+    timerInfo.id = browserTimeoutId; // Update timerInfo with the actual browser ID
     
     // Track with memory manager
-    this.memoryManager.trackTimeout(timeoutId);
+    this.memoryManager.trackTimeout(browserTimeoutId);
     
-    // Store timer info with the browser timeout ID
-    this.timers.set(timeoutId, { ...timerInfo, id: timeoutId });
+    // Store the direct reference to timerInfo, keyed by browserTimeoutId
+    this.timers.set(browserTimeoutId, timerInfo);
 
-    this.logger.debug(`Created timeout ${timeoutId} with ${delay}ms delay`);
-    return timeoutId;
+    this.logger.debug(`Created timeout (internal: ${internalId}, browser: ${browserTimeoutId}) with ${delay}ms delay`);
+    return browserTimeoutId;
   }
 
-  public clearInterval(intervalId: number): boolean {
+  public clearInterval(intervalId: number): boolean { // intervalId here is browserIntervalId
     const timerInfo = this.timers.get(intervalId);
     if (!timerInfo || timerInfo.type !== 'interval') {
       return false;
@@ -216,7 +227,7 @@ export class IntervalManager {
   public createRecurringTask(
     taskName: string,
     interval: number,
-    task: () => void | Promise<void>,
+    task: (timerId?: number) => void | Promise<void>, // Task might need timerId if it self-clears
     options: {
       immediate?: boolean;
       maxExecutions?: number;
@@ -267,31 +278,51 @@ export class IntervalManager {
     }
   ): number {
     let retryCount = 0;
+    let taskSucceeded = false;
     
-    return this.createInterval({
+    // Capture the interval ID so it can be cleared by its own onExecute
+    let intervalIdForRetry: number | null = null;
+
+    const intervalConfig: TimerConfig = {
       interval: options.interval,
       immediate: true,
-      onExecute: async () => {
+      onExecute: async (timerId) => { // onExecute now receives timerId
+        if (taskSucceeded) return;
+
         retryCount++;
-        const success = await task();
+        const success = await task(timerId); // Pass timerId to task if it needs it
         
         if (success) {
+          taskSucceeded = true;
           this.logger.info(`Retry task "${taskName}" succeeded after ${retryCount} attempts`);
-          if (options.onSuccess) {
-            options.onSuccess();
-          }
-          return; // This will be handled by maxExecutions
+          if (options.onSuccess) options.onSuccess();
+          this.clearInterval(timerId); // Clear itself using the passed timerId
+          return;
         }
         
+        // This part is only reached if not successful yet (and not cleared)
         if (retryCount >= options.maxRetries) {
           this.logger.warn(`Retry task "${taskName}" failed after ${retryCount} attempts`);
-          if (options.onFailure) {
-            options.onFailure();
-          }
+          if (options.onFailure) options.onFailure();
+          // Explicitly clear the interval here as well to ensure it stops immediately.
+          // maxExecutions would also stop it, but this is more deterministic for runAllTimersAsync.
+          this.clearInterval(timerId);
         }
       },
       maxExecutions: options.maxRetries,
-    });
+      onComplete: () => { // This onComplete is for the interval itself
+        if (!taskSucceeded && retryCount >= options.maxRetries) {
+            // This path is hit if maxRetries is reached and the task had not succeeded.
+            // onFailure should have already been called by onExecute in this case.
+            this.logger.debug(`Retry task "${taskName}" interval completed after max retries (task failed).`);
+        } else if (taskSucceeded) {
+            this.logger.debug(`Retry task "${taskName}" interval completed (task succeeded).`);
+        }
+      }
+    };
+
+    intervalIdForRetry = this.createInterval(intervalConfig);
+    return intervalIdForRetry;
   }
 
   // Performance monitoring helper

@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import { APP_CONFIG, LOG_LEVELS, ENV, type LogLevel } from './constants.js';
+import { APP_CONFIG, LOG_LEVELS, ENV, type LogLevel } from './constants';
 
 /**
  * Centralized logging service with different levels and environment-aware output

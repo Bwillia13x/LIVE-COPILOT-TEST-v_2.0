@@ -31,9 +31,10 @@ export interface StoredNote {
   id: string;
   rawTranscription: string;
   polishedNote: string;
-  timestamp: number;
+  timestamp: number; // Intended as creation timestamp
   title: string;
   isAutoSaved: boolean;
+  lastModified: number; // Timestamp of the last modification
 }
 
 export interface ExportOptions {

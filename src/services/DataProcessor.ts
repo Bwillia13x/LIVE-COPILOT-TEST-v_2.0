@@ -13,17 +13,31 @@ export class DataProcessor {
     try {
       const notes = this.getAllNotes();
       const existingIndex = notes.findIndex(n => n.id === note.id);
-      
-      const storedNote: StoredNote = {
-        ...note,
-        title: this.generateTitle(note.polishedNote || note.rawTranscription),
-        isAutoSaved: true,
-      };
+      const currentTime = Date.now();
 
       if (existingIndex >= 0) {
-        notes[existingIndex] = storedNote;
+        // Update existing note
+        const originalNote = notes[existingIndex];
+        const updatedNote: StoredNote = {
+          ...originalNote, // Preserve original creation timestamp and other fields
+          rawTranscription: note.rawTranscription,
+          polishedNote: note.polishedNote,
+          // note.timestamp from input is ignored for an existing note, originalNote.timestamp is kept.
+          // title will be regenerated based on new content
+          title: this.generateTitle(note.polishedNote || note.rawTranscription),
+          isAutoSaved: (note as StoredNote).isAutoSaved !== undefined ? (note as StoredNote).isAutoSaved : true, // Preserve incoming isAutoSaved if present, else default
+          lastModified: currentTime,
+        };
+        notes[existingIndex] = updatedNote;
       } else {
-        notes.push(storedNote);
+        // Add new note
+        const newStoredNote: StoredNote = {
+          ...note, // Includes id, rawTranscription, polishedNote, timestamp (creation)
+          title: this.generateTitle(note.polishedNote || note.rawTranscription),
+          isAutoSaved: (note as StoredNote).isAutoSaved !== undefined ? (note as StoredNote).isAutoSaved : true, // Preserve incoming isAutoSaved if present, else default
+          lastModified: currentTime, // For a new note, lastModified is same as creation effectively
+        };
+        notes.push(newStoredNote);
       }
 
       localStorage.setItem(this.STORAGE_KEY, JSON.stringify(notes));
@@ -219,9 +233,20 @@ export class DataProcessor {
   }
 
   private static escapeHtml(text: string): string {
-    const div = document.createElement('div');
-    div.textContent = text;
-    return div.innerHTML;
+    if (typeof text !== 'string') {
+      // Attempt to stringify, or return empty string for truly unstringifiable types
+      try {
+        return String(text);
+      } catch {
+        return '';
+      }
+    }
+    return text
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#39;');
   }
 
   public static searchNotes(query: string): StoredNote[] {

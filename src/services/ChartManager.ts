@@ -18,7 +18,7 @@ import {
   Tooltip,
   Title,
 } from 'chart.js';
-import { ChartConfig } from '../types/index.js';
+import { ChartConfig, BaseChartData, TopicDataInput, SentimentDataInput, WordFrequencyInput, ChartDataset } from '../types/index.js'; // Updated imports
 import { COLORS } from '../constants.js';
 import { ErrorHandler } from '../utils.js';
 
@@ -87,19 +87,22 @@ export class ChartManager {
     }
   }
 
-  public createTopicChart(canvasId: string, data: any, title: string = 'Topic Distribution'): Chart | null {
+  public createTopicChart(canvasId: string, inputData: TopicDataInput, title: string = 'Topic Distribution'): Chart | null {
+    const chartData: BaseChartData = {
+      labels: inputData.labels || [],
+      datasets: [{
+        data: inputData.data || [],
+        backgroundColor: inputData.backgroundColor || COLORS.chartBackgrounds,
+        borderColor: COLORS.chartBorders, // Default border color
+        borderWidth: 2,
+        hoverOffset: 4, // Example of a common dataset property
+      } as ChartDataset], // Type assertion for the dataset object
+    };
+
     const config: ChartConfig = {
       type: 'pie',
-      data: {
-        labels: data.labels || [],
-        datasets: [{
-          data: data.data || [],
-          backgroundColor: data.backgroundColor || COLORS.chartBackgrounds,
-          borderColor: COLORS.chartBorders,
-          borderWidth: 2,
-        }],
-      },
-      options: {
+      data: chartData,
+      options: { // Options can be further typed using Chart.js ChartOptions if needed
         plugins: {
           title: {
             display: true,
@@ -116,19 +119,22 @@ export class ChartManager {
     return this.createChart(canvasId, config);
   }
 
-  public createSentimentChart(canvasId: string, data: any, title: string = 'Sentiment Analysis'): Chart | null {
+  public createSentimentChart(canvasId: string, inputData: SentimentDataInput, title: string = 'Sentiment Analysis'): Chart | null {
+    const chartData: BaseChartData = {
+      labels: inputData.labels || ['Positive', 'Neutral', 'Negative'],
+      datasets: [{
+        data: inputData.data || [0, 0, 0],
+        backgroundColor: inputData.backgroundColor || ['#4CAF50', '#FFC107', '#F44336'],
+        borderColor: COLORS.chartBorders, // Default border color
+        borderWidth: 2,
+        hoverOffset: 4,
+      } as ChartDataset],
+    };
+
     const config: ChartConfig = {
       type: 'doughnut',
-      data: {
-        labels: data.labels || ['Positive', 'Neutral', 'Negative'],
-        datasets: [{
-          data: data.data || [0, 0, 0],
-          backgroundColor: data.backgroundColor || ['#4CAF50', '#FFC107', '#F44336'],
-          borderColor: ['#388E3C', '#F57C00', '#D32F2F'],
-          borderWidth: 2,
-        }],
-      },
-      options: {
+      data: chartData,
+      options: { // Options can be further typed
         plugins: {
           title: {
             display: true,
@@ -146,20 +152,22 @@ export class ChartManager {
     return this.createChart(canvasId, config);
   }
 
-  public createWordFrequencyChart(canvasId: string, data: any, title: string = 'Word Frequency'): Chart | null {
+  public createWordFrequencyChart(canvasId: string, inputData: WordFrequencyInput, title: string = 'Word Frequency'): Chart | null {
+    const chartData: BaseChartData = {
+      labels: inputData.labels || [],
+      datasets: [{
+        label: 'Frequency',
+        data: inputData.data || [],
+        backgroundColor: inputData.backgroundColor || COLORS.chartBackgrounds,
+        borderColor: COLORS.chartBorders,
+        borderWidth: 1,
+      } as ChartDataset],
+    };
+
     const config: ChartConfig = {
       type: 'bar',
-      data: {
-        labels: data.labels || [],
-        datasets: [{
-          label: 'Frequency',
-          data: data.data || [],
-          backgroundColor: data.backgroundColor || COLORS.chartBackgrounds,
-          borderColor: COLORS.chartBorders,
-          borderWidth: 1,
-        }],
-      },
-      options: {
+      data: chartData,
+      options: { // Options can be further typed
         plugins: {
           title: {
             display: true,
@@ -191,21 +199,25 @@ export class ChartManager {
     return this.createChart(canvasId, config);
   }
 
-  public createLineChart(canvasId: string, data: any, title: string = 'Line Chart'): Chart | null {
+  // Assuming data for createLineChart matches BaseChartData structure directly for simplicity,
+  // or a new LineChartInput type could be created if its input structure is different.
+  public createLineChart(canvasId: string, chartData: BaseChartData, title: string = 'Line Chart'): Chart | null {
+    // Ensure datasets have default styling if not provided
+    const styledDatasets = chartData.datasets.map(ds => ({
+      borderColor: COLORS.primary,
+      backgroundColor: COLORS.primaryLight,
+      borderWidth: 2,
+      fill: false,
+      ...ds, // Spread existing dataset properties, potentially overriding defaults
+    }));
+
     const config: ChartConfig = {
       type: 'line',
       data: {
-        labels: data.labels || [],
-        datasets: [{
-          label: data.label || 'Data',
-          data: data.data || [],
-          borderColor: COLORS.primary,
-          backgroundColor: COLORS.primaryLight,
-          borderWidth: 2,
-          fill: false,
-        }],
+        ...chartData,
+        datasets: styledDatasets,
       },
-      options: {
+      options: { // Options can be further typed
         plugins: {
           title: {
             display: true,

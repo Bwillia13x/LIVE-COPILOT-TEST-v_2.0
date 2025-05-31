@@ -4,7 +4,7 @@
  */
 
 import { GoogleGenAI } from '@google/genai';
-import { APIResponse } from '../types/index.js';
+import { APIResponse, AllAIChartData, AIChartDataPayload } from '../types/index.js'; // Added AllAIChartData, AIChartDataPayload
 import { ERROR_MESSAGES } from '../constants.js';
 import { ErrorHandler } from '../utils.js';
 
@@ -108,7 +108,8 @@ Please provide only the improved text without any additional comments or explana
     }
   }
 
-  public async generateChartData(transcription: string, chartType: string): Promise<APIResponse<any>> {
+  // Updated to reflect that chartType 'all' returns AllAIChartData, others return AIChartDataPayload
+  public async generateChartData(transcription: string, chartType: string): Promise<APIResponse<AllAIChartData | AIChartDataPayload>> {
     try {
       if (!this.genAI) {
         throw new Error(ERROR_MESSAGES.API.API_KEY_MISSING);
@@ -117,6 +118,13 @@ Please provide only the improved text without any additional comments or explana
       const model = (this.genAI as any).getGenerativeModel({ model: MODEL_NAME });
       
       let prompt = '';
+      // If chartType is 'all', we might need a different prompt or multiple calls.
+      // For now, this example assumes specific chart type prompts.
+      // The 'all' case in AudioTranscriptionApp will need to iterate or API needs to support it.
+      // Let's assume for now `generateChartData` is called per specific type by the app,
+      // or an 'all' type prompt returns a structured AllAIChartData.
+      // For simplicity, this example will assume chartType is specific for now.
+      // If chartType === 'all', the prompt and parsing logic would be more complex.
       switch (chartType) {
         case 'topics':
           prompt = this.getTopicsPrompt(transcription);
@@ -127,20 +135,32 @@ Please provide only the improved text without any additional comments or explana
         case 'wordFrequency':
           prompt = this.getWordFrequencyPrompt(transcription);
           break;
-        default:
-          throw new Error(`Unknown chart type: ${chartType}`);
+        // Removed 'default' throw to allow for an 'all' type if the prompt/API supports it.
+        // If 'all' is passed, a generic prompt or multi-prompt strategy would be needed.
+        // For now, assume specific types or an 'all' prompt that returns AllAIChartData.
+        default: // Assuming 'all' or other combined types might fall here or have their own prompt
+          if (chartType !== 'all') { // if it's not 'all', then it's unknown
+            throw new Error(`Unsupported chart type for direct generation: ${chartType}. Use 'all' for combined data.`);
+          }
+          // Placeholder for 'all' prompt - this would need to be designed
+          // For this example, we'll assume an 'all' type prompt returns data matching AllAIChartData structure.
+          prompt = `Analyze the following transcription and provide data for topics, sentiment, and word frequency charts. Transcription: "${transcription}". Respond in JSON format with keys "topics", "sentiment", "wordFrequency", each containing respective data.`;
+          break;
       }
 
       const result = await model.generateContent(prompt);
       const response = await result.response;
-      const chartData = JSON.parse(response.text());
+      // Type assertion based on chartType
+      const parsedData = JSON.parse(response.text());
+      const chartData = (chartType === 'all' ? parsedData : parsedData) as AllAIChartData | AIChartDataPayload;
+
 
       return {
         success: true,
         data: chartData
       };
     } catch (error: any) {
-      ErrorHandler.logError(`Chart generation failed for type: ${chartType}`, error);
+      ErrorHandler.logError(`Chart data generation failed for type: ${chartType}`, error);
       return {
         success: false,
         error: `Failed to generate chart data: ${error?.message || 'Unknown error'}`
@@ -179,6 +199,31 @@ The percentages should add up to 100. Transcription: "${transcription}"`;
 }
 
 Transcription: "${transcription}"`;
+  }
+
+  // Added for generateSampleChartData
+  public async generateSampleChartData(): Promise<APIResponse<AllAIChartData>> {
+    // This is a mock implementation. In a real scenario, this might call a different API endpoint
+    // or use predefined sample data.
+    console.log("APIService: Generating sample chart data (mocked)");
+    const sampleData: AllAIChartData = {
+      topics: {
+        labels: ['Technology', 'Health', 'Finance'],
+        data: [40, 30, 30],
+        backgroundColor: ['#FF6384', '#36A2EB', '#FFCE56'],
+      },
+      sentiment: {
+        labels: ['Positive', 'Neutral', 'Negative'],
+        data: [60, 25, 15],
+        backgroundColor: ['#4CAF50', '#FFC107', '#F44336'],
+      },
+      wordFrequency: {
+        labels: ['ai', 'learning', 'data', 'voice', 'app'],
+        data: [25, 22, 18, 15, 12],
+        backgroundColor: ['#FF9900', '#3366CC', '#DC3912', '#109618', '#990099'],
+      }
+    };
+    return { success: true, data: sampleData };
   }
 
   public setApiKey(apiKey: string): void {

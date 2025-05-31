@@ -3,9 +3,10 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import { Note, AppState, ErrorContext } from '../types/index.js'; // Removed ToastOptions
+import { Note, AppState, ErrorContext, AllAIChartData, AIChartDataPayload, TopicDataInput, SentimentDataInput, WordFrequencyInput } from '../types/index.js'; // Added more types
 import { APIService } from '../services/APIService.js';
 import { ChartManager } from '../services/ChartManager.js';
+import { TabNavigator } from './UIComponents/TabNavigator.js'; // Import TabNavigator
 import { DataProcessor } from '../services/DataProcessor.js';
 import { AudioRecorder, RecordingState } from '../services/AudioRecorder.js';
 import { PerformanceMonitor } from '../services/PerformanceMonitor.js';
@@ -25,9 +26,12 @@ export class AudioTranscriptionApp {
   private bundleOptimizer: BundleOptimizer;
   private productionMonitor: ProductionMonitor;
   private healthCheckService: HealthCheckService;
+  private tabNavigator!: TabNavigator; // Added TabNavigator instance
   private state: AppState;
   private currentTranscript: string = '';
   private transcriptBuffer: string = '';
+  private isSampleData: boolean = false; // Added declaration
+  private fullTranscription: string = ''; // Added declaration
 
   // Performance tracking
   private autoSaveInterval: number | null = null;
@@ -81,7 +85,8 @@ export class AudioTranscriptionApp {
       await this.bundleOptimizer.loadCriticalModules();
       
       this.setupDOMReferences();
-      this.setupEventListeners();
+      this.setupEventListeners(); // Call before setupTabNavigator if it relies on DOM elements selected here
+      this.setupTabNavigator(); // Setup TabNavigator
       
       // Initialize theme system
       this.initTheme();
@@ -216,12 +221,7 @@ export class AudioTranscriptionApp {
       this.clearCurrentNote();
     });
 
-    // Tab switching for polished notes (replaces polishButton)
-    const polishedTab = document.querySelector('[data-tab="note"]') as HTMLButtonElement;
-    polishedTab?.addEventListener('click', () => {
-      // Switch to polished tab and trigger polishing if needed
-      this.switchToPolishedTab();
-    });
+    // Tab switching event listeners are now handled by TabNavigator
 
     // Export button
     this.elements.exportButton?.addEventListener('click', () => {
@@ -407,51 +407,69 @@ export class AudioTranscriptionApp {
   }
 
   private async generateCharts(): Promise<void> {
-    if (!this.isSampleData) {
-      this.showLoading('Generating charts...');
-      try {
-        const chartData = await this.performanceMonitor.measureOperation(
-          () => this.apiService.generateChartData(this.fullTranscription),
-          'apiResponseTime',
-          'generateChartData_full'
-        );
-        if (chartData) {
-          await this.performanceMonitor.measureOperation(
-            async () => {
-              const chartTypes = Object.keys(chartData) as (keyof typeof chartData)[];
-              for (const type of chartTypes) {
-                const specificChartData = chartData[type];
-                if (specificChartData) {
-                  // Ensure this.chartInstances[type] is properly initialized if needed
-                  // or handle its potential undefined state.
-                  // For now, assuming it's expected to be there or created by createChart.
-                  await this.performanceMonitor.measureOperation(
-                    () => this.chartService.createChart(
-                      `${type}Chart`,
-                      specificChartData,
-                      this.chartInstances[type] // Pass existing instance or undefined
-                    ),
-                    'chartRenderTime',
-                    `createChart_${type}`
-                  );
-                }
-              }
-            },
-            'chartGeneration',
-            'generateCharts_Overall'
-          );
-        }
-      } catch (error) {
-        ErrorHandler.logError('Failed to generate charts', error);
-        utilShowToast({ // Replaced this.showToast
-          type: 'error',
-          title: 'Chart Generation Failed',
-          message: 'An error occurred while generating charts.',
-        });
-      } finally {
-        this.state.isProcessing = false;
-        this.updateUI();
+    if (this.isSampleData) {
+        console.log("generateCharts called while isSampleData is true; AI chart generation skipped.");
+        this.isSampleData = false; // Reset flag after skipping
+        return;
+    }
+    console.log('Generating charts from AI...');
+    // this.showLoading('Generating charts from AI...'); // showLoading is not defined
+    this.state.isProcessing = true;
+    this.updateUI();
+
+    try {
+      const textToAnalyze = this.fullTranscription || this.currentTranscript;
+      if (!textToAnalyze) {
+          ErrorHandler.logWarning('No transcription data available to generate AI charts.', 'generateCharts');
+          utilShowToast({
+            type: 'warning',
+            title: 'Missing Data',
+            message: 'No transcription data available for AI chart generation.',
+          });
+          this.state.isProcessing = false;
+          this.updateUI();
+          return;
       }
+
+      const chartDataResponse = await this.performanceMonitor.measureOperation(
+        () => this.apiService.generateChartData(textToAnalyze, 'all'),
+        'apiResponseTime',
+        'generateChartData_AI'
+      );
+
+      if (chartDataResponse.success && chartDataResponse.data) {
+        // Data from API is AllAIChartData | AIChartDataPayload. _renderCharts expects AllAIChartData.
+        // If 'all' was requested, it should be AllAIChartData.
+        if (chartDataResponse.data && typeof chartDataResponse.data === 'object' && ('topics' in chartDataResponse.data || 'sentiment' in chartDataResponse.data || 'wordFrequency' in chartDataResponse.data)) {
+            this._renderCharts(chartDataResponse.data as AllAIChartData, 'ai');
+        } else {
+            // Handle cases where a single chart type might have been returned if API supports it
+            // This part may need adjustment based on actual API behavior for non-'all' types
+            ErrorHandler.logWarning('Received single chart data from AI when expecting AllAIChartData.', 'generateCharts');
+            // Example: wrap it if it's a known single type
+            // if (chartDataResponse.data && chartDataResponse.data.labels) { // simplistic check
+            //   this._renderCharts({ [SOME_TYPE_DETERMINED_ELSEWHERE]: chartDataResponse.data as AIChartDataPayload }, 'ai');
+            // }
+             utilShowToast({ type: 'error', title: 'AI Chart Data Error', message: 'Unexpected chart data format from AI.'});
+        }
+      } else {
+        ErrorHandler.logError('Failed to fetch chart data from AI', chartDataResponse.error || 'Unknown error from API');
+        utilShowToast({
+          type: 'error',
+          title: 'AI Chart Data Error',
+          message: chartDataResponse.error || 'Could not retrieve chart data from AI.',
+        });
+      }
+    } catch (error) {
+      ErrorHandler.logError('Error in generateCharts (AI)', error); // Keep this specific
+      utilShowToast({
+        type: 'error',
+        title: 'Chart Generation Failed',
+        message: 'An unexpected error occurred while generating AI charts.',
+      });
+    } finally {
+      this.state.isProcessing = false;
+      this.updateUI();
     }
   }
 
@@ -884,41 +902,33 @@ export class AudioTranscriptionApp {
    * Generate sample charts for demonstration purposes
    */
   private async generateSampleCharts(): Promise<void> {
-    this.isSampleData = true;
-    this.showLoading('Generating sample charts...');
+    this.isSampleData = true; // Sets flag that generateCharts might check
+    // this.showLoading('Generating sample charts...'); // showLoading is not defined
+    console.log('Generating sample charts...');
+    this.state.isProcessing = true;
+    this.updateUI();
+
     try {
-      const sampleChartData = await this.performanceMonitor.measureOperation(
+      const chartDataResponse = await this.performanceMonitor.measureOperation(
         () => this.apiService.generateSampleChartData(),
         'apiResponseTime',
         'generateSampleChartData'
       );
-      if (sampleChartData) {
-        await this.performanceMonitor.measureOperation(
-          async () => {
-            const chartTypes = Object.keys(sampleChartData) as (keyof typeof sampleChartData)[];
-            for (const type of chartTypes) {
-              const specificChartData = sampleChartData[type];
-              if (specificChartData) {
-                await this.performanceMonitor.measureOperation(
-                  () => this.chartService.createChart(
-                    `${type}Chart`,
-                    specificChartData,
-                    this.chartInstances[type] // Pass existing instance or undefined
-                  ),
-                  'chartRenderTime',
-                  `createSampleChart_${type}`
-                );
-              }
-            }
-          },
-          'chartGeneration',
-          'generateSampleCharts_Overall'
-        );
+
+      if (chartDataResponse.success && chartDataResponse.data) {
+        this._renderCharts(chartDataResponse.data, 'sample'); // generateSampleChartData returns AllAIChartData
+        console.log('Sample charts generated and rendered successfully.');
+      } else {
+        ErrorHandler.logError('Failed to fetch sample chart data', chartDataResponse.error || 'Unknown error from API');
+        utilShowToast({
+          type: 'error',
+          title: 'Sample Chart Data Error',
+          message: chartDataResponse.error || 'Could not retrieve sample chart data.',
+        });
       }
-      this.logMessage('Sample charts generated successfully.');
     } catch (error) {
-      ErrorHandler.logError('Failed to generate sample charts', error);
-      utilShowToast({ // Replaced this.showToast
+      ErrorHandler.logError('Error in generateSampleCharts', error); // Keep this specific
+      utilShowToast({
         type: 'error',
         title: 'Chart Generation Failed',
         message: 'Failed to generate sample charts. Please try again.',
@@ -933,78 +943,59 @@ export class AudioTranscriptionApp {
     }
   }
 
-  /**
-   * Switch to the polished tab view
-   */
-  private switchToPolishedTab(): void {
-    try {
-      const tabNav = document.querySelector('.tab-navigation');
-      if (!tabNav) {
-        console.error('Tab navigation not found');
-        return;
-      }
+  // switchToPolishedTab method is removed, its logic is now in handleTabSwitch
 
-      // Find the polished tab button
-      const polishedTabButton = tabNav.querySelector('.tab-button[data-tab="note"]') as HTMLButtonElement;
-      const rawTabButton = tabNav.querySelector('.tab-button[data-tab="raw"]') as HTMLButtonElement;
+  private setupTabNavigator(): void {
+    const tabOptions = {
+      tabNavigationContainerSelector: '.tab-navigation', // Ensure this matches your HTML
+      tabButtonSelector: '.tab-button',
+      activeTabIndicatorSelector: '.active-tab-indicator',
+      initialTabId: 'rawTranscription' // Default to raw tab's ID
+    };
 
-      if (!polishedTabButton) {
-        console.error('Polished tab button not found');
-        return;
-      }
+    this.tabNavigator = new TabNavigator(
+      tabOptions,
+      (tabId: string) => this.handleTabSwitch(tabId),
+      this.productionMonitor // Optional: pass the production monitor instance
+    );
+    // Ensure the initial tab content is displayed correctly by calling handleTabSwitch
+    // if TabNavigator's constructor doesn't call the onTabSwitch callback for the initial tab.
+    // Based on current TabNavigator, activateTab(..., true) does not call the main callback.
+    // So, we call it manually here for the initial setup.
+    if (tabOptions.initialTabId) {
+        this.handleTabSwitch(tabOptions.initialTabId, true);
+    } else {
+        // Fallback if no initialTabId, e.g., activate first tab's content
+        const firstButton = document.querySelector(tabOptions.tabButtonSelector) as HTMLButtonElement;
+        if (firstButton && firstButton.dataset.tab) {
+            this.handleTabSwitch(firstButton.dataset.tab, true);
+        }
+    }
+  }
 
-      // Update tab button states
-      polishedTabButton.classList.add('active');
-      if (rawTabButton) {
-        rawTabButton.classList.remove('active');
-      }
+  private handleTabSwitch(tabId: string, isInitialSetup: boolean = false): void {
+    const polishedNotePane = document.getElementById('polishedNote');
+    const rawTranscriptionPane = document.getElementById('rawTranscription');
 
-      // Show polished note content
-      const polishedNote = document.getElementById('polishedNote');
-      const rawTranscription = document.getElementById('rawTranscription');
+    if (tabId === 'note' || tabId === 'polishedNote') { // data-tab="note" for button, id="polishedNote" for pane
+      polishedNotePane?.classList.add('active');
+      polishedNotePane?.style.setProperty('display', 'block');
+      rawTranscriptionPane?.classList.remove('active');
+      rawTranscriptionPane?.style.setProperty('display', 'none');
+    } else if (tabId === 'raw' || tabId === 'rawTranscription') { // data-tab="raw" for button, id="rawTranscription" for pane
+      rawTranscriptionPane?.classList.add('active');
+      rawTranscriptionPane?.style.setProperty('display', 'block');
+      polishedNotePane?.classList.remove('active');
+      polishedNotePane?.style.setProperty('display', 'none');
+    } else {
+      console.warn(`Unknown tabId: ${tabId}`);
+      return;
+    }
 
-      if (polishedNote) {
-        polishedNote.classList.add('active');
-        polishedNote.style.display = 'block';
-      }
-
-      if (rawTranscription) {
-        rawTranscription.classList.remove('active');
-        rawTranscription.style.display = 'none';
-      }
-
-      // Update the active tab indicator position
-      const activeTabIndicator = tabNav.querySelector('.active-tab-indicator') as HTMLElement;
-      if (activeTabIndicator && polishedTabButton) {
-        const buttonRect = polishedTabButton.getBoundingClientRect();
-        const navRect = tabNav.getBoundingClientRect();
-        const relativeLeft = buttonRect.left - navRect.left;
-        
-        activeTabIndicator.style.left = `${relativeLeft}px`;
-        activeTabIndicator.style.width = `${buttonRect.width}px`;
-      }
-
-      console.log('Switched to polished tab successfully');
-
-      // Track tab switch
-      if (this.productionMonitor) {
-        this.productionMonitor.trackEvent('tab_switched', {
-          tab: 'polished',
-          timestamp: Date.now()
-        });
-      }
-
-    } catch (error) {
-      console.error('Error switching to polished tab:', error);
-      utilShowToast({ // Replaced this.showToast
-        type: 'error',
-        title: 'Tab Switch Failed',
-        message: 'Unable to switch to polished tab.',
-      });
-
-      if (this.productionMonitor) {
-        this.productionMonitor.trackError('tab_switch_failed', error);
-      }
+    if(!isInitialSetup) {
+        // Production monitor tracking is now handled by TabNavigator itself if configured
+        // Or keep it here if TabNavigator's tracking is removed/conditional
+        console.log(`App handled switch to tab: ${tabId}`);
     }
   }
 
@@ -1095,10 +1086,58 @@ export class AudioTranscriptionApp {
   }
 
   // Helper methods for chart creation
+
+  private _renderCharts(chartData: AllAIChartData, context: string): void { // Typed chartData
+    if (!chartData) {
+      ErrorHandler.logWarning(`No chart data provided for context: ${context}`, '_renderCharts');
+      return;
+    }
+
+    const chartDisplayArea = document.getElementById('aiChartDisplayArea');
+    if (chartDisplayArea) {
+        chartDisplayArea.innerHTML = ''; // Clear existing charts
+    } else {
+        ErrorHandler.logError("'aiChartDisplayArea' not found for rendering charts.", '_renderCharts');
+        return;
+    }
+
+    // Iterate over known chart types in AllAIChartData
+    if (chartData.topics) {
+      const chartId = `topicsChart-${context}`;
+      const title = this.getChartTitle('topics');
+      this.createChartContainer(chartId, title, this.getChartDescription('topics'));
+      this.performanceMonitor.measureOperation(
+        () => this.chartManager.createTopicChart(chartId, chartData.topics as TopicDataInput, title),
+        'chartRenderTime', `createChart_topics_${context}`
+      ).catch(err => ErrorHandler.logError(`Error rendering topics chart for ${context}`, err));
+    }
+
+    if (chartData.sentiment) {
+      const chartId = `sentimentChart-${context}`;
+      const title = this.getChartTitle('sentiment');
+      this.createChartContainer(chartId, title, this.getChartDescription('sentiment'));
+      this.performanceMonitor.measureOperation(
+        () => this.chartManager.createSentimentChart(chartId, chartData.sentiment as SentimentDataInput, title),
+        'chartRenderTime', `createChart_sentiment_${context}`
+      ).catch(err => ErrorHandler.logError(`Error rendering sentiment chart for ${context}`, err));
+    }
+
+    if (chartData.wordFrequency) {
+      const chartId = `wordFrequencyChart-${context}`;
+      const title = this.getChartTitle('wordFrequency');
+      this.createChartContainer(chartId, title, this.getChartDescription('wordFrequency'));
+      this.performanceMonitor.measureOperation(
+        () => this.chartManager.createWordFrequencyChart(chartId, chartData.wordFrequency as WordFrequencyInput, title),
+        'chartRenderTime', `createChart_wordFrequency_${context}`
+      ).catch(err => ErrorHandler.logError(`Error rendering wordFrequency chart for ${context}`, err));
+    }
+    // Add other chart types here if AllAIChartData expands
+  }
+
   private createChartContainer(canvasId: string, title: string, description: string): void {
     const chartDisplayArea = document.getElementById('aiChartDisplayArea');
     if (!chartDisplayArea) {
-      console.error('Chart display area not found');
+      console.error(`Chart display area 'aiChartDisplayArea' not found for canvasId: ${canvasId}`);
       return;
     }
 

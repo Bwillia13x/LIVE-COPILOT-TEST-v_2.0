@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import { Note, AppState, ToastOptions, ErrorContext } from '../types/index.js';
+import { Note, AppState, ErrorContext } from '../types/index.js'; // Removed ToastOptions
 import { APIService } from '../services/APIService.js';
 import { ChartManager } from '../services/ChartManager.js';
 import { DataProcessor } from '../services/DataProcessor.js';
@@ -13,7 +13,7 @@ import { IntervalManager } from '../services/IntervalManager.js';
 import { BundleOptimizer } from '../services/BundleOptimizer.js';
 import { ProductionMonitor } from '../services/ProductionMonitor.js';
 import { HealthCheckService } from '../services/HealthCheckService.js';
-import { ErrorHandler, MemoryManager } from '../utils.js';
+import { ErrorHandler, MemoryManager, showToast as utilShowToast } from '../utils.js'; // Added showToast as utilShowToast
 import { SUCCESS_MESSAGES, ERROR_MESSAGES } from '../constants.js';
 
 export class AudioTranscriptionApp {
@@ -105,7 +105,7 @@ export class AudioTranscriptionApp {
       console.log('🎙️ Audio Transcription App initialized successfully');
     } catch (error) {
       ErrorHandler.logError('Failed to initialize app', error);
-      this.showToast({
+      utilShowToast({ // Replaced this.showToast
         type: 'error',
         title: 'Initialization Error',
         message: 'Failed to initialize the application. Please refresh the page.',
@@ -245,9 +245,12 @@ export class AudioTranscriptionApp {
       this.cleanup();
     });
 
-    window.addEventListener('resize', () => {
-      this.chartManager.resizeAllCharts();
-    });
+    window.addEventListener('resize', this.handleResize);
+  }
+
+  // Bound method for resize event listener
+  private handleResize = () => {
+    this.chartManager.resizeAllCharts();
   }
 
   private async initializeAPIKey(): Promise<void> {
@@ -290,7 +293,7 @@ export class AudioTranscriptionApp {
   private async toggleRecording(): Promise<void> {
     try {
       if (!this.audioRecorder.isSupported()) {
-        this.showToast({
+        utilShowToast({ // Replaced this.showToast
           type: 'error',
           title: 'Not Supported',
           message: 'Audio recording is not supported in this browser.',
@@ -304,7 +307,7 @@ export class AudioTranscriptionApp {
         this.state.isRecording = false;
         
         if (this.currentTranscript) {
-          this.showToast({
+          utilShowToast({ // Replaced this.showToast
             type: 'success',
             title: 'Recording Complete',
             message: 'Transcription ready for polishing.',
@@ -315,13 +318,13 @@ export class AudioTranscriptionApp {
         if (success) {
           this.state.isRecording = true;
           this.transcriptBuffer = '';
-          this.showToast({
+          utilShowToast({ // Replaced this.showToast
             type: 'info',
             title: 'Recording Started',
             message: 'Speak now...',
           });
         } else {
-          this.showToast({
+          utilShowToast({ // Replaced this.showToast
             type: 'error',
             title: 'Recording Failed',
             message: 'Could not start recording. Please check microphone permissions.',
@@ -332,7 +335,7 @@ export class AudioTranscriptionApp {
       this.updateUI();
     } catch (error) {
       ErrorHandler.logError('Failed to toggle recording', error);
-      this.showToast({
+      utilShowToast({ // Replaced this.showToast
         type: 'error',
         title: 'Recording Error',
         message: 'An error occurred while toggling recording.',
@@ -343,7 +346,7 @@ export class AudioTranscriptionApp {
   private async polishCurrentTranscription(): Promise<void> {
     try {
       if (!this.currentTranscript) {
-        this.showToast({
+        utilShowToast({ // Replaced this.showToast
           type: 'warning',
           title: 'No Transcription',
           message: 'Please record something first.',
@@ -352,7 +355,7 @@ export class AudioTranscriptionApp {
       }
 
       if (!this.apiService.hasValidApiKey()) {
-        this.showToast({
+        utilShowToast({ // Replaced this.showToast
           type: 'warning',
           title: 'API Key Required',
           message: 'Please enter your Gemini API key.',
@@ -378,13 +381,13 @@ export class AudioTranscriptionApp {
         };
 
         this.updatePolishedNoteArea();
-        this.showToast({
+        utilShowToast({ // Replaced this.showToast
           type: 'success',
           title: 'Polishing Complete',
           message: 'Your transcription has been improved.',
         });
       } else {
-        this.showToast({
+        utilShowToast({ // Replaced this.showToast
           type: 'error',
           title: 'Polishing Failed',
           message: result.error || 'Unknown error occurred.',
@@ -392,7 +395,7 @@ export class AudioTranscriptionApp {
       }
     } catch (error) {
       ErrorHandler.logError('Failed to polish transcription', error);
-      this.showToast({
+      utilShowToast({ // Replaced this.showToast
         type: 'error',
         title: 'Processing Error',
         message: 'An error occurred while polishing the transcription.',
@@ -440,7 +443,7 @@ export class AudioTranscriptionApp {
         }
       } catch (error) {
         ErrorHandler.logError('Failed to generate charts', error);
-        this.showToast({
+        utilShowToast({ // Replaced this.showToast
           type: 'error',
           title: 'Chart Generation Failed',
           message: 'An error occurred while generating charts.',
@@ -455,7 +458,7 @@ export class AudioTranscriptionApp {
   private saveCurrentNote(): void {
     try {
       if (!this.state.currentNote) {
-        this.showToast({
+        utilShowToast({ // Replaced this.showToast
           type: 'warning',
           title: 'No Note',
           message: 'There is no note to save.',
@@ -467,14 +470,14 @@ export class AudioTranscriptionApp {
       this.state.notes = DataProcessor.getAllNotes();
       this.updateNotesDisplay();
 
-      this.showToast({
+      utilShowToast({ // Replaced this.showToast
         type: 'success',
         title: 'Note Saved',
         message: 'Your note has been saved successfully.',
       });
     } catch (error) {
       ErrorHandler.logError('Failed to save note', error);
-      this.showToast({
+      utilShowToast({ // Replaced this.showToast
         type: 'error',
         title: 'Save Failed',
         message: 'Failed to save the note.',
@@ -489,7 +492,7 @@ export class AudioTranscriptionApp {
     this.chartManager.destroyAllCharts();
     this.updateUI();
 
-    this.showToast({
+    utilShowToast({ // Replaced this.showToast
       type: 'info',
       title: 'Cleared',
       message: 'Current note and charts have been cleared.',
@@ -513,7 +516,7 @@ export class AudioTranscriptionApp {
         document.body.removeChild(a);
         URL.revokeObjectURL(url);
 
-        this.showToast({
+        utilShowToast({ // Replaced this.showToast
           type: 'success',
           title: 'Export Complete',
           message: 'Notes have been exported successfully.',
@@ -521,7 +524,7 @@ export class AudioTranscriptionApp {
       }
     } catch (error) {
       ErrorHandler.logError('Failed to export notes', error);
-      this.showToast({
+      utilShowToast({ // Replaced this.showToast
         type: 'error',
         title: 'Export Failed',
         message: 'Failed to export notes.',
@@ -534,7 +537,7 @@ export class AudioTranscriptionApp {
       const result = await this.apiService.testConnection();
       
       if (result.success) {
-        this.showToast({
+        utilShowToast({ // Replaced this.showToast
           type: 'success',
           title: 'API Connected',
           message: 'Gemini API connection successful.',
@@ -546,7 +549,7 @@ export class AudioTranscriptionApp {
           console.log('ℹ️ No API key configured - user can set one in settings');
           // Don't show error toast on initial load if no API key is set
         } else {
-          this.showToast({
+          utilShowToast({ // Replaced this.showToast
             type: 'error',
             title: 'API Connection Failed',
             message: result.error || 'Unknown error',
@@ -679,6 +682,9 @@ export class AudioTranscriptionApp {
     
     // Cleanup utilities
     MemoryManager.cleanup();
+
+    // Remove global event listeners
+    window.removeEventListener('resize', this.handleResize);
     
     console.log('✅ Application cleanup completed');
   }
@@ -825,7 +831,7 @@ export class AudioTranscriptionApp {
     if (DataProcessor.deleteNote(noteId)) {
       this.state.notes = DataProcessor.getAllNotes();
       this.updateNotesDisplay();
-      this.showToast({
+      utilShowToast({ // Replaced this.showToast
         type: 'success',
         title: 'Note Deleted',
         message: 'The note has been deleted.',
@@ -840,7 +846,7 @@ export class AudioTranscriptionApp {
       
       if (healthStatus.status === 'unhealthy') {
         console.warn('⚠️ Health check detected issues:', healthStatus);
-        this.showToast({
+        utilShowToast({ // Replaced this.showToast
           type: 'warning',
           title: 'System Health Warning',
           message: 'Some system checks failed. The app may not function optimally.',
@@ -862,7 +868,7 @@ export class AudioTranscriptionApp {
       }
     } catch (error) {
       console.error('❌ Health check failed:', error);
-      this.showToast({
+      utilShowToast({ // Replaced this.showToast
         type: 'error',
         title: 'Health Check Failed',
         message: 'Unable to verify system health. Some features may be unavailable.',
@@ -912,7 +918,7 @@ export class AudioTranscriptionApp {
       this.logMessage('Sample charts generated successfully.');
     } catch (error) {
       ErrorHandler.logError('Failed to generate sample charts', error);
-      this.showToast({
+      utilShowToast({ // Replaced this.showToast
         type: 'error',
         title: 'Chart Generation Failed',
         message: 'Failed to generate sample charts. Please try again.',
@@ -990,7 +996,7 @@ export class AudioTranscriptionApp {
 
     } catch (error) {
       console.error('Error switching to polished tab:', error);
-      this.showToast({
+      utilShowToast({ // Replaced this.showToast
         type: 'error',
         title: 'Tab Switch Failed',
         message: 'Unable to switch to polished tab.',
@@ -1028,7 +1034,7 @@ export class AudioTranscriptionApp {
       console.error('Failed to initialize theme:', error);
       // Fallback to dark theme
       document.body.className = '';
-      this.showToast({
+      utilShowToast({ // Replaced this.showToast
         type: 'error',
         title: 'Theme Error',
         message: 'Failed to initialize theme system',
@@ -1062,7 +1068,7 @@ export class AudioTranscriptionApp {
         }
       }
       
-      this.showToast({
+      utilShowToast({ // Replaced this.showToast
         type: 'success',
         title: 'Theme Changed',
         message: `Switched to ${newTheme} mode`,
@@ -1080,7 +1086,7 @@ export class AudioTranscriptionApp {
       
     } catch (error) {
       console.error('Failed to toggle theme:', error);
-      this.showToast({
+      utilShowToast({ // Replaced this.showToast
         type: 'error',
         title: 'Theme Error',
         message: 'Failed to change theme',
@@ -1103,7 +1109,7 @@ export class AudioTranscriptionApp {
         <h4>${title}</h4>
         <p class="chart-description">${description}</p>
       </div>
-      <canvas id="${canvasId}" width="400" height="200"></canvas>
+      <canvas id="${canvasId}"></canvas>
     `;
 
     chartDisplayArea.appendChild(chartContainer);

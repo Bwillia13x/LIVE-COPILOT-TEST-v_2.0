@@ -4,6 +4,7 @@
  */
 
 import { APP_CONFIG, LOG_LEVELS, ENV, type LogLevel } from './constants.js';
+import { ToastOptions } from '../types/index.js'; // Import ToastOptions
 
 /**
  * Centralized logging service with different levels and environment-aware output
@@ -406,4 +407,22 @@ export class PerformanceUtils {
       return result;
     }) as T;
   }
+}
+
+/**
+ * Displays a toast notification.
+ */
+export function showToast(options: ToastOptions): void {
+  const toast = document.createElement('div');
+  toast.className = `toast toast-${options.type}`;
+  toast.innerHTML = `
+    <div class="toast-title">${options.title}</div>
+    <div class="toast-message">${options.message}</div>
+  `;
+
+  document.body.appendChild(toast);
+
+  setTimeout(() => {
+    toast.remove();
+  }, options.duration || 5000);
 }

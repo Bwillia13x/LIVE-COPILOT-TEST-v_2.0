@@ -56,7 +56,7 @@ export class AudioRecorder {
         };
 
         this.recognition.onerror = (event: any) => {
-          console.error('Speech recognition error:', event.error);
+          ErrorHandler.logError('Speech recognition error', event.error);
         };
 
         this.recognition.onend = () => {
@@ -71,7 +71,7 @@ export class AudioRecorder {
         };
       }
     } catch (error) {
-      console.error('Failed to initialize speech recognition:', error);
+      ErrorHandler.logError('Failed to initialize speech recognition', error);
     }
   }
 
@@ -126,7 +126,7 @@ export class AudioRecorder {
 
       return true;
     } catch (error) {
-      console.error('Failed to start recording:', error);
+      ErrorHandler.logError('Failed to start recording', error);
       return false;
     }
   }
@@ -162,7 +162,7 @@ export class AudioRecorder {
 
       this.notifyStateChange();
     } catch (error) {
-      console.error('Failed to stop recording:', error);
+      ErrorHandler.logError('Failed to stop recording', error);
     }
   }
 
@@ -180,7 +180,7 @@ export class AudioRecorder {
         this.notifyStateChange();
       }
     } catch (error) {
-      console.error('Failed to pause recording:', error);
+      ErrorHandler.logError('Failed to pause recording', error);
     }
   }
 
@@ -199,7 +199,7 @@ export class AudioRecorder {
         this.notifyStateChange();
       }
     } catch (error) {
-      console.error('Failed to resume recording:', error);
+      ErrorHandler.logError('Failed to resume recording', error);
     }
   }
 

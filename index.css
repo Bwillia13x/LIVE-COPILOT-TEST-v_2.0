@@ -2585,15 +2585,23 @@ body.light-mode .record-button.recording .record-button-inner { color: white; }
   width: 100%;
   position: relative;
   /* Constrain chart dimensions to prevent infinite growth */
-  max-height: 500px;
+  max-height: 500px; /* Or remove if aspect-ratio handles height */
   overflow: hidden;
+  /* Added for responsive scaling and aspect ratio */
+  display: flex; /* Use flexbox to help center canvas if needed */
+  justify-content: center;
+  align-items: center;
+  width: 100%; /* Ensure it takes full width of its parent */
+  /* aspect-ratio: 16 / 9; /* Example: Set a default aspect ratio, adjust as needed per chart type if possible */
+  /* max-width: 800px; /* Example: Set a max-width for larger screens */
 }
 
 .chart-container canvas {
-  max-width: 100% !important;
-  max-height: 400px !important;
-  width: auto !important;
-  height: auto !important;
+  /* Canvas should fill the container but respect aspect ratio from Chart.js options */
+  max-width: 100%;
+  max-height: 100%; /* Canvas should not exceed container height */
+  width: 100%; /* Let Chart.js control this, but provide a basis */
+  height: auto; /* Let Chart.js control this, but provide a basis */
 }
 
 .chart-container h4 {

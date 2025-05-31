@@ -32,7 +32,7 @@ export class APIService {
           this.genAI = new GoogleGenAI(this.apiKey as any);
           console.log('🔑 API service initialized with API key');
         } catch (genAIError: any) {
-          console.log('❌ Failed to initialize GoogleGenAI:', genAIError?.message || 'Unknown error');
+          ErrorHandler.logError('Failed to initialize GoogleGenAI during API setup', genAIError);
           this.genAI = null;
           this.apiKey = null;
         }
@@ -42,7 +42,7 @@ export class APIService {
         this.apiKey = null;
       }
     } catch (error: any) {
-      console.log('❌ API initialization failed:', error?.message || 'Unknown error');
+      ErrorHandler.logError('API initialization failed', error);
       this.genAI = null;
       this.apiKey = null;
     }
@@ -51,6 +51,7 @@ export class APIService {
   public async testConnection(): Promise<APIResponse<boolean>> {
     try {
       if (!this.genAI) {
+        ErrorHandler.logWarning(ERROR_MESSAGES.API.API_KEY_MISSING, 'testConnection');
         return {
           success: false,
           error: ERROR_MESSAGES.API.API_KEY_MISSING
@@ -65,6 +66,7 @@ export class APIService {
         data: true
       };
     } catch (error: any) {
+      ErrorHandler.logError('API connection test failed', error);
       return {
         success: false,
         error: `API connection failed: ${error?.message || 'Unknown error'}`
@@ -181,7 +183,7 @@ Transcription: "${transcription}"`;
 
   public setApiKey(apiKey: string): void {
     if (!apiKey || !apiKey.trim() || apiKey.trim().length < 10) {
-      console.log('❌ Invalid API key provided');
+      ErrorHandler.logWarning('Invalid API key provided for setting.', 'setApiKey');
       return;
     }
     
@@ -191,7 +193,7 @@ Transcription: "${transcription}"`;
       this.genAI = new GoogleGenAI(this.apiKey as any);
       console.log('🔑 API key set and service initialized successfully');
     } catch (error: any) {
-      console.log('❌ Failed to set API key:', error?.message || 'Unknown error');
+      ErrorHandler.logError('Failed to set API key', error);
       this.apiKey = null;
       this.genAI = null;
     }

@@ -608,7 +608,7 @@ export class AudioTranscriptionApp {
     });
   }
 
-  private createNoteElement(note: any): HTMLElement {
+  private createNoteElement(note: Note): HTMLElement {
     const noteDiv = document.createElement('div');
     noteDiv.className = 'note-item';
     noteDiv.innerHTML = `

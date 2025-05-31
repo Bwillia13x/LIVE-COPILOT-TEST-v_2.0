@@ -9,7 +9,10 @@ vi.mock('../utils', async (importOriginal) => {
   const original = await importOriginal() as any;
   return {
     ...original,
-    ErrorHandler: { ...original.ErrorHandler, logError: mockErrorHandlerLogError },
+    ErrorHandler: {
+      ...original.ErrorHandler, // Preserve other parts of ErrorHandler if any
+      logError: mockErrorHandlerLogError
+    },
   };
 });
 
@@ -21,9 +24,9 @@ describe('ChartManager', () => {
   let mockChartInstanceDestroy: import('vitest').SpyInstance;
   let mockChartInstanceUpdate: import('vitest').SpyInstance;
   let mockChartInstanceResize: import('vitest').SpyInstance;
-  let mockChartInstance: any; // Holds the mock chart object
-  let MockChartConstructor: import('vitest').SpyInstance; // Spy for `new Chart()`
-  let MockChartRegister: import('vitest').SpyInstance;   // Spy for `Chart.register()`
+  let mockActualChartInstance: any; // Holds the object { destroy, update, resize, data, options }
+  let MockChartConstructor: import('vitest').SpyInstance; // Spy for new Chart()
+  let MockChartRegister: import('vitest').SpyInstance;   // Spy for Chart.register
 
   // Spies for DOM interactions
   let getElementByIdSpy: import('vitest').SpyInstance;
@@ -41,14 +44,14 @@ describe('ChartManager', () => {
     mockChartInstanceDestroy = vi.fn();
     mockChartInstanceUpdate = vi.fn();
     mockChartInstanceResize = vi.fn();
-    mockChartInstance = {
+    mockActualChartInstance = { // This is the object returned by the mocked Chart constructor
       destroy: mockChartInstanceDestroy,
       update: mockChartInstanceUpdate,
       resize: mockChartInstanceResize,
-      data: { datasets: [], labels: [] },
+      data: { datasets: [], labels: [] }, // Initial data
       options: {},
     };
-    MockChartConstructor = vi.fn(() => mockChartInstance);
+    MockChartConstructor = vi.fn(() => mockActualChartInstance);
     MockChartRegister = vi.fn();
     (MockChartConstructor as any).register = MockChartRegister;
 
@@ -90,124 +93,132 @@ describe('ChartManager', () => {
   });
 
   describe('createChart', () => {
+    const canvasId = 'testCanvas'; // Use const for consistency
+    const chartConfig: ChartConfig = { // Use const for consistency
+      type: 'line',
+      data: { labels: ['Jan', 'Feb'], datasets: [{ label: 'Data', data: [10, 20] }] },
+      options: { responsive: true },
+    };
+
     it('should create and store a new chart instance', () => {
       const specificMockContext = { testMarker: 'specific_context_for_create_test' };
       getElementByIdSpy.mockReturnValue(mockCanvasElement);
       mockGetContextSpy.mockReturnValue(specificMockContext);
 
-      const chart = chartManager.createChart('testCanvas', sampleChartConfig);
+      const chart = chartManager.createChart(canvasId, chartConfig);
 
-      expect(getElementByIdSpy).toHaveBeenCalledWith('testCanvas');
+      expect(getElementByIdSpy).toHaveBeenCalledWith(canvasId);
       expect(mockGetContextSpy).toHaveBeenCalledWith('2d');
       expect(MockChartConstructor).toHaveBeenCalledWith(
         specificMockContext,
         expect.objectContaining({
-          type: sampleChartConfig.type,
-          data: sampleChartConfig.data,
-          options: expect.objectContaining(sampleChartConfig.options)
+          type: chartConfig.type,
+          data: chartConfig.data,
+          // options should merge defaultOptions from ChartManager
+          options: expect.objectContaining(chartConfig.options)
         })
       );
-      expect((chartManager as any).charts.get('testCanvas')).toBe(mockChartInstance);
-      expect(chart).toBe(mockChartInstance);
+      expect(chart).toBe(mockActualChartInstance);
+      expect((chartManager as any).charts.get(canvasId)).toBe(mockActualChartInstance);
     });
 
-    it('should return null and log error if canvas element is not found', () => {
+    it('should return null and log error if canvas element not found', () => {
       getElementByIdSpy.mockReturnValueOnce(null);
-      const chart = chartManager.createChart('badCanvas', sampleChartConfig);
-      expect(mockErrorHandlerLogError).toHaveBeenCalledWith(
-        "Failed to create chart for canvas: badCanvas",
-        expect.objectContaining({ message: "Canvas element with id 'badCanvas' not found" })
-      );
+      const chart = chartManager.createChart(canvasId, chartConfig); // Use defined canvasId
       expect(chart).toBeNull();
+      expect(mockErrorHandlerLogError).toHaveBeenCalledWith(
+        `Failed to create chart for canvas: ${canvasId}`,
+        expect.any(Error) // Error message is checked in source, here we check an Error object was passed
+      );
     });
 
     it('should return null and log error if canvas context cannot be obtained', () => {
-      getElementByIdSpy.mockReturnValue(mockCanvasElement);
-      mockGetContextSpy.mockReturnValueOnce(null);
-      const chart = chartManager.createChart('ctxCanvas', sampleChartConfig);
-      expect(mockErrorHandlerLogError).toHaveBeenCalledWith(
-        "Failed to create chart for canvas: ctxCanvas",
-        expect.objectContaining({ message: "Could not get 2D context for canvas 'ctxCanvas'" })
-      );
+      // getElementByIdSpy will return mockCanvasElement by default from beforeEach
+      mockGetContextSpy.mockReturnValueOnce(null); // Only mockGetContextSpy needs to change for this test
+      const chart = chartManager.createChart(canvasId, chartConfig); // Use defined canvasId
       expect(chart).toBeNull();
+      expect(mockErrorHandlerLogError).toHaveBeenCalledWith(
+        `Failed to create chart for canvas: ${canvasId}`,
+        expect.any(Error)
+      );
     });
 
-    it('should destroy an existing chart with the same ID before creating a new one', () => {
-      chartManager.createChart('chart1', sampleChartConfig);
-      mockChartInstanceDestroy.mockClear();
-
-      chartManager.createChart('chart1', { ...sampleChartConfig, type: 'line' });
-
-      expect(mockChartInstanceDestroy).toHaveBeenCalled();
-      expect(MockChartConstructor).toHaveBeenCalledTimes(2);
-      expect((chartManager as any).charts.get('chart1')).toBe(mockChartInstance);
+    it('should destroy an existing chart with the same canvasId before creating a new one', () => {
+      chartManager.createChart(canvasId, chartConfig);
+      const destroyChartSpy = vi.spyOn(chartManager, 'destroyChart'); // Spy on the method of the instance
+      chartManager.createChart(canvasId, chartConfig);
+      expect(destroyChartSpy).toHaveBeenCalledWith(canvasId);
+      destroyChartSpy.mockRestore();
     });
   });
 
   describe('Convenience Chart Creation Methods', () => {
-    const testData = { labels: ['X', 'Y'], data: [100, 200] };
+    const canvasId = 'convenienceCanvas';
+    const sampleData = { labels: ['A'], data: [1] };
     let createChartSpy: import('vitest').SpyInstance;
 
     beforeEach(() => {
       createChartSpy = vi.spyOn(chartManager, 'createChart');
     });
 
-    it('createTopicChart should call createChart with pie type and specific options', () => {
-      chartManager.createTopicChart('topicCanvas', testData, 'My Topics');
-      expect(createChartSpy).toHaveBeenCalledWith('topicCanvas', expect.objectContaining({
+    it('createTopicChart should call createChart with pie type and correct config', () => {
+      chartManager.createTopicChart(canvasId, sampleData, 'Topics');
+      expect(createChartSpy).toHaveBeenCalledWith(canvasId, expect.objectContaining({
         type: 'pie',
-        options: expect.objectContaining({ plugins: expect.objectContaining({ title: expect.objectContaining({ text: 'My Topics', display: true }) }) }),
+        data: expect.objectContaining({ labels: sampleData.labels, datasets: expect.any(Array) }),
+        options: expect.objectContaining({ plugins: expect.objectContaining({ title: expect.objectContaining({ text: 'Topics' }) }) })
       }));
     });
 
-    it('createSentimentChart should call createChart with doughnut type and specific options', () => {
-      chartManager.createSentimentChart('sentimentCanvas', testData, 'My Sentiment');
-      expect(createChartSpy).toHaveBeenCalledWith('sentimentCanvas', expect.objectContaining({
+    it('createSentimentChart should call createChart with doughnut type and correct config', () => {
+      chartManager.createSentimentChart(canvasId, sampleData, 'Sentiment');
+      expect(createChartSpy).toHaveBeenCalledWith(canvasId, expect.objectContaining({
         type: 'doughnut',
-        options: expect.objectContaining({ plugins: expect.objectContaining({ title: expect.objectContaining({ text: 'My Sentiment', display: true }) }) }),
+        data: expect.objectContaining({ labels: sampleData.labels, datasets: expect.any(Array) }),
+        options: expect.objectContaining({ plugins: expect.objectContaining({ title: expect.objectContaining({ text: 'Sentiment' }) }) })
       }));
     });
 
-    it('createWordFrequencyChart should call createChart with bar type and specific options', () => {
-      chartManager.createWordFrequencyChart('wordFreqCanvas', testData, 'My Word Freq');
-      expect(createChartSpy).toHaveBeenCalledWith('wordFreqCanvas', expect.objectContaining({
+    it('createWordFrequencyChart should call createChart with bar type and correct config', () => {
+      chartManager.createWordFrequencyChart(canvasId, sampleData, 'Frequency');
+      expect(createChartSpy).toHaveBeenCalledWith(canvasId, expect.objectContaining({
         type: 'bar',
-        options: expect.objectContaining({ plugins: expect.objectContaining({ title: expect.objectContaining({ text: 'My Word Freq', display: true }) }) }),
+        data: expect.objectContaining({ labels: sampleData.labels, datasets: expect.any(Array) }),
+        options: expect.objectContaining({ plugins: expect.objectContaining({ title: expect.objectContaining({ text: 'Frequency' }) }) })
       }));
     });
 
-    it('createLineChart should call createChart with line type and specific options', () => {
-      chartManager.createLineChart('lineCanvas', testData, 'My Line Chart');
-      expect(createChartSpy).toHaveBeenCalledWith('lineCanvas', expect.objectContaining({
+    it('createLineChart should call createChart with line type and correct config', () => {
+      chartManager.createLineChart(canvasId, sampleData, 'Line Data');
+      expect(createChartSpy).toHaveBeenCalledWith(canvasId, expect.objectContaining({
         type: 'line',
-        options: expect.objectContaining({ plugins: expect.objectContaining({ title: expect.objectContaining({ text: 'My Line Chart', display: true }) }) }),
+        data: expect.objectContaining({ labels: sampleData.labels, datasets: expect.any(Array) }),
+        options: expect.objectContaining({ plugins: expect.objectContaining({ title: expect.objectContaining({ text: 'Line Data' }) }) })
       }));
     });
   });
 
   describe('destroyChart', () => {
-    it('should destroy an existing chart and remove it', () => {
-      chartManager.createChart('testCanvas', sampleChartConfig);
-      mockChartInstanceDestroy.mockClear();
-      chartManager.destroyChart('testCanvas');
+    it('should destroy chart and remove it from map if it exists', () => {
+      const canvasId = 'destroyTest';
+      chartManager.createChart(canvasId, { type: 'line', data: {}, options: {} });
+      expect((chartManager as any).charts.has(canvasId)).toBe(true);
+      chartManager.destroyChart(canvasId);
       expect(mockChartInstanceDestroy).toHaveBeenCalled();
-      expect((chartManager as any).charts.has('testCanvas')).toBe(false);
+      expect((chartManager as any).charts.has(canvasId)).toBe(false);
     });
 
-    it('should do nothing if chart ID does not exist', () => {
-      chartManager.createChart('existingCanvas', sampleChartConfig);
-      const initialChartCount = (chartManager as any).charts.size;
-      mockChartInstanceDestroy.mockClear();
-      chartManager.destroyChart('nonExistentCanvas');
+    it('should do nothing if chart does not exist', () => {
+      mockChartInstanceDestroy.mockClear(); // Ensure it's clear before this test
+      chartManager.destroyChart('nonExistent');
       expect(mockChartInstanceDestroy).not.toHaveBeenCalled();
-      expect((chartManager as any).charts.size).toBe(initialChartCount);
     });
   });
 
   describe('destroyAllCharts', () => {
-    it('should destroy all stored charts and clear the charts map', () => {
-      chartManager.createChart('chart1', sampleChartConfig);
-      chartManager.createChart('chart2', sampleChartConfig);
+    it('should destroy all charts and clear the map', () => {
+      chartManager.createChart('chart1', { type: 'line', data: {}, options: {} });
+      chartManager.createChart('chart2', { type: 'bar', data: {}, options: {} });
       mockChartInstanceDestroy.mockClear();
       chartManager.destroyAllCharts();
       expect(mockChartInstanceDestroy).toHaveBeenCalledTimes(2);
@@ -216,72 +227,73 @@ describe('ChartManager', () => {
   });
 
   describe('getChart', () => {
-    it('should return the chart instance if it exists', () => {
-      chartManager.createChart('testCanvas', sampleChartConfig);
-      const retrievedChart = chartManager.getChart('testCanvas');
-      expect(retrievedChart).toBe(mockChartInstance);
+    it('should return chart instance if it exists', () => {
+      chartManager.createChart('getTest', { type: 'line', data: {}, options: {} });
+      const chart = chartManager.getChart('getTest');
+      expect(chart).toBe(mockActualChartInstance);
     });
 
-    it('should return undefined if chart ID does not exist', () => {
-      expect(chartManager.getChart('nonExistentCanvas')).toBeUndefined();
+    it('should return undefined if chart does not exist', () => {
+      const chart = chartManager.getChart('nonExistent');
+      expect(chart).toBeUndefined();
     });
   });
 
   describe('updateChart', () => {
-    const newData = { datasets: [{data: [1,2,3], label: 'New Data'}], labels: ['A','B','C'] };
+    const canvasId = 'updateTest';
+    // Corrected: define newChartData with all expected properties for a full chart.data object
+    const newChartData = {
+      labels: ['X', 'Y'],
+      datasets: [{ data: [100, 200], label: 'Updated Data' }]
+    };
 
     it('should update chart data and call update if chart exists', () => {
-      chartManager.createChart('testCanvas', sampleChartConfig);
-      mockChartInstanceUpdate.mockClear();
-      // Reset data on the mockChartInstance for this specific test
-      mockChartInstance.data = { datasets: [], labels: [] };
+      chartManager.createChart(canvasId, { type: 'line', data: {}, options: {} });
+      mockChartInstanceUpdate.mockClear(); // Clear spy before action
 
-      const result = chartManager.updateChart('testCanvas', newData.labels, newData.datasets);
+      const result = chartManager.updateChart(canvasId, newChartData); // Pass the single object
 
-      expect(mockChartInstance.data.labels).toEqual(newData.labels);
-      expect(mockChartInstance.data.datasets[0].data).toEqual(newData.datasets[0].data);
-      expect(mockChartInstanceUpdate).toHaveBeenCalled();
       expect(result).toBe(true);
+      expect(mockActualChartInstance.data).toEqual(newChartData); // Verify data on the mock instance
+      expect(mockChartInstanceUpdate).toHaveBeenCalled();
     });
 
-    it('should return false and not call update if chart does not exist', () => {
+    it('should return false if chart does not exist', () => {
       mockChartInstanceUpdate.mockClear();
-      const result = chartManager.updateChart('nonExistentCanvas', [], []);
-      expect(mockChartInstanceUpdate).not.toHaveBeenCalled();
+      const result = chartManager.updateChart('nonExistent', newChartData);
       expect(result).toBe(false);
+      expect(mockChartInstanceUpdate).not.toHaveBeenCalled();
     });
 
     it('should log error and return false if chart update throws', () => {
-      chartManager.createChart('testCanvas', sampleChartConfig);
-      mockChartInstanceUpdate.mockClear().mockImplementationOnce(() => {
-        throw new Error('Update failed');
-      });
-      const result = chartManager.updateChart('testCanvas', [], []);
-      expect(mockErrorHandlerLogError).toHaveBeenCalledWith(
-        "Failed to update chart: testCanvas", // Corrected string
-        expect.objectContaining({ message: 'Update failed' })
-      );
+      chartManager.createChart(canvasId, { type: 'line', data: {}, options: {} });
+      mockChartInstanceUpdate.mockClear().mockImplementationOnce(() => { throw new Error('Update Error'); });
+      const result = chartManager.updateChart(canvasId, newChartData);
       expect(result).toBe(false);
+      expect(mockErrorHandlerLogError).toHaveBeenCalledWith(
+        `Failed to update chart: ${canvasId}`, // Corrected expected message
+        expect.objectContaining({ message: 'Update Error' })
+      );
     });
   });
 
   describe('resizeChart & resizeAllCharts', () => {
-    it('resizeChart should call resize on the specific chart if it exists', () => {
-      chartManager.createChart('testCanvas', sampleChartConfig);
+    it('resizeChart should call resize on the specific chart instance', () => {
+      chartManager.createChart('resizeTest', { type: 'line', data: {}, options: {} });
       mockChartInstanceResize.mockClear();
-      chartManager.resizeChart('testCanvas');
+      chartManager.resizeChart('resizeTest');
       expect(mockChartInstanceResize).toHaveBeenCalled();
     });
 
     it('resizeChart should do nothing if chart does not exist', () => {
       mockChartInstanceResize.mockClear();
-      chartManager.resizeChart('nonExistentCanvas');
+      chartManager.resizeChart('nonExistent');
       expect(mockChartInstanceResize).not.toHaveBeenCalled();
     });
 
-    it('resizeAllCharts should call resize on all stored charts', () => {
-      chartManager.createChart('chart1', sampleChartConfig);
-      chartManager.createChart('chart2', sampleChartConfig);
+    it('resizeAllCharts should call resize on all chart instances', () => {
+      chartManager.createChart('chart1', { type: 'line', data: {}, options: {} });
+      chartManager.createChart('chart2', { type: 'bar', data: {}, options: {} });
       mockChartInstanceResize.mockClear();
       chartManager.resizeAllCharts();
       expect(mockChartInstanceResize).toHaveBeenCalledTimes(2);

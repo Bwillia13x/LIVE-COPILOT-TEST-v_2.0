@@ -22,6 +22,7 @@
     "noUnusedParameters": true,
     "noFallthroughCasesInSwitch": true,
     "noUncheckedSideEffectImports": true,
+    "types": ["vitest/globals", "vite/client", "node"],
 
     "paths": {
       "@/*" :  ["./*"]

@@ -17,7 +17,9 @@
     "deploy:netlify": "./deploy.sh --platform netlify",
     "deploy:vercel": "./deploy.sh --platform vercel",
     "health-check": "curl -f http://localhost:4173 || exit 1",
-    "test": "echo 'Tests not implemented yet' && exit 0"
+    "test": "vitest",
+    "test:ui": "vitest --ui",
+    "coverage": "vitest run --coverage"
   },
   "dependencies": {
     "@google/genai": "^0.8.0",
@@ -33,10 +35,13 @@
     "@types/node": "^22.14.0",
     "@typescript-eslint/eslint-plugin": "^8.33.0",
     "@typescript-eslint/parser": "^8.33.0",
+    "@vitest/ui": "^3.1.4",
     "eslint": "^9.28.0",
     "globals": "^16.2.0",
+    "jsdom": "^26.1.0",
     "typescript": "~5.7.2",
     "vite": "^6.2.0",
-    "vite-plugin-eslint": "^1.8.1"
+    "vite-plugin-eslint": "^1.8.1",
+    "vitest": "^3.1.4"
   }
 }

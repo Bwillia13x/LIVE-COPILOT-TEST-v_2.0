@@ -1,3 +1,4 @@
+/// <reference types="vitest" />
 import path from 'path';
 import { defineConfig, loadEnv } from 'vite';
 
@@ -115,6 +116,16 @@ export default defineConfig(({ mode }) => {
         cors: true,
         // Enable compression
         middlewareMode: false
-      }
+      },
+      test: {
+        globals: true, // Use Vitest global APIs
+        environment: 'jsdom', // Set up a DOM environment for tests
+        setupFiles: [], // Optional: for setup files e.g. './src/setupTests.ts'
+        include: ['src/**/*.{test,spec}.?(c|m)[jt]s?(x)'], // Test file patterns
+        coverage: { // Optional: basic coverage configuration
+          reporter: ['text', 'json', 'html'],
+          provider: 'v8' // or 'istanbul'
+        }
+      },
     };
 });

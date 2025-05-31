@@ -38,7 +38,15 @@ export class AudioRecorder {
         this.recognition = new SpeechRecognition();
         this.recognition.continuous = true;
         this.recognition.interimResults = true;
+        // this.recognition.lang = 'en-US'; // lang is set in startRecording in the actual code
+        // For consistency with the provided snippet, let's assume it was here.
+        // The actual code sets it in startRecording, which is fine.
+        // For this change, we focus on the else block.
+        // The existing lang property on recognition instance will be set by the constructor if SpeechRecognition exists.
+        // If it's not set here, it's okay, as the primary task is adding the else.
+        // The original code from previous steps shows lang being set:
         this.recognition.lang = 'en-US';
+
 
         this.recognition.onresult = (event: any) => {
           let finalTranscript = '';
@@ -69,9 +77,14 @@ export class AudioRecorder {
             }, 100);
           }
         };
+      } else {
+        console.error("SpeechRecognition API not supported in this browser.");
+        // this.recognition remains null, which is the desired state
       }
     } catch (error) {
-      console.error('Failed to initialize speech recognition:', error);
+      // This catch block would catch errors from `new SpeechRecognition()` if it's defined but fails to construct.
+      // The `else` block above handles when `SpeechRecognition` itself is undefined.
+      console.error('Failed to initialize speech recognition object (e.g. constructor error):', error);
     }
   }
 

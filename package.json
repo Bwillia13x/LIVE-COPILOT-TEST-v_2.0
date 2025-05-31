@@ -11,7 +11,7 @@
     "preview": "vite preview",
     "serve": "vite preview --port 4173",
     "analyze": "npx vite-bundle-analyzer",
-    "lint": "echo 'Linting not configured' && exit 0",
+    "lint": "eslint . --report-unused-disable-directives --max-warnings 0",
     "type-check": "tsc --noEmit",
     "deploy": "./deploy.sh",
     "deploy:netlify": "./deploy.sh --platform netlify",
@@ -28,9 +28,15 @@
     "tesseract.js": "^6.0.1"
   },
   "devDependencies": {
+    "@eslint/js": "^9.28.0",
     "@types/marked": "^4.0.8",
     "@types/node": "^22.14.0",
+    "@typescript-eslint/eslint-plugin": "^8.33.0",
+    "@typescript-eslint/parser": "^8.33.0",
+    "eslint": "^9.28.0",
+    "globals": "^16.2.0",
     "typescript": "~5.7.2",
-    "vite": "^6.2.0"
+    "vite": "^6.2.0",
+    "vite-plugin-eslint": "^1.8.1"
   }
 }

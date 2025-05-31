@@ -1,5 +1,5 @@
 // Health Check Netlify Function
-exports.handler = async (event, context) => {
+exports.handler = async (_event, _context) => {
   const healthStatus = {
     status: "healthy",
     timestamp: new Date().toISOString(),

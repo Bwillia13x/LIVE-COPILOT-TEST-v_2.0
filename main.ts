@@ -18,6 +18,7 @@ document.addEventListener('DOMContentLoaded', () => {
     (window as any).app = app;
     (window as any).audioApp = app; // Also expose as audioApp for validation scripts
     
+    // eslint-disable-next-line no-console
     console.log('🎙️ Audio Transcription App loaded successfully');
   } catch (error) {
     ErrorHandler.logError('Failed to initialize application', error);

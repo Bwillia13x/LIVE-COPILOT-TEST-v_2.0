@@ -221,7 +221,7 @@ export class ProductionMonitor {
     // This would send to your custom analytics endpoint
     // For now, we'll just log in development
     if (!this.isProduction) {
-      console.log(`[Analytics] ${type}:`, data);
+      // Removed console.log(`[Analytics] ${type}:`, data);
     }
   }
 
@@ -235,7 +235,7 @@ export class ProductionMonitor {
     // In a real implementation, you'd send to your error monitoring service
     // e.g., Sentry, LogRocket, etc.
     if (!this.isProduction) {
-      console.error('[Error Queue]', errors);
+      // Removed console.error('[Error Queue]', errors);
     }
   }
 

@@ -60,8 +60,10 @@ export class LoggerService {
         const timeStr = new Date(timestamp).toLocaleTimeString();
         
         if (data) {
+          // eslint-disable-next-line no-console
           console.log(`[${timeStr}] ${prefix} ${message}`, data);
         } else {
+          // eslint-disable-next-line no-console
           console.log(`[${timeStr}] ${prefix} ${message}`);
         }
       }

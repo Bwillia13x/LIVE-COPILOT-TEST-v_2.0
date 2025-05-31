@@ -105,7 +105,7 @@ export class AudioTranscriptionApp {
       // Test API connection if API key is available
       await this.testAPIConnection();
       
-      console.log('🎙️ Audio Transcription App initialized successfully');
+      console.log('🎙️ Audio Transcription App initialized successfully'); // KEEP
     } catch (error) {
       ErrorHandler.logError('Failed to initialize app', error);
       this.showToast({
@@ -138,7 +138,7 @@ export class AudioTranscriptionApp {
   }
 
   private setupEventListeners(): void {
-    console.log('[DEBUG] setupEventListeners called'); // Temporary debug log
+    // REMOVE: console.log('[DEBUG] setupEventListeners called');
     // Record button
     this.elements.recordButton?.addEventListener('click', () => {
       this.toggleRecording();
@@ -259,7 +259,7 @@ export class AudioTranscriptionApp {
       // Load API key from localStorage
       const savedApiKey = localStorage.getItem('geminiApiKey');
       if (savedApiKey) {
-        console.log('🔑 Loading saved API key from localStorage');
+        // REMOVE: console.log('🔑 Loading saved API key from localStorage');
         this.apiService.setApiKey(savedApiKey);
         
         // Update the API key input field if it exists
@@ -273,7 +273,7 @@ export class AudioTranscriptionApp {
           rememberKeyCheckbox.checked = true;
         }
       } else {
-        console.log('⚠️ No API key found in localStorage - user will need to configure one');
+        console.log('⚠️ No API key found in localStorage - user will need to configure one'); // KEEP
       }
     } catch (error) {
       ErrorHandler.logError('Failed to initialize API key', error);
@@ -547,7 +547,7 @@ export class AudioTranscriptionApp {
       } else {
         // Check if it's specifically an API key issue
         if (result.error?.includes('API Key must be set')) {
-          console.log('ℹ️ No API key configured - user can set one in settings');
+          console.log('ℹ️ No API key configured - user can set one in settings'); // KEEP
           // Don't show error toast on initial load if no API key is set
         } else {
           this.showToast({
@@ -659,7 +659,7 @@ export class AudioTranscriptionApp {
   }
 
   private cleanup(): void {
-    console.log('🧹 Starting application cleanup...');
+    console.log('🧹 Starting application cleanup...'); // KEEP
     
     // Clear auto-save and UI update intervals
     if (this.autoSaveInterval) {
@@ -684,7 +684,7 @@ export class AudioTranscriptionApp {
     // Cleanup utilities
     MemoryManager.cleanup();
     
-    console.log('✅ Application cleanup completed');
+    console.log('✅ Application cleanup completed'); // KEEP
   }
 
   private registerLazyModules(): void {
@@ -727,7 +727,7 @@ export class AudioTranscriptionApp {
       },
       {
         onError: (error) => {
-          console.warn('Auto-save failed:', error);
+          console.warn('Auto-save failed:', error); // KEEP
         }
       }
     );
@@ -843,16 +843,16 @@ export class AudioTranscriptionApp {
       const healthStatus = await this.healthCheckService.getHealthStatus();
       
       if (healthStatus.status === 'unhealthy') {
-        console.warn('⚠️ Health check detected issues:', healthStatus);
+        console.warn('⚠️ Health check detected issues:', healthStatus); // KEEP
         this.showToast({
           type: 'warning',
           title: 'System Health Warning',
           message: 'Some system checks failed. The app may not function optimally.',
         });
       } else if (healthStatus.status === 'warning') {
-        console.warn('⚠️ Health check warnings:', healthStatus);
+        console.warn('⚠️ Health check warnings:', healthStatus); // KEEP
       } else {
-        console.log('✅ Health check passed - all systems operational');
+        // REMOVE: console.log('✅ Health check passed - all systems operational');
       }
 
       // Log health status in production
@@ -865,7 +865,7 @@ export class AudioTranscriptionApp {
         });
       }
     } catch (error) {
-      console.error('❌ Health check failed:', error);
+      ErrorHandler.logError('Health check failed', error); // CONVERTED
       this.showToast({
         type: 'error',
         title: 'Health Check Failed',
@@ -913,7 +913,7 @@ export class AudioTranscriptionApp {
           'generateSampleCharts_Overall'
         );
       }
-      console.log('Sample charts generated successfully.');
+      // REMOVE: console.log('Sample charts generated successfully.');
     } catch (error) {
       ErrorHandler.logError('Failed to generate sample charts', error);
       this.showToast({
@@ -938,7 +938,7 @@ export class AudioTranscriptionApp {
     try {
       const tabNav = document.querySelector('.tab-navigation');
       if (!tabNav) {
-        console.error('Tab navigation not found');
+        ErrorHandler.logError('Tab navigation not found', new Error('Tab navigation not found')); // CONVERTED
         return;
       }
 
@@ -947,7 +947,7 @@ export class AudioTranscriptionApp {
       const rawTabButton = tabNav.querySelector('.tab-button[data-tab="raw"]') as HTMLButtonElement;
 
       if (!polishedTabButton) {
-        console.error('Polished tab button not found');
+        ErrorHandler.logError('Polished tab button not found', new Error('Polished tab button not found')); // CONVERTED
         return;
       }
 
@@ -982,7 +982,7 @@ export class AudioTranscriptionApp {
         activeTabIndicator.style.width = `${buttonRect.width}px`;
       }
 
-      console.log('Switched to polished tab successfully');
+      // REMOVE: console.log('Switched to polished tab successfully');
 
       // Track tab switch
       if (this.productionMonitor) {
@@ -993,7 +993,7 @@ export class AudioTranscriptionApp {
       }
 
     } catch (error) {
-      console.error('Error switching to polished tab:', error);
+      ErrorHandler.logError('Error switching to polished tab', error); // CONVERTED
       this.showToast({
         type: 'error',
         title: 'Tab Switch Failed',
@@ -1008,7 +1008,7 @@ export class AudioTranscriptionApp {
 
   // Theme system methods
   private initTheme(): void {
-    console.log('Initializing theme system...');
+    // REMOVE: console.log('Initializing theme system...');
     
     try {
       // Check saved theme preference
@@ -1026,10 +1026,10 @@ export class AudioTranscriptionApp {
         }
       }
       
-      console.log(`Theme initialized: ${savedTheme}`);
+      // REMOVE: console.log(`Theme initialized: ${savedTheme}`);
       
     } catch (error) {
-      console.error('Failed to initialize theme:', error);
+      ErrorHandler.logError('Failed to initialize theme', error); // CONVERTED
       // Fallback to dark theme
       document.body.className = '';
       this.showToast({
@@ -1052,13 +1052,13 @@ export class AudioTranscriptionApp {
     // this.state.isProcessing = true; // Consider if this is appropriate here
   }
 
-  // TODO: This method seems to be unused. Remove it or implement its usage.
-  private logMessage(message: string): void {
-    console.log(message);
-  }
+  // REMOVE Unused logMessage method
+  // private logMessage(message: string): void {
+  //   console.log(message);
+  // }
 
   private toggleTheme(): void {
-    console.log('Toggling theme...');
+    // REMOVE: console.log('Toggling theme...');
     
     try {
       const isLightMode = document.body.classList.contains('light-mode');
@@ -1089,7 +1089,7 @@ export class AudioTranscriptionApp {
         message: `Switched to ${newTheme} mode`,
       });
       
-      console.log(`Theme toggled to: ${newTheme}`);
+      // REMOVE: console.log(`Theme toggled to: ${newTheme}`);
       
       // Track theme toggle
       if (this.productionMonitor) {
@@ -1113,7 +1113,7 @@ export class AudioTranscriptionApp {
   private createChartContainer(canvasId: string, title: string, description: string): void {
     const chartDisplayArea = document.getElementById('aiChartDisplayArea');
     if (!chartDisplayArea) {
-      console.error('Chart display area not found');
+      ErrorHandler.logError('Chart display area not found', new Error('Chart display area not found in createChartContainer')); // CONVERTED
       return;
     }
 

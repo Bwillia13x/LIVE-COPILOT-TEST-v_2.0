@@ -79,20 +79,24 @@ export const getEnvironmentInfo = () => ({
 export const log = {
   debug: (...args: any[]) => {
     if (FEATURES.consoleLogs || IS_DEVELOPMENT) {
+      // eslint-disable-next-line no-console
       console.log('[DEBUG]', ...args);
     }
   },
   info: (...args: any[]) => {
     if (FEATURES.consoleLogs || IS_DEVELOPMENT) {
+      // eslint-disable-next-line no-console
       console.info('[INFO]', ...args);
     }
   },
   warn: (...args: any[]) => {
     if (FEATURES.consoleLogs || MONITORING.logLevel !== 'error') {
+      // eslint-disable-next-line no-console
       console.warn('[WARN]', ...args);
     }
   },
   error: (...args: any[]) => {
+    // eslint-disable-next-line no-console
     console.error('[ERROR]', ...args);
   }
 };

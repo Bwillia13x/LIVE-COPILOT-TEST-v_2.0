@@ -214,9 +214,7 @@ describe('DataProcessor', () => {
       const text = 'This is a test about testing and important test procedures for tests.';
       const analysis = DataProcessor.analyzeTranscription(text);
       expect(Array.isArray(analysis.keyPhrases)).toBe(true);
-      if (text.length > 0 && analysis.keyPhrases.length === 0) {
-        console.warn("Key phrase extraction returned empty for test text:", text);
-      }
+      // Removed: console.warn("Key phrase extraction returned empty for test text:", text);
     });
   });
 

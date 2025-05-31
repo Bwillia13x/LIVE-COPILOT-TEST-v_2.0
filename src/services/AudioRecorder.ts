@@ -3,6 +3,8 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+import { ErrorHandler } from '../utils';
+
 export interface RecordingState {
   isRecording: boolean;
   isPaused: boolean;
@@ -64,7 +66,7 @@ export class AudioRecorder {
         };
 
         this.recognition.onerror = (event: any) => {
-          console.error('Speech recognition error:', event.error);
+          ErrorHandler.logError('Speech recognition error', new Error(event.error || 'Unknown speech recognition error'));
         };
 
         this.recognition.onend = () => {
@@ -78,13 +80,13 @@ export class AudioRecorder {
           }
         };
       } else {
-        console.error("SpeechRecognition API not supported in this browser.");
+        ErrorHandler.logError("SpeechRecognition API not supported", new Error("SpeechRecognition API not supported in this browser."));
         // this.recognition remains null, which is the desired state
       }
     } catch (error) {
       // This catch block would catch errors from `new SpeechRecognition()` if it's defined but fails to construct.
       // The `else` block above handles when `SpeechRecognition` itself is undefined.
-      console.error('Failed to initialize speech recognition object (e.g. constructor error):', error);
+      ErrorHandler.logError('Failed to initialize speech recognition object', error);
     }
   }
 
@@ -139,7 +141,7 @@ export class AudioRecorder {
 
       return true;
     } catch (error) {
-      console.error('Failed to start recording:', error);
+      ErrorHandler.logError('Failed to start recording:', error);
       return false;
     }
   }
@@ -175,7 +177,7 @@ export class AudioRecorder {
 
       this.notifyStateChange();
     } catch (error) {
-      console.error('Failed to stop recording:', error);
+      ErrorHandler.logError('Failed to stop recording:', error);
     }
   }
 
@@ -193,7 +195,7 @@ export class AudioRecorder {
         this.notifyStateChange();
       }
     } catch (error) {
-      console.error('Failed to pause recording:', error);
+      ErrorHandler.logError('Failed to pause recording:', error);
     }
   }
 
@@ -212,7 +214,7 @@ export class AudioRecorder {
         this.notifyStateChange();
       }
     } catch (error) {
-      console.error('Failed to resume recording:', error);
+      ErrorHandler.logError('Failed to resume recording:', error);
     }
   }
 

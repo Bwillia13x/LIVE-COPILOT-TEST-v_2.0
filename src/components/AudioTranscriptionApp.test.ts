@@ -1,23 +1,23 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
-// REMOVE: import { AudioTranscriptionApp } from './AudioTranscriptionApp';
+// AudioTranscriptionApp is imported dynamically in beforeEach
 import { RecordingState, AppState, Note, StoredNote, ToastOptions, ChartConfig } from '../types';
 import { ERROR_MESSAGES, SUCCESS_MESSAGES } from '../constants';
 
-// Module-scoped variables for mocks that need to be accessed by tests or across beforeEach/afterEach
-// These will be instances of the mocked services, configured in beforeEach.
+// Module-scoped variables for mocks
 let mockApiServiceInstance: any;
 let mockChartManagerInstance: any;
-let mockDataProcessorStatic: any; // For static class DataProcessor
+let mockDataProcessorStatic: any;
 let mockAudioRecorderInstance: any;
 let mockPerformanceMonitorInstance: any;
 let mockIntervalManagerInstance: any;
 let mockBundleOptimizerInstance: any;
 let mockProductionMonitorInstance: any;
 let mockHealthCheckServiceInstance: any;
-let mockErrorHandlerStatic: any; // For ErrorHandler static methods
-let mockMemoryManagerStatic: any; // For MemoryManager static methods
+let mockErrorHandlerLogError: import('vitest').SpyInstance;
+let mockMemoryManagerCleanup: import('vitest').SpyInstance;
+let mockErrorHandlerGetInstance: import('vitest').SpyInstance;
+let mockMemoryManagerGetInstance: import('vitest').SpyInstance;
 
-// Payloads for chart data, defined here to be accessible in beforeEach for APIService mock
 const mockActualChartPayload = {
   topics: { labels: ['topicA'], data: [10] },
   sentiment: { labels: ['positive'], data: [0.8] },
@@ -29,12 +29,10 @@ const mockActualSampleChartPayload = {
   wordFrequency: { labels: ['s_wordB'], data: [8] }
 };
 
-// Variables to capture callbacks
 let appTranscriptAvailableCallback: ((transcript: string) => void) | undefined;
 let appRecordingStateChangeCallback: ((state: RecordingState) => void) | undefined;
 let capturedIntervalManagerTasks: Record<string, { taskName: string, interval: number, callback: () => void, options?: any }> = {};
 
-// --- Global Mocks ---
 const localStorageMock = (() => {
   let store: Record<string, string> = {};
   return {
@@ -42,6 +40,8 @@ const localStorageMock = (() => {
     setItem: vi.fn((key: string, value: string) => { store[key] = value.toString(); }),
     removeItem: vi.fn((key: string) => { delete store[key]; }),
     clear: vi.fn(() => { store = {}; }),
+    // Helper to inspect store for debugging if needed, not used by app
+    // _getStore: () => store,
   };
 })();
 Object.defineProperty(window, 'localStorage', { value: localStorageMock, writable: true });
@@ -51,8 +51,9 @@ vi.stubGlobal('URL', { createObjectURL: vi.fn(() => 'blob:http://localhost/mock-
 
 describe('AudioTranscriptionApp', () => {
   let AudioTranscriptionAppModule: typeof import('./AudioTranscriptionApp');
-  let app: import('./AudioTranscriptionApp').AudioTranscriptionApp;
+  let app: import('./AudioTranscriptionApp').AudioTranscriptionApp; // Main app instance for most tests
 
+  // Spies on console and app methods, set up in main beforeEach
   let showToastSpy: import('vitest').SpyInstance;
   let consoleLogSpy: import('vitest').SpyInstance;
   let consoleErrorSpy: import('vitest').SpyInstance;
@@ -86,7 +87,8 @@ describe('AudioTranscriptionApp', () => {
     vi.setSystemTime(new Date(2024, 0, 1, 12, 0, 0));
     setupDOM();
 
-    // --- Define/Reset all mock instances and their methods ---
+    vi.clearAllMocks();
+
     mockApiServiceInstance = {
       setApiKey: vi.fn(), testConnection: vi.fn().mockResolvedValue({ success: true }),
       polishTranscription: vi.fn().mockResolvedValue({ success: true, data: 'polished text' }),
@@ -122,10 +124,12 @@ describe('AudioTranscriptionApp', () => {
     mockBundleOptimizerInstance = { registerLazyModule: vi.fn(), loadCriticalModules: vi.fn().mockResolvedValue(undefined), cleanup: vi.fn() };
     mockProductionMonitorInstance = { trackEvent: vi.fn(), trackError: vi.fn() };
     mockHealthCheckServiceInstance = { getHealthStatus: vi.fn().mockResolvedValue({ status: 'healthy', checks: {} }) };
-    mockErrorHandlerStatic = { getInstance: vi.fn(() => ({ handleAppError: vi.fn() })), logError: vi.fn() };
-    mockMemoryManagerStatic = { getInstance: vi.fn(() => ({ cleanup: vi.fn() })), cleanup: vi.fn() };
 
-    // --- Apply mocks using vi.doMock ---
+    mockErrorHandlerLogError = vi.fn(); // Initialize spy here
+    mockErrorHandlerGetInstance = vi.fn(() => ({ handleAppError: vi.fn() }));
+    mockMemoryManagerCleanup = vi.fn();
+    mockMemoryManagerGetInstance = vi.fn(() => ({ cleanup: vi.fn() }));
+
     vi.doMock('../services/APIService', () => ({ APIService: vi.fn(() => mockApiServiceInstance) }));
     vi.doMock('../services/ChartManager', () => ({ ChartManager: vi.fn(() => mockChartManagerInstance) }));
     vi.doMock('../services/DataProcessor', () => ({ DataProcessor: mockDataProcessorStatic }));
@@ -135,53 +139,40 @@ describe('AudioTranscriptionApp', () => {
     vi.doMock('../services/BundleOptimizer', () => ({ BundleOptimizer: { getInstance: vi.fn(() => mockBundleOptimizerInstance) } }));
     vi.doMock('../services/ProductionMonitor', () => ({ ProductionMonitor: { getInstance: vi.fn(() => mockProductionMonitorInstance) } }));
     vi.doMock('../services/HealthCheckService', () => ({ HealthCheckService: { getInstance: vi.fn(() => mockHealthCheckServiceInstance) } }));
-    vi.doMock('../utils', () => ({ ErrorHandler: mockErrorHandlerStatic, MemoryManager: mockMemoryManagerStatic }));
 
-    // --- Spy on window.addEventListener BEFORE app instantiation ---
-    if (windowAddEventListenerSpy) windowAddEventListenerSpy.mockRestore();
+    vi.doMock('../utils', async (importActual) => {
+        const actualUtils = await importActual() as any;
+        return {
+            ...actualUtils,
+            ErrorHandler: {
+                getInstance: mockErrorHandlerGetInstance,
+                logError: mockErrorHandlerLogError
+            },
+            MemoryManager: {
+                getInstance: mockMemoryManagerGetInstance,
+                cleanup: mockMemoryManagerCleanup
+            }
+        };
+    });
+
     windowAddEventListenerSpy = vi.spyOn(window, 'addEventListener');
 
-    // --- Dynamically import and instantiate app ---
     AudioTranscriptionAppModule = await import('./AudioTranscriptionApp');
-    app = new AudioTranscriptionAppModule.AudioTranscriptionApp();
+    app = new AudioTranscriptionAppModule.AudioTranscriptionApp(); // Main app instance
 
-    // --- Clear mocks that might have been called during instantiation ---
-    // (e.g. setApiKey might be called if localStorage has a key)
-    Object.values(mockApiServiceInstance).forEach(m => { if(vi.isMockFunction(m)) m.mockClear(); });
-    Object.values(mockChartManagerInstance).forEach(m => { if(vi.isMockFunction(m)) m.mockClear(); });
-    Object.values(mockDataProcessorStatic).forEach(m => { if(vi.isMockFunction(m)) m.mockClear(); });
-    Object.values(mockAudioRecorderInstance).forEach(m => { if(vi.isMockFunction(m)) m.mockClear(); });
-    Object.values(mockPerformanceMonitorInstance).forEach(m => { if(vi.isMockFunction(m)) m.mockClear(); });
-    Object.values(mockIntervalManagerInstance).forEach(m => { if(vi.isMockFunction(m)) m.mockClear(); });
-    // ... and so on for other service instances
-
-    localStorageMock.clear.mockClear(); // Clear call count for localStorage.clear
-    localStorageMock.getItem.mockClear();
-    localStorageMock.setItem.mockClear();
-    localStorageMock.removeItem.mockClear();
-    vi.mocked(URL.createObjectURL).mockClear();
-    mockErrorHandlerStatic.logError.mockClear();
-
-
-    // --- Console and App method spies ---
-    if (consoleLogSpy) consoleLogSpy.mockRestore();
-    if (consoleErrorSpy) consoleErrorSpy.mockRestore();
-    if (consoleWarnSpy) consoleWarnSpy.mockRestore();
+    // Global console spies, attached after app init to capture app's logs primarily
     consoleLogSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
     consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
     consoleWarnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
 
-    if (showToastSpy) showToastSpy.mockRestore();
+    // Spies on app instance methods
     showToastSpy = vi.spyOn(app as any, 'showToast').mockImplementation(() => {});
-    // ... other app method spies ...
     updateUISpy = vi.spyOn(app as any, 'updateUI').mockImplementation(() => {});
     updatePolishedNoteAreaSpy = vi.spyOn(app as any, 'updatePolishedNoteArea').mockImplementation(() => {});
     updateNotesDisplaySpy = vi.spyOn(app as any, 'updateNotesDisplay').mockImplementation(() => {});
     updateTranscriptionAreaSpy = vi.spyOn(app as any, 'updateTranscriptionArea').mockImplementation(() => {});
     updateRecordingUISpy = vi.spyOn(app as any, 'updateRecordingUI').mockImplementation(() => {});
 
-
-    // --- Wait for initializeApp to complete its async operations ---
     await vi.runAllTimersAsync();
     await Promise.resolve();
     await Promise.resolve();
@@ -189,36 +180,41 @@ describe('AudioTranscriptionApp', () => {
 
   afterEach(() => {
     vi.useRealTimers();
-    vi.resetModules(); // Crucial for vi.doMock
-    vi.restoreAllMocks(); // This will restore spies including windowAddEventListenerSpy
+    vi.resetModules();
+    vi.restoreAllMocks();
     document.body.innerHTML = '';
   });
 
-  // --- TESTS START HERE ---
   describe('Constructor and Initialization (initializeApp)', () => {
     it('should call all core initialization methods during app instantiation', () => {
       expect(mockPerformanceMonitorInstance.startMonitoring).toHaveBeenCalled();
-      expect(consoleLogSpy).toHaveBeenCalledWith('🎙️ Audio Transcription App initialized successfully');
+      const logCallFound = consoleLogSpy.mock.calls.some(callArgs =>
+        callArgs.some(arg => typeof arg === 'string' && arg.includes('Audio Transcription App initialized successfully'))
+      );
+      expect(logCallFound).withContext("Expected console.log to contain 'Audio Transcription App initialized successfully'").toBe(true);
     });
 
     it('should handle errors during initializeApp and show a toast', async () => {
-      // For this test, we need to re-setup mocks and import to control an error
-      vi.resetModules(); // Reset modules to re-import app with specific error
-      const errorAppProto = (await import('./AudioTranscriptionApp')).AudioTranscriptionApp.prototype as any;
-      const originalSetupDOM = errorAppProto.setupDOMReferences;
+      vi.resetModules();
+      const localMockErrorHandlerLogError = vi.fn(); // Local spy for this test
+      vi.doMock('../utils', () => ({ ErrorHandler: { logError: localMockErrorHandlerLogError, getInstance: vi.fn() }, MemoryManager: { cleanup: vi.fn(), getInstance: vi.fn() } }));
+
+      const TempAppModule = await import('./AudioTranscriptionApp');
+      const errorAppProto = TempAppModule.AudioTranscriptionApp.prototype as any;
+      const originalSetupDOMReferences = errorAppProto.setupDOMReferences;
       errorAppProto.setupDOMReferences = vi.fn(() => { throw new Error('Test DOM setup failed'); });
 
       let testErrorApp: any;
-      let testShowToastSpy: any;
+      let testShowToastSpy = vi.fn();
       try {
-        testErrorApp = new (await import('./AudioTranscriptionApp')).AudioTranscriptionApp();
-        testShowToastSpy = vi.spyOn(testErrorApp as any, 'showToast');
+        testErrorApp = new TempAppModule.AudioTranscriptionApp();
+        vi.spyOn(testErrorApp as any, 'showToast').mockImplementation(testShowToastSpy);
         await vi.runAllTimersAsync(); await Promise.resolve(); await Promise.resolve();
       } finally {
-        errorAppProto.setupDOMReferences = originalSetupDOM;
+        errorAppProto.setupDOMReferences = originalSetupDOMReferences;
       }
-      expect(mockErrorHandlerStatic.logError).toHaveBeenCalledWith('Failed to initialize app', expect.objectContaining({ message: 'Test DOM setup failed' }));
-      if (testShowToastSpy) expect(testShowToastSpy).toHaveBeenCalledWith(expect.objectContaining({ type: 'error', title: 'Initialization Error' }));
+      expect(localMockErrorHandlerLogError).toHaveBeenCalledWith('Failed to initialize app', expect.objectContaining({ message: 'Test DOM setup failed' }));
+      expect(testShowToastSpy).toHaveBeenCalledWith(expect.objectContaining({ type: 'error', title: 'Initialization Error'}));
     });
   });
 
@@ -229,12 +225,15 @@ describe('AudioTranscriptionApp', () => {
     it('should not throw error if a required DOM element is missing (error handled by initializeApp)', async () => {
       document.body.innerHTML = '<div id="app"></div>';
       vi.resetModules();
-      const errorAppProto = (await import('./AudioTranscriptionApp')).AudioTranscriptionApp.prototype as any;
+      const localMockErrorHandlerLogError = vi.fn();
+      vi.doMock('../utils', () => ({ ErrorHandler: { logError: localMockErrorHandlerLogError, getInstance: vi.fn() }, MemoryManager: { cleanup: vi.fn(), getInstance: vi.fn() } }));
+      const TempAppModule = await import('./AudioTranscriptionApp');
+      const errorAppProto = TempAppModule.AudioTranscriptionApp.prototype as any;
       const originalSetupDOM = errorAppProto.setupDOMReferences;
       errorAppProto.setupDOMReferences = vi.fn(() => { throw new Error('Required element missing test'); });
       let errorTestApp: any; let localShowToastSpy = vi.fn();
       try {
-        errorTestApp = new (await import('./AudioTranscriptionApp')).AudioTranscriptionApp();
+        errorTestApp = new TempAppModule.AudioTranscriptionApp();
         vi.spyOn(errorTestApp as any, 'showToast').mockImplementation(localShowToastSpy);
         await vi.runAllTimersAsync(); await Promise.resolve(); await Promise.resolve();
       } finally { errorAppProto.setupDOMReferences = originalSetupDOM; }
@@ -251,29 +250,69 @@ describe('AudioTranscriptionApp', () => {
 
   describe('initializeAPIKey Specific Tests', () => {
     it('should set API key from localStorage and update UI elements if key exists', async () => {
-      localStorageMock.setItem('geminiApiKey', 'ls-test-key-init');
-      vi.resetModules(); // Reset to re-import app and re-run its init
+      // Setup localStorage for this specific test case
+      const originalGetItem = localStorageMock.getItem;
+      localStorageMock.getItem = vi.fn((key: string) => key === 'geminiApiKey' ? 'ls-test-key-init' : null);
+
+      vi.resetModules();
+      const tempMockApiService = { setApiKey: vi.fn(), testConnection: vi.fn().mockResolvedValue({ success: true }), polishTranscription: vi.fn(), generateChartData: vi.fn(), generateSampleChartData: vi.fn(), hasValidApiKey: vi.fn() };
+      vi.doMock('../services/APIService', () => ({ APIService: vi.fn(() => tempMockApiService) }));
+      vi.doMock('../utils', () => ({ ErrorHandler: { logError: vi.fn(), getInstance: vi.fn() }, MemoryManager: { cleanup: vi.fn(), getInstance: vi.fn() } }));
+
       const localAppModule = await import('./AudioTranscriptionApp');
       const localApp = new localAppModule.AudioTranscriptionApp();
       vi.spyOn(localApp as any, 'showToast').mockImplementation(() => {});
       await vi.runAllTimersAsync(); await Promise.resolve(); await Promise.resolve();
 
-      expect(mockApiServiceInstance.setApiKey).toHaveBeenCalledWith('ls-test-key-init');
+      expect(tempMockApiService.setApiKey).toHaveBeenCalledWith('ls-test-key-init');
+      localStorageMock.getItem = originalGetItem; // Restore original mock behavior
     });
-    it('should log message if no API key in localStorage', () => {
-      expect(consoleLogSpy).toHaveBeenCalledWith(expect.stringContaining('No API key found in localStorage'));
+
+    it('should log message if no API key in localStorage', async () => {
+      // Ensure localStorage.getItem returns null for 'geminiApiKey' FOR THIS TEST
+      const originalGetItem = localStorageMock.getItem;
+      localStorageMock.getItem = vi.fn((key: string) => key === 'geminiApiKey' ? null : (originalGetItem(key)));
+
+      // Local console spy for this specific test to avoid interference
+      const localConsoleLogSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
+
+      vi.resetModules(); // Reset modules to ensure fresh App construction with this specific localStorage state
+      // Re-mock dependencies that might log during init
+      vi.doMock('../services/HealthCheckService', () => ({ HealthCheckService: { getInstance: () => ({ getHealthStatus: vi.fn().mockResolvedValue({status: 'healthy'}) }) }}));
+      vi.doMock('../services/PerformanceMonitor', () => ({ PerformanceMonitor: { getInstance: () => ({ startMonitoring: vi.fn()}) }}));
+
+      const LocalAppModule = await import('./AudioTranscriptionApp');
+      const localApp = new LocalAppModule.AudioTranscriptionApp();
+      await vi.runAllTimersAsync(); await Promise.resolve(); await Promise.resolve(); // Allow initializeApp to run
+
+      const expectedMessage = '⚠️ No API key found in localStorage - user will need to configure one';
+      const logCallFound = localConsoleLogSpy.mock.calls.some(callArgs =>
+        callArgs.some(arg => typeof arg === 'string' && arg.includes(expectedMessage))
+      );
+
+      // console.log('All console.log calls captured by local spy for this test:', JSON.stringify(localConsoleLogSpy.mock.calls, null, 2));
+
+      expect(logCallFound)
+        .withContext(`Expected console.log to contain '${expectedMessage}'. Actual calls: ${JSON.stringify(localConsoleLogSpy.mock.calls)}`)
+        .toBe(true);
+
+      localConsoleLogSpy.mockRestore();
+      localStorageMock.getItem = originalGetItem; // Restore original mock behavior
     });
   });
 
   describe('initTheme Specific Tests', () => {
     it('should apply theme from localStorage if present', async () => {
-      localStorageMock.setItem('voice-notes-theme', 'light');
+      const originalGetItem = localStorageMock.getItem;
+      localStorageMock.getItem = vi.fn((key: string) => key === 'voice-notes-theme' ? 'light' : null);
       vi.resetModules();
+      vi.doMock('../utils', () => ({ ErrorHandler: { logError: vi.fn(), getInstance: vi.fn() }, MemoryManager: { cleanup: vi.fn(), getInstance: vi.fn() } }));
       const localAppModule = await import('./AudioTranscriptionApp');
       const localApp = new localAppModule.AudioTranscriptionApp();
       vi.spyOn(localApp as any, 'showToast').mockImplementation(() => {});
       await vi.runAllTimersAsync(); await Promise.resolve(); await Promise.resolve();
       expect(document.body.className).toBe('light-mode');
+      localStorageMock.getItem = originalGetItem;
     });
   });
 
@@ -285,7 +324,6 @@ describe('AudioTranscriptionApp', () => {
   });
 
   describe('Core Functionality Methods', () => {
-    // Tests use the `app` instance from the main beforeEach
     describe('toggleRecording()', () => {
       it('when not recording, and supported, and start is successful, should start recording', async () => {
         const appAudioRecorder = (app as any).audioRecorder;
@@ -312,7 +350,7 @@ describe('AudioTranscriptionApp', () => {
     });
     describe('saveCurrentNote()', () => {
       it('should save current note and update display', () => {
-        (app as any).state.currentNote = { id: 's1', r: '', p: '', t: 0 };
+        (app as any).state.currentNote = { id: 's1', rawTranscription: 'r', polishedNote: 'p', timestamp: 0 };
         app.saveCurrentNote();
         expect(mockDataProcessorStatic.saveNote).toHaveBeenCalled();
       });
@@ -365,7 +403,7 @@ describe('AudioTranscriptionApp', () => {
       it('should accumulate transcripts in transcriptBuffer', () => {
         expect(transcriptCallback).toBeDefined();
         if (transcriptCallback) {
-            (app as any).transcriptBuffer = ''; // Reset for this test
+            (app as any).transcriptBuffer = '';
             transcriptCallback('First part.');
             expect((app as any).transcriptBuffer).toBe('First part. ');
             transcriptCallback('Second part.');

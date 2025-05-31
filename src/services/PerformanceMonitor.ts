@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import { LoggerService, MemoryManager } from '../utils.js';
+import { LoggerService, MemoryManager } from '../utils';
 
 export interface PerformanceMetrics {
   memoryUsage: number;
@@ -302,5 +302,6 @@ ${this.alerts.slice(-5).map(alert =>
     this.stopMonitoring();
     this.metrics = [];
     this.alerts = [];
+    this.recentOperations = []; // Clear recent operations
   }
 }

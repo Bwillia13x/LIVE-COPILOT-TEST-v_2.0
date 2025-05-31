@@ -28,22 +28,35 @@ export class APIService {
       this.apiKey = (storedKey && storedKey.trim()) || (envKey && envKey.trim()) || null;
       
       if (this.apiKey && this.apiKey.length > 10) { // Basic validation for API key format
+        // Instruction: Change `this.genAI = new GoogleGenAI(this.apiKey as any);` (similar context) to:
+        // if (this.apiKey) {
+        //   this.genAI = new GoogleGenAI(this.apiKey);
+        // } else {
+        //   console.error("API Key is null, cannot initialize GoogleGenAI");
+        //   this.genAI = null;
+        // }
+        // Applying this pattern here, knowing apiKey is non-null due to the outer if.
+        // The `else` branch of the instruction is thus not reachable here.
         try {
           this.genAI = new GoogleGenAI(this.apiKey);
           console.log('🔑 API service initialized with API key');
-        } catch (genAIError: any) {
-          // This case should ideally not be reached if apiKey is validated before this line
-          console.error("API Key is null, cannot initialize GoogleGenAI");
+        } catch (error: any) { // Catching potential errors from GoogleGenAI constructor
+          console.error("Error initializing GoogleGenAI:", error.message);
           this.genAI = null;
-          this.apiKey = null;
+          // We don't nullify this.apiKey here, to allow user to see/correct the problematic key.
         }
       } else {
-        console.log('ℹ️ No valid API key available - API service ready for key configuration');
+        if (!this.apiKey) {
+            console.log('ℹ️ No API key found - API service ready for key configuration');
+        } else { // apiKey is present but too short or only whitespace
+            console.log('ℹ️ API key is invalid (e.g., too short) - API service ready for valid key configuration');
+        }
         this.genAI = null;
-        this.apiKey = null;
+        // Don't nullify this.apiKey here, it might be partially entered.
+        // Or if it's just whitespace, it will be treated as null effectively by next checks.
       }
     } catch (error: any) {
-      console.log('❌ API initialization failed:', error?.message || 'Unknown error');
+      console.log('❌ API initialization failed during setup:', error?.message || 'Unknown error');
       this.genAI = null;
       this.apiKey = null;
     }
@@ -192,7 +205,7 @@ Transcription: "${transcription}"`;
     try {
       this.apiKey = apiKey.trim();
       localStorage.setItem('geminiApiKey', this.apiKey);
-      this.genAI = new GoogleGenAI(this.apiKey as any);
+      this.genAI = new GoogleGenAI(this.apiKey); // Removed 'as any'
       console.log('🔑 API key set and service initialized successfully');
     } catch (error: any) {
       console.log('❌ Failed to set API key:', error?.message || 'Unknown error');

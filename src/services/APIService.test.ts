@@ -122,7 +122,7 @@ describe('APIService', () => {
       apiService = new APIService();
       expect(MockedGoogleGenAIConstructor).not.toHaveBeenCalled();
       expect(apiService.hasValidApiKey()).toBe(false);
-      expect(consoleLogSpy).toHaveBeenCalledWith(expect.stringContaining('No valid API key available'));
+      expect(consoleLogSpy).toHaveBeenCalledWith("ℹ️ No API key found - API service ready for key configuration");
     });
 
     it('should not initialize GoogleGenAI with an invalid/short API key from env', () => {
@@ -130,7 +130,7 @@ describe('APIService', () => {
       apiService = new APIService();
       expect(MockedGoogleGenAIConstructor).not.toHaveBeenCalled();
       expect(apiService.hasValidApiKey()).toBe(false);
-      expect(consoleLogSpy).toHaveBeenCalledWith(expect.stringContaining('No valid API key available'));
+      expect(consoleLogSpy).toHaveBeenCalledWith("ℹ️ API key is invalid (e.g., too short) - API service ready for valid key configuration");
     });
 
     it('should not initialize GoogleGenAI with an invalid/short API key from localStorage', () => {
@@ -157,10 +157,8 @@ describe('APIService', () => {
       expect(MockedGoogleGenAIConstructor).toHaveBeenCalledWith(testApiKey);
       expect(apiService.hasValidApiKey()).toBe(false);
 
-      // When new GoogleGenAI() fails, the inner catch sets this.apiKey = null.
-      // This should then cause the `else` block in `initializeAPI` (which checks `if (this.apiKey && this.apiKey.length > 10)`)
-      // to be triggered, logging the "API Key is null..." message via console.error.
-      expect(localConsoleErrorSpy).toHaveBeenCalledWith("API Key is null, cannot initialize GoogleGenAI");
+      // Check for the actual error message logged when GoogleGenAI constructor fails
+      expect(localConsoleErrorSpy).toHaveBeenCalledWith("Error initializing GoogleGenAI:", constructorErrorMessage);
 
       localConsoleErrorSpy.mockRestore();
     });

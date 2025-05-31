@@ -138,6 +138,7 @@ export class AudioTranscriptionApp {
   }
 
   private setupEventListeners(): void {
+    console.log('[DEBUG] setupEventListeners called'); // Temporary debug log
     // Record button
     this.elements.recordButton?.addEventListener('click', () => {
       this.toggleRecording();

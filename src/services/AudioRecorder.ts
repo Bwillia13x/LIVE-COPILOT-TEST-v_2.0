@@ -229,6 +229,10 @@ export class AudioRecorder {
     return { ...this.state };
   }
 
+  public getIsRecording(): boolean {
+    return this.state.isRecording;
+  }
+
   public onTranscriptAvailable(callback: (transcript: string) => void): void {
     this.onDataAvailable = callback;
   }

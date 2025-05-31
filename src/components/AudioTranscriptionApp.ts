@@ -1039,6 +1039,18 @@ export class AudioTranscriptionApp {
     }
   }
 
+  private showLoading(message: string): void {
+    // For now, a simple console log. This can be enhanced later for actual UI.
+    console.log(`[Loading]: ${message}`);
+    // Optionally, manage a loading indicator state if one exists:
+    // const loadingIndicator = document.getElementById('loadingIndicator');
+    // if (loadingIndicator) {
+    //   loadingIndicator.textContent = message;
+    //   loadingIndicator.style.display = 'block';
+    // }
+    // this.state.isProcessing = true; // Consider if this is appropriate here
+  }
+
   // TODO: This method seems to be unused. Remove it or implement its usage.
   private logMessage(message: string): void {
     console.log(message);

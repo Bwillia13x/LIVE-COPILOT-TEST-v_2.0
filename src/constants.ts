@@ -174,6 +174,13 @@ export const UI_IDS = {
   FILES_LIST: 'filesList', // The UL or DIV to list files
   ANALYZE_CONTENT_BUTTON: 'analyzeContentButton', // Repurposed testAggregateButton
   CONSOLIDATED_TOPICS_DISPLAY: 'consolidatedTopicsDisplay', // New display area
+  SUMMARIZE_CONTENT_BUTTON: 'summarizeContentButton', // New button for summarization
+  AUTOMATED_SUMMARY_DISPLAY: 'automatedSummaryDisplay', // New display area for summary
+  // Workflow Panel Elements
+  WORKFLOW_BUTTON: 'workflowButton',
+  WORKFLOW_PANEL: 'workflowPanel',
+  CLOSE_WORKFLOW_BUTTON: 'closeWorkflow',
+  WORKFLOWS_LIST_CONTAINER: 'workflowsList',
   // Add other frequently used DOM IDs
 } as const;
 

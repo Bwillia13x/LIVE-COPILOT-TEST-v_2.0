@@ -56,6 +56,12 @@
               <div id="aiChartDisplayArea" class="ai-chart-raw-display">
                 <!-- AI-generated charts based on raw transcription will appear here -->
               </div>
+              <div id="consolidatedTopicsDisplay" class="consolidated-topics-display" style="display: none;">
+                <!-- Consolidated topics will appear here -->
+              </div>
+              <div id="automatedSummaryDisplay" class="automated-summary-display" style="display: none;">
+                <!-- Automated summary will appear here -->
+              </div>
             </div>
           </div>
         </div>
@@ -334,9 +340,7 @@
             <button class="action-button" id="sampleChartsButton" title="Generate Sample Charts" style="background-color: #28a745;">
               <i class="fas fa-chart-pie"></i>
             </button>
-            <button id="analyzeContentButton" class="action-button" title="Analyze All Content for Topics" style="background-color: #ffc107;">
-              <i class="fas fa-brain"></i> <!-- Changed icon to brain -->
-            </button>
+            <!-- analyzeContentButton and summarizeContentButton moved to workflowPanel -->
           </div>
         </div>
       </div>
@@ -479,7 +483,13 @@
           </button>
         </div>
         <div id="workflowsList" class="workflows-list">
-          <div class="workflow-empty-state">
+          <button id="analyzeContentButton" class="action-button workflow-action-item" title="Analyze All Content for Topics">
+            <i class="fas fa-brain"></i> Analyze Topics
+          </button>
+          <button id="summarizeContentButton" class="action-button workflow-action-item" title="Summarize All Content">
+            <i class="fas fa-file-alt"></i> Summarize Content
+          </button>
+          <div class="workflow-empty-state" style="display: none;"> <!-- Initially hidden as we have actions now -->
             <i class="fas fa-robot"></i>
             <p>No workflows created yet</p>
             <button class="btn btn-primary" id="createFirstWorkflow">

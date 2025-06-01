@@ -2660,6 +2660,28 @@ body.light-mode .record-button.recording .record-button-inner { color: white; }
   margin-bottom: 4px;
 }
 
+.automated-summary-display {
+  padding: 12px;
+  margin-top: 16px;
+  background-color: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  font-size: 0.9rem;
+  color: var(--color-text-secondary);
+  line-height: 1.6;
+}
+
+.automated-summary-display h3 {
+  margin-top: 0;
+  margin-bottom: 8px;
+  font-size: 1rem;
+  color: var(--color-text);
+}
+
+.automated-summary-display p {
+  margin: 0;
+}
+
 .ai-chart-raw-display:empty::before {
   content: "Charts will appear here when generated...";
   color: var(--text-secondary);

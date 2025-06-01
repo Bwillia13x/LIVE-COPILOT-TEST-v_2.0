@@ -78,8 +78,15 @@ export class AudioTranscriptionApp {
     contentLibraryButton?: HTMLButtonElement;
     closeLibraryButton?: HTMLButtonElement;
     filesList?: HTMLElement;
-    analyzeContentButton?: HTMLButtonElement; // Renamed from testAggregateButton
-    consolidatedTopicsDisplay?: HTMLElement; // New display area for topics
+    analyzeContentButton?: HTMLButtonElement;
+    consolidatedTopicsDisplay?: HTMLElement;
+    summarizeContentButton?: HTMLButtonElement;
+    automatedSummaryDisplay?: HTMLElement;
+    // Workflow Panel Elements
+    workflowButton?: HTMLButtonElement;
+    workflowPanel?: HTMLElement;
+    closeWorkflowButton?: HTMLButtonElement;
+    workflowsListContainer?: HTMLElement; // Container for workflow action buttons
   } = {};
 
   constructor() {
@@ -151,6 +158,13 @@ export class AudioTranscriptionApp {
       filesList: document.getElementById(UI_IDS.FILES_LIST) as HTMLElement,
       analyzeContentButton: document.getElementById(UI_IDS.ANALYZE_CONTENT_BUTTON) as HTMLButtonElement,
       consolidatedTopicsDisplay: document.getElementById(UI_IDS.CONSOLIDATED_TOPICS_DISPLAY) as HTMLElement,
+      summarizeContentButton: document.getElementById(UI_IDS.SUMMARIZE_CONTENT_BUTTON) as HTMLButtonElement,
+      automatedSummaryDisplay: document.getElementById(UI_IDS.AUTOMATED_SUMMARY_DISPLAY) as HTMLElement,
+      // Workflow Panel Elements
+      workflowButton: document.getElementById(UI_IDS.WORKFLOW_BUTTON) as HTMLButtonElement,
+      workflowPanel: document.getElementById(UI_IDS.WORKFLOW_PANEL) as HTMLElement,
+      closeWorkflowButton: document.getElementById(UI_IDS.CLOSE_WORKFLOW_BUTTON) as HTMLButtonElement,
+      workflowsListContainer: document.getElementById(UI_IDS.WORKFLOWS_LIST_CONTAINER) as HTMLElement,
     };
     const coreRequiredElementIds = ['recordButton', UI_IDS.CONTENT_PANE_RAW, UI_IDS.CONTENT_PANE_POLISHED, UI_IDS.CHART_DISPLAY_AREA];
     for (const elementId of coreRequiredElementIds) {
@@ -212,7 +226,6 @@ export class AudioTranscriptionApp {
     document.getElementById('performanceToggleButton')?.addEventListener('click', () => this.togglePerformanceIndicator());
     document.getElementById('themeToggleButton')?.addEventListener('click', () => this.toggleTheme());
 
-    // Analyze Content Button Listener (repurposed from testAggregateButton)
     if (this.elements.analyzeContentButton) {
         this.elements.analyzeContentButton.addEventListener('click', async () => {
           const aggregatedText = this._aggregateAllTextContent();
@@ -222,7 +235,7 @@ export class AudioTranscriptionApp {
           }
 
           utilShowToast({type: 'info', title: 'Processing...', message: 'Analyzing content for consolidated topics.'});
-          console.log("Aggregated Text for Topic Analysis:", aggregatedText.substring(0, 500) + "..."); // Log snippet
+          console.log("Aggregated Text for Topic Analysis:", aggregatedText.substring(0, 500) + "...");
 
           try {
             const response = await this.apiService.getConsolidatedTopics(aggregatedText);
@@ -239,11 +252,41 @@ export class AudioTranscriptionApp {
         });
     }
 
+    if (this.elements.summarizeContentButton) {
+        this.elements.summarizeContentButton.addEventListener('click', async () => {
+            const aggregatedText = this._aggregateAllTextContent();
+            if (!aggregatedText || aggregatedText === "No text content available for aggregation.") {
+                utilShowToast({type: 'warning', title: 'No Content', message: 'No text content available to summarize.'});
+                return;
+            }
+
+            utilShowToast({type: 'info', title: 'Summarizing...', message: 'Generating automated summary.'});
+            if (this.elements.automatedSummaryDisplay) {
+                this.elements.automatedSummaryDisplay.style.display = 'none';
+            }
+            console.log("Aggregated Text for Summary:", aggregatedText.substring(0, 500) + "...");
+
+            try {
+                const response = await this.apiService.getAutomatedSummary(aggregatedText);
+                if (response.success && response.data) {
+                    console.log("Automated Summary:", response.data);
+                    this._displayAutomatedSummary(response.data);
+                    utilShowToast({type: 'success', title: 'Summary Generated', message: 'Automated summary created.'});
+                } else {
+                    this._handleOperationError(response.error || 'Failed to generate summary', 'summarizeContentButton', 'Summarization Failed', response.error || 'Unknown error from API');
+                }
+            } catch (error) {
+                this._handleOperationError(error, 'summarizeContentButton', 'Summarization Error', 'An unexpected error occurred during summarization.');
+            }
+        });
+    }
+
     window.addEventListener('beforeunload', () => this.cleanup());
     window.addEventListener('resize', this.handleResize);
 
     this._setupFileUploadListeners();
     this._setupContentLibraryPanelListeners();
+    this._setupWorkflowPanelListeners(); // Setup for the new panel
   }
 
   private _setupContentLibraryPanelListeners(): void {
@@ -258,6 +301,19 @@ export class AudioTranscriptionApp {
     if (this.elements.closeLibraryButton && this.elements.contentLibraryPanel) {
       this.elements.closeLibraryButton.addEventListener('click', () => {
         this.elements.contentLibraryPanel!.classList.remove('open');
+      });
+    }
+  }
+
+  private _setupWorkflowPanelListeners(): void {
+    if (this.elements.workflowButton && this.elements.workflowPanel) {
+      this.elements.workflowButton.addEventListener('click', () => {
+        this.elements.workflowPanel!.classList.toggle('open');
+      });
+    }
+    if (this.elements.closeWorkflowButton && this.elements.workflowPanel) {
+      this.elements.closeWorkflowButton.addEventListener('click', () => {
+        this.elements.workflowPanel!.classList.remove('open');
       });
     }
   }
@@ -448,7 +504,11 @@ export class AudioTranscriptionApp {
     if(this.elements.transcriptionArea) this.elements.transcriptionArea.textContent = '';
     if(this.elements.polishedNoteArea) this.elements.polishedNoteArea.textContent = '';
     this.chartManager.destroyAllCharts();
-    if (this.elements.consolidatedTopicsDisplay) this.elements.consolidatedTopicsDisplay.innerHTML = ''; // Clear topics
+    if (this.elements.consolidatedTopicsDisplay) this.elements.consolidatedTopicsDisplay.innerHTML = '';
+    if (this.elements.automatedSummaryDisplay) {
+        this.elements.automatedSummaryDisplay.innerHTML = '';
+        this.elements.automatedSummaryDisplay.style.display = 'none';
+    }
     this.updateUI();
     utilShowToast({ type: 'info', title: 'Cleared', message: 'Current note and charts have been cleared.' });
   }
@@ -1100,11 +1160,21 @@ export class AudioTranscriptionApp {
       ErrorHandler.logError("Consolidated topics display area not found.", "_displayConsolidatedTopics");
       return;
     }
+    this.elements.consolidatedTopicsDisplay.style.display = 'block';
     if (topics.length === 0) {
       this.elements.consolidatedTopicsDisplay.innerHTML = "<p>No specific topics identified.</p>";
       return;
     }
     const listItems = topics.map(topic => `<li>${topic}</li>`).join('');
     this.elements.consolidatedTopicsDisplay.innerHTML = `<h3>Consolidated Topics:</h3><ul>${listItems}</ul>`;
+  }
+
+  private _displayAutomatedSummary(summary: string): void {
+    if (!this.elements.automatedSummaryDisplay) {
+        ErrorHandler.logError("Automated summary display area not found.", "_displayAutomatedSummary");
+        return;
+    }
+    this.elements.automatedSummaryDisplay.innerHTML = `<h3>Automated Summary:</h3><p>${summary}</p>`;
+    this.elements.automatedSummaryDisplay.style.display = 'block';
   }
 }

@@ -196,7 +196,6 @@ ${combinedText}
 
     if (response.success && response.data) {
       try {
-        // Attempt to parse the string data into a string array
         const topics = JSON.parse(response.data) as string[];
         if (!Array.isArray(topics) || !topics.every(topic => typeof topic === 'string')) {
             throw new Error("API did not return a valid JSON array of strings for topics.");
@@ -210,6 +209,23 @@ ${combinedText}
     return { success: false, error: response.error || "Failed to get consolidated topics from API." };
   }
 
+  public async getAutomatedSummary(textToSummarize: string): Promise<APIResponse<string>> {
+    const operationName = "Automated Summary Generation";
+    const prompt = `Please provide a concise summary (2-3 sentences) of the following text:
+
+---
+${textToSummarize}
+---
+
+Ensure the summary is well-written and captures the key points.`;
+
+    const response = await this._executePrompt(prompt, operationName);
+
+    if (response.success && response.data) {
+      return { success: true, data: response.data.trim() };
+    }
+    return { success: false, error: response.error || "Failed to get automated summary." };
+  }
 
   public async generateSampleChartData(): Promise<APIResponse<AllAIChartData>> {
     console.log("APIService: Generating sample chart data (mocked)");
@@ -242,7 +258,7 @@ ${combinedText}
     try {
       this.apiKey = apiKey.trim();
       localStorage.setItem(STORAGE_KEYS.API_KEY, this.apiKey);
-      this.genAI = new GoogleGenAI(this.apiKey as any); // Type assertion to any for GoogleGenAI constructor
+      this.genAI = new GoogleGenAI(this.apiKey as any);
       console.log('🔑 API key set and service initialized successfully');
     } catch (error) {
       ErrorHandler.logError('Failed to set API key', error instanceof Error ? error : new Error(String(error)));

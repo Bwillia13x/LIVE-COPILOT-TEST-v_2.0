@@ -17,6 +17,30 @@ import { HealthCheckService } from '../services/HealthCheckService.js';
 import { ErrorHandler, MemoryManager, showToast as utilShowToast, formatFileSize } from '../utils.js';
 import { SUCCESS_MESSAGES, ERROR_MESSAGES, STORAGE_KEYS, UI_IDS, APP_CONFIG, CHART_TYPES } from '../constants.js';
 
+// Declare Tesseract for TypeScript since it's loaded via CDN
+declare const Tesseract: any;
+// Declare SpeechRecognition and related types for browsers that support them
+declare var SpeechRecognition: any;
+declare var webkitSpeechRecognition: any;
+interface SpeechRecognitionEvent extends Event {
+    results: SpeechRecognitionResultList;
+    resultIndex: number;
+}
+interface SpeechRecognitionResultList {
+    [index: number]: SpeechRecognitionResult;
+    length: number;
+}
+interface SpeechRecognitionResult {
+    isFinal: boolean;
+    [index: number]: SpeechRecognitionAlternative;
+    length: number;
+}
+interface SpeechRecognitionAlternative {
+    transcript: string;
+    confidence: number;
+}
+
+
 export class AudioTranscriptionApp {
   private apiService: APIService;
   private chartManager: ChartManager;
@@ -43,15 +67,13 @@ export class AudioTranscriptionApp {
     transcriptionArea?: HTMLDivElement;
     polishedNoteArea?: HTMLDivElement;
     statusDisplay?: HTMLElement;
-    chartContainer?: HTMLElement; // This is likely CHART_DISPLAY_AREA, not a single container
+    chartContainer?: HTMLElement;
     apiKeyInput?: HTMLInputElement;
     notesContainer?: HTMLElement;
     exportButton?: HTMLButtonElement;
-    // File Upload Elements
     fileDropZone?: HTMLElement;
     fileInput?: HTMLInputElement;
     uploadFilesBtn?: HTMLButtonElement;
-    // Content Library Panel Elements
     contentLibraryPanel?: HTMLElement;
     contentLibraryButton?: HTMLButtonElement;
     closeLibraryButton?: HTMLButtonElement;
@@ -61,7 +83,7 @@ export class AudioTranscriptionApp {
   constructor() {
     this.apiService = new APIService();
     this.chartManager = new ChartManager();
-    this.audioRecorder = new AudioRecorder();
+    this.audioRecorder = new AudioRecorder(); // Used for live recording, not file processing here
     this.performanceMonitor = PerformanceMonitor.getInstance();
     this.intervalManager = IntervalManager.getInstance();
     this.bundleOptimizer = BundleOptimizer.getInstance();
@@ -643,7 +665,6 @@ export class AudioTranscriptionApp {
     }
   }
 
-  // MODIFIED _handleSelectedFiles for text content extraction
   private async _handleSelectedFiles(files: FileList): Promise<void> {
     if (files.length === 0) {
       return;
@@ -655,7 +676,7 @@ export class AudioTranscriptionApp {
 
     for (const file of fileArray) {
       const fileId = `file-${this.nextFileId++}`;
-      const managedFileBase: Omit<ManagedFile, 'textContent'> = { // Create base object first
+      let managedFile: ManagedFile = {
         id: fileId,
         fileObject: file,
         name: file.name,
@@ -666,49 +687,69 @@ export class AudioTranscriptionApp {
       newlyAddedFileNames.push(file.name);
 
       if (file.type === 'text/plain') {
-        const promise = new Promise<ManagedFile>((resolve, reject) => {
+        const promise = new Promise<ManagedFile>((resolve) => {
           const reader = new FileReader();
           reader.onload = (e) => {
-            resolve({
-              ...managedFileBase,
-              textContent: e.target?.result as string,
-            });
+            managedFile.textContent = e.target?.result as string;
+            resolve(managedFile);
           };
           reader.onerror = (e) => {
-            ErrorHandler.logError(`Error reading file ${file.name}`, e);
-            resolve({ ...managedFileBase }); // Resolve without textContent on error
+            ErrorHandler.logError(`Error reading file ${managedFile.name}`, e);
+            resolve(managedFile);
           };
           reader.readAsText(file);
         });
         fileProcessingPromises.push(promise);
-      } else {
-        // For non-text files, resolve immediately with no textContent
-        fileProcessingPromises.push(Promise.resolve({ ...managedFileBase }));
+      } else if (file.type.startsWith('image/')) {
+        const promise = new Promise<ManagedFile>((resolve) => {
+          console.log(`Starting OCR for image: ${managedFile.name}`);
+          Tesseract.recognize(
+            managedFile.fileObject,
+            'eng',
+            { logger: (m: any) => console.log(m) }
+          ).then(({ data: { text } }: { data: { text: string } }) => {
+            managedFile.textContent = text;
+            console.log(`OCR complete for ${managedFile.name}:`, text.substring(0, 100) + "...");
+            resolve(managedFile);
+          }).catch((err: any) => {
+            ErrorHandler.logError(`OCR failed for ${managedFile.name}`, err);
+            resolve(managedFile);
+          });
+        });
+        fileProcessingPromises.push(promise);
+      } else if (file.type.startsWith('audio/')) {
+        console.log(`Attempting client-side transcription for audio file: ${managedFile.name}`);
+        const promise = new Promise<ManagedFile>(async (resolve) => {
+            // Strategy B: Document limitations as direct SpeechRecognition from file buffer is not standard
+            ErrorHandler.logWarning(`Client-side transcription for audio file '${managedFile.name}' via SpeechRecognition API from buffer is not directly supported. This would typically require a server-side API or a specialized client-side library.`, '_handleSelectedFiles - audio');
+            managedFile.textContent = 'Client-side audio file transcription not directly supported by browser SpeechRecognition.';
+            resolve(managedFile);
+        });
+        fileProcessingPromises.push(promise);
+      }
+       else {
+        fileProcessingPromises.push(Promise.resolve(managedFile));
       }
     }
 
     try {
       const processedFiles = await Promise.all(fileProcessingPromises);
-      this.managedFiles.push(...processedFiles); // Add all processed files (some with textContent, some without)
+      this.managedFiles.push(...processedFiles);
 
-      console.log('Managed files after processing:', this.managedFiles);
+      console.log('Managed files after processing:', this.managedFiles.map(f => ({name: f.name, type: f.type, textContentPresent: !!f.textContent, textContent: f.textContent?.substring(0,30)})));
 
       utilShowToast({
           type: 'success',
           title: 'Files Added',
-          message: `Added: ${newlyAddedFileNames.join(', ')}`
+          message: `Added: ${newlyAddedFileNames.join(', ')} (${processedFiles.length} processed)`
       });
     } catch (error) {
-      ErrorHandler.logError('Error processing one or more files.', error);
+      ErrorHandler.logError('Error processing one or more files during Promise.all.', error);
       utilShowToast({
         type: 'error',
         title: 'File Processing Error',
         message: 'Some files could not be processed.',
       });
-      // Even if some promises failed (though our setup resolves them),
-      // it's safer to render what we have. Promise.all rejects on first error.
-      // A better approach might be Promise.allSettled if we want to add partial successes.
-      // For now, this catch might not be hit if individual file reads handle their errors by resolving.
     }
 
     this._renderManagedFiles();

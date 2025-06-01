@@ -640,4 +640,258 @@ describe('AudioTranscriptionApp Unit Tests - Core Setup', () => {
       polishSpy.mockRestore();
     });
   });
+
+  describe('polishCurrentTranscription Logic', () => {
+    let showToastSpy: jest.SpyInstance;
+
+    beforeEach(() => {
+      showToastSpy = jest.spyOn(app as any, 'showToast').mockImplementation(() => {});
+      // Reset relevant parts of APIService mock for these specific tests
+      MockedAPIService.hasValidApiKey.mockReset();
+      MockedAPIService.polishTranscription.mockReset();
+      // Ensure currentTranscript is clean unless set by a specific test
+      (app as any).currentTranscript = '';
+    });
+
+    afterEach(() => {
+      showToastSpy.mockRestore();
+    });
+
+    it('should show warning if no transcript is available to polish', async () => {
+      await app.init();
+      (app as any).currentTranscript = ''; // Ensure it's empty
+
+      await app.polishCurrentTranscription();
+
+      expect(showToastSpy).toHaveBeenCalledWith(expect.objectContaining({
+        type: 'warning',
+        title: 'No Transcription',
+        message: 'Please record something first.',
+      }));
+      expect(MockedAPIService.polishTranscription).not.toHaveBeenCalled();
+    });
+
+    it('should show warning if API key is missing when attempting to polish', async () => {
+      await app.init();
+      (app as any).currentTranscript = "some raw transcript"; // Set a transcript
+      MockedAPIService.hasValidApiKey.mockReturnValue(false); // Simulate missing API key
+
+      await app.polishCurrentTranscription();
+
+      expect(showToastSpy).toHaveBeenCalledWith(expect.objectContaining({
+        type: 'warning',
+        title: 'API Key Required',
+        message: 'Please enter your Gemini API key.',
+      }));
+      expect(MockedAPIService.polishTranscription).not.toHaveBeenCalled();
+    });
+
+    it('should successfully polish a transcript', async () => {
+      await app.init();
+      const rawTranscript = "raw transcript for polishing";
+      (app as any).currentTranscript = rawTranscript;
+      MockedAPIService.hasValidApiKey.mockReturnValue(true);
+      MockedAPIService.polishTranscription.mockResolvedValue({ success: true, data: "polished mock transcript" });
+
+      const updateUISpy = jest.spyOn(app as any, 'updateUI').mockImplementation(() => {});
+
+      await app.polishCurrentTranscription();
+
+      expect(MockedAPIService.polishTranscription).toHaveBeenCalledWith(rawTranscript);
+      expect((app as any).state.currentNote.rawTranscription).toBe(rawTranscript);
+      expect((app as any).state.currentNote.polishedNote).toBe("polished mock transcript");
+      expect(mockPolishedNoteArea.textContent).toBe("polished mock transcript");
+      expect(mockStatusDisplay.textContent).toBe("Status: Polished");
+      expect(showToastSpy).toHaveBeenCalledWith(expect.objectContaining({
+        type: 'success',
+        title: 'Polishing Complete',
+      }));
+      expect((app as any).state.isProcessing).toBe(false);
+      expect(updateUISpy).toHaveBeenCalled(); // At least in the finally block
+
+      updateUISpy.mockRestore();
+    });
+
+    it('should handle API failure when polishing (error object returned)', async () => {
+      await app.init();
+      const rawTranscript = "raw transcript for API failure";
+      (app as any).currentTranscript = rawTranscript;
+      MockedAPIService.hasValidApiKey.mockReturnValue(true);
+      MockedAPIService.polishTranscription.mockResolvedValue({ success: false, error: "API polishing failed from test" });
+
+      await app.polishCurrentTranscription();
+
+      expect(MockedAPIService.polishTranscription).toHaveBeenCalledWith(rawTranscript);
+      expect(mockStatusDisplay.textContent).toBe("Status: Error Polishing");
+      expect(showToastSpy).toHaveBeenCalledWith(expect.objectContaining({
+        type: 'error',
+        title: 'Polishing Failed',
+        message: "API polishing failed from test",
+      }));
+      expect((app as any).state.isProcessing).toBe(false);
+    });
+
+    it('should handle API call exception during polishing', async () => {
+      await app.init();
+      const rawTranscript = "raw transcript for exception";
+      (app as any).currentTranscript = rawTranscript;
+      MockedAPIService.hasValidApiKey.mockReturnValue(true);
+      MockedAPIService.polishTranscription.mockRejectedValue(new Error("Network connection error"));
+
+      await app.polishCurrentTranscription();
+
+      expect(MockedAPIService.polishTranscription).toHaveBeenCalledWith(rawTranscript);
+      expect(mockStatusDisplay.textContent).toBe("Status: Error Polishing");
+      expect(showToastSpy).toHaveBeenCalledWith(expect.objectContaining({
+        type: 'error',
+        title: 'Processing Error', // This is the title from the catch block
+        message: 'An error occurred while polishing the transcription.',
+      }));
+      expect((app as any).state.isProcessing).toBe(false);
+    });
+  });
+
+  describe('Note Management Logic', () => {
+    let showToastSpy: jest.SpyInstance;
+    let updateNotesDisplaySpy: jest.SpyInstance;
+    let updateTranscriptionAreaSpy: jest.SpyInstance;
+    let updatePolishedNoteAreaSpy: jest.SpyInstance;
+
+    beforeEach(() => {
+      showToastSpy = jest.spyOn(app as any, 'showToast').mockImplementation(() => {});
+      updateNotesDisplaySpy = jest.spyOn(app as any, 'updateNotesDisplay').mockImplementation(() => {});
+      updateTranscriptionAreaSpy = jest.spyOn(app as any, 'updateTranscriptionArea').mockImplementation(() => {});
+      updatePolishedNoteAreaSpy = jest.spyOn(app as any, 'updatePolishedNoteArea').mockImplementation(() => {});
+
+      // Reset DataProcessor mocks
+      (DataProcessor.saveNote as jest.Mock).mockReset();
+      (DataProcessor.getAllNotes as jest.Mock).mockReset();
+      (DataProcessor.deleteNote as jest.Mock).mockReset();
+
+      // Reset ChartManager mocks relevant to this block
+      MockedChartManager.destroyAllCharts.mockReset();
+
+      // Ensure no current note and clear notes list at the start of these tests
+      (app as any).state.currentNote = null;
+      (app as any).state.notes = []; // Clear notes list
+    });
+
+    afterEach(() => {
+      showToastSpy.mockRestore();
+      updateNotesDisplaySpy.mockRestore();
+      updateTranscriptionAreaSpy.mockRestore();
+      updatePolishedNoteAreaSpy.mockRestore();
+    });
+
+    it('should show warning if trying to save when there is no current note', async () => {
+      await app.init(); // init might not be strictly necessary if saveCurrentNote doesn't depend on full init
+                       // but good for consistency if it might access elements or other state set by init.
+      (app as any).state.currentNote = null; // Explicitly ensure no current note
+
+      app.saveCurrentNote(); // This is a synchronous method
+
+      expect(showToastSpy).toHaveBeenCalledWith(expect.objectContaining({
+        type: 'warning',
+        title: 'No Note',
+        message: 'There is no note to save.',
+      }));
+      expect(DataProcessor.saveNote).not.toHaveBeenCalled();
+    });
+
+    it('should save a current note successfully', async () => {
+      await app.init();
+      const mockNote = { id: 'note1', rawTranscription: 'raw text', polishedNote: 'polished text', timestamp: Date.now() };
+      (app as any).state.currentNote = mockNote;
+
+      (DataProcessor.getAllNotes as jest.Mock).mockReturnValue([mockNote]); // Simulate getAllNotes returning notes
+
+      app.saveCurrentNote();
+
+      expect(DataProcessor.saveNote).toHaveBeenCalledWith(mockNote);
+      expect(DataProcessor.getAllNotes).toHaveBeenCalled();
+      expect(updateNotesDisplaySpy).toHaveBeenCalled();
+      expect(showToastSpy).toHaveBeenCalledWith(expect.objectContaining({
+        type: 'success',
+        title: 'Note Saved',
+        message: 'Your note has been saved successfully.',
+      }));
+    });
+
+    it('should clear current note, transcript, buffer, and charts', async () => {
+      await app.init();
+      // Set initial state
+      (app as any).currentTranscript = "test transcript";
+      (app as any).transcriptBuffer = "test buffer";
+      (app as any).state.currentNote = { id: '1', rawTranscription: 'raw', polishedNote: 'polished', timestamp: Date.now() };
+
+      const updateUISpy = jest.spyOn(app as any, 'updateUI').mockImplementation(() => {});
+
+      app.clearCurrentNote();
+
+      expect((app as any).currentTranscript).toBe('');
+      expect((app as any).transcriptBuffer).toBe('');
+      expect((app as any).state.currentNote).toBeNull();
+      expect(MockedChartManager.destroyAllCharts).toHaveBeenCalled();
+      expect(updateUISpy).toHaveBeenCalled();
+      expect(showToastSpy).toHaveBeenCalledWith(expect.objectContaining({
+        type: 'info',
+        title: 'Cleared',
+        message: 'Current note and charts have been cleared.',
+      }));
+      updateUISpy.mockRestore();
+    });
+
+    it('should delete a note successfully and update display', async () => {
+      await app.init();
+      const noteIdToDelete = 'note-to-delete-id';
+      (DataProcessor.deleteNote as jest.Mock).mockReturnValue(true); // Simulate successful deletion
+      (DataProcessor.getAllNotes as jest.Mock).mockReturnValue([]); // Simulate getting updated notes list
+
+      app.deleteNote(noteIdToDelete);
+
+      expect(DataProcessor.deleteNote).toHaveBeenCalledWith(noteIdToDelete);
+      expect(DataProcessor.getAllNotes).toHaveBeenCalled();
+      expect(updateNotesDisplaySpy).toHaveBeenCalled();
+      expect(showToastSpy).toHaveBeenCalledWith(expect.objectContaining({
+        type: 'success',
+        title: 'Note Deleted',
+        message: 'The note has been deleted.',
+      }));
+    });
+
+    it('should not show success toast if DataProcessor fails to delete a note', async () => {
+      await app.init();
+      const noteIdToDelete = 'another-id';
+      (DataProcessor.deleteNote as jest.Mock).mockReturnValue(false); // Simulate failed deletion
+
+      app.deleteNote(noteIdToDelete);
+
+      expect(DataProcessor.deleteNote).toHaveBeenCalledWith(noteIdToDelete);
+      // Check that the specific success toast was NOT called.
+      // The app currently doesn't show an error toast for this specific case.
+      expect(showToastSpy).not.toHaveBeenCalledWith(expect.objectContaining({
+        title: 'Note Deleted',
+      }));
+      // updateNotesDisplay might or might not be called depending on implementation if deleteNote returns false.
+      // For now, we are not asserting on updateNotesDisplaySpy in the failure case.
+    });
+
+    it('should load a note into the current state and update UI areas', async () => {
+      await app.init();
+      const mockNoteToLoad = {
+        id: 'test-id-123',
+        rawTranscription: 'loaded raw transcript',
+        polishedNote: 'loaded polished note',
+        timestamp: Date.now()
+      };
+      (app as any).state.notes = [mockNoteToLoad]; // Populate the notes list
+
+      app.loadNote('test-id-123');
+
+      expect((app as any).state.currentNote).toEqual(mockNoteToLoad);
+      expect((app as any).currentTranscript).toBe(mockNoteToLoad.rawTranscription);
+      expect(updateTranscriptionAreaSpy).toHaveBeenCalled();
+      expect(updatePolishedNoteAreaSpy).toHaveBeenCalled();
+    });
+  });
 });

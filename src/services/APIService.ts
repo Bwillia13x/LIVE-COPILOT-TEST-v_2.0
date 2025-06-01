@@ -32,12 +32,15 @@ export class APIService {
         } catch (genAIError) {
           ErrorHandler.logError('Failed to initialize GoogleGenAI during API setup', genAIError instanceof Error ? genAIError : new Error(String(genAIError)));
           this.genAI = null;
-          this.apiKey = null;
+          this.apiKey = null; // Ensure apiKey is null if GenAI fails
         }
       } else {
+        if (this.apiKey) { // It means a key was found (either stored or env) but it was too short
+            ErrorHandler.logWarning(`An API key was found but it is invalid (too short). Service not initialized.`, 'APIService.initializeAPI');
+        }
         console.log('ℹ️ No valid API key available - API service ready for key configuration');
         this.genAI = null;
-        this.apiKey = null;
+        this.apiKey = null; // Ensure apiKey is null
       }
     } catch (error) { // error is unknown
       ErrorHandler.logError('API initialization failed', error instanceof Error ? error : new Error(String(error)));

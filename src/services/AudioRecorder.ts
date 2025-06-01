@@ -81,6 +81,14 @@ export class AudioRecorder {
   }
 
   public async startRecording(): Promise<boolean> {
+    if (!this.isSupported()) {
+      ErrorHandler.logError(ERROR_MESSAGES.MICROPHONE.NOT_SUPPORTED, 'startRecording.isSupported');
+      return false;
+    }
+    if (this.state.isRecording) {
+      console.warn('Recording is already in progress.');
+      return false;
+    }
     try {
       // Request microphone access
       this.stream = await navigator.mediaDevices.getUserMedia({ 

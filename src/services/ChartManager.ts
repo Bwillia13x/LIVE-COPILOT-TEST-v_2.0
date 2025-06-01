@@ -42,7 +42,8 @@ export class ChartManager {
   private charts: Map<string, Chart> = new Map();
   private readonly defaultOptions = {
     responsive: true,
-    maintainAspectRatio: false,
+    maintainAspectRatio: true,
+    aspectRatio: 2,
     plugins: {
       legend: {
         position: 'top' as const,

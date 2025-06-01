@@ -2604,8 +2604,8 @@ body.light-mode .record-button.recording .record-button-inner { color: white; }
 }
 
 .chart-container {
-  background: var(--background-color);
-  border: 1px solid var(--border-color);
+  background: var(--color-bg);
+  border: 1px solid var(--color-border);
   border-radius: 12px;
   padding: 20px;
   margin-bottom: 16px;
@@ -2651,8 +2651,8 @@ body.light-mode .record-button.recording .record-button-inner { color: white; }
 .ai-chart-raw-display {
   min-height: 200px;
   padding: 16px;
-  background: var(--surface-color);
-  border: 1px solid var(--border-color);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
   border-radius: 8px;
   margin-top: 16px;
   display: flex; /* Changed to flex */

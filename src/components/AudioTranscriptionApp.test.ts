@@ -8,27 +8,36 @@ import { IntervalManager } from '../services/IntervalManager';
 import { BundleOptimizer } from '../services/BundleOptimizer';
 import { ProductionMonitor } from '../services/ProductionMonitor';
 import { HealthCheckService } from '../services/HealthCheckService';
+import { SettingsModal } from './SettingsModal';
 import { ErrorHandler, MemoryManager } from '../utils';
 import { fireEvent } from '@testing-library/dom';
 
 // --- Mocking Services ---
+
+// Declare module-scoped variables for shared instances using 'let'
 let mockSharedAPIServiceInstance: jest.Mocked<APIService>;
 let mockSharedAudioRecorderInstance: jest.Mocked<AudioRecorder>;
 let mockSharedChartManagerInstance: jest.Mocked<ChartManager>;
 
+// These factories will now refer to the above 'let' variables.
+// Jest hoists jest.mock calls, but the factory functions themselves are closures
+// that will capture these variables. The assignment happens in beforeEach.
 jest.mock('../services/APIService', () => ({ APIService: jest.fn(() => mockSharedAPIServiceInstance) }));
 jest.mock('../services/AudioRecorder', () => ({ AudioRecorder: jest.fn(() => mockSharedAudioRecorderInstance) }));
 jest.mock('../services/ChartManager', () => ({ ChartManager: jest.fn(() => mockSharedChartManagerInstance) }));
+
+// For singletons, mock their getInstance method.
 jest.mock('../services/PerformanceMonitor');
 jest.mock('../services/IntervalManager');
 jest.mock('../services/BundleOptimizer');
 jest.mock('../services/ProductionMonitor');
 jest.mock('../services/HealthCheckService');
+jest.mock('./SettingsModal');
 jest.mock('../services/DataProcessor');
 jest.mock('../utils', () => ({
   ...jest.requireActual('../utils'),
   ErrorHandler: { logError: jest.fn() },
-  MemoryManager: { getInstance: jest.fn(), cleanup: jest.fn() },
+  MemoryManager: { getInstance: jest.fn(), cleanup: jest.fn() }, // Assuming static cleanup
 }));
 
 // --- Mocking DOM and localStorage ---
@@ -47,6 +56,7 @@ const localStorageMock = (() => {
   };
 })();
 
+// Declare globally scoped mock DOM elements
 let mockThemeToggleButton: HTMLButtonElement;
 let mockThemeIcon: HTMLElement;
 let mockSettingsModal: HTMLDivElement;
@@ -71,6 +81,7 @@ describe('AudioTranscriptionApp Unit Tests - Core Setup', () => {
   let app: AudioTranscriptionApp;
   let container: HTMLElement;
 
+  // Aliases for tests to use the shared/mocked instances
   let MockedAPIService: jest.Mocked<APIService>;
   let MockedAudioRecorder: jest.Mocked<AudioRecorder>;
   let MockedChartManager: jest.Mocked<ChartManager>;
@@ -80,37 +91,43 @@ describe('AudioTranscriptionApp Unit Tests - Core Setup', () => {
   let MockedProductionMonitor: jest.Mocked<ProductionMonitor>;
   let MockedHealthCheckService: jest.Mocked<HealthCheckService>;
   let MockedMemoryManager: jest.Mocked<MemoryManager>;
+  let mockSettingsModalInstance: jest.Mocked<SettingsModal>;
 
   beforeEach(() => {
+    // Instantiate and configure shared instances for new-able classes, then assign to module-scoped 'let' variables
     const ActualAPIServiceManualMock = jest.requireActual('../services/__mocks__/APIService').APIService;
-    mockSharedAPIServiceInstance = new ActualAPIServiceManualMock() as jest.Mocked<APIService>;
-    mockSharedAPIServiceInstance.hasValidApiKey = jest.fn();
-    mockSharedAPIServiceInstance.testConnection = jest.fn();
-    mockSharedAPIServiceInstance.polishTranscription = jest.fn();
-    mockSharedAPIServiceInstance.generateChartData = jest.fn();
-    mockSharedAPIServiceInstance.generateSampleChartData = jest.fn();
-    mockSharedAPIServiceInstance.setApiKey = jest.fn();
+    const tempAPIService = new ActualAPIServiceManualMock() as jest.Mocked<APIService>;
+    tempAPIService.hasValidApiKey = jest.fn();
+    tempAPIService.testConnection = jest.fn();
+    tempAPIService.polishTranscription = jest.fn();
+    tempAPIService.generateChartData = jest.fn();
+    tempAPIService.generateSampleChartData = jest.fn();
+    tempAPIService.setApiKey = jest.fn();
+    mockSharedAPIServiceInstance = tempAPIService;
     MockedAPIService = mockSharedAPIServiceInstance;
 
     const ActualAudioRecorderClass = jest.requireActual('../services/AudioRecorder').AudioRecorder;
-    mockSharedAudioRecorderInstance = new ActualAudioRecorderClass() as jest.Mocked<AudioRecorder>;
-    mockSharedAudioRecorderInstance.isSupported = jest.fn();
-    mockSharedAudioRecorderInstance.getIsRecording = jest.fn();
-    mockSharedAudioRecorderInstance.startRecording = jest.fn();
-    mockSharedAudioRecorderInstance.stopRecording = jest.fn();
-    mockSharedAudioRecorderInstance.onTranscriptAvailable = jest.fn();
-    mockSharedAudioRecorderInstance.onRecordingStateChange = jest.fn();
-    mockSharedAudioRecorderInstance.formatDuration = jest.fn();
-    mockSharedAudioRecorderInstance.cleanup = jest.fn();
+    const tempAudioRecorder = new ActualAudioRecorderClass() as jest.Mocked<AudioRecorder>;
+    tempAudioRecorder.isSupported = jest.fn();
+    tempAudioRecorder.getIsRecording = jest.fn();
+    tempAudioRecorder.startRecording = jest.fn();
+    tempAudioRecorder.stopRecording = jest.fn();
+    tempAudioRecorder.onTranscriptAvailable = jest.fn();
+    tempAudioRecorder.onRecordingStateChange = jest.fn();
+    tempAudioRecorder.formatDuration = jest.fn();
+    tempAudioRecorder.cleanup = jest.fn();
+    mockSharedAudioRecorderInstance = tempAudioRecorder;
     MockedAudioRecorder = mockSharedAudioRecorderInstance;
 
     const ActualChartManagerClass = jest.requireActual('../services/ChartManager').ChartManager;
-    mockSharedChartManagerInstance = new ActualChartManagerClass() as jest.Mocked<ChartManager>;
-    mockSharedChartManagerInstance.createChart = jest.fn();
-    mockSharedChartManagerInstance.destroyAllCharts = jest.fn();
-    mockSharedChartManagerInstance.resizeAllCharts = jest.fn();
+    const tempChartManager = new ActualChartManagerClass() as jest.Mocked<ChartManager>;
+    tempChartManager.createChart = jest.fn();
+    tempChartManager.destroyAllCharts = jest.fn();
+    tempChartManager.resizeAllCharts = jest.fn();
+    mockSharedChartManagerInstance = tempChartManager;
     MockedChartManager = mockSharedChartManagerInstance;
 
+    // Create mock objects for singletons
     MockedPerformanceMonitor = { startMonitoring: jest.fn(), measureOperation: jest.fn((fn: () => any) => fn()), getLatestMetrics: jest.fn(), getAlerts: jest.fn(), cleanup: jest.fn(), getRecentOperations: jest.fn().mockReturnValue([]), } as jest.Mocked<PerformanceMonitor>;
     MockedIntervalManager = { createRecurringTask: jest.fn(), clearInterval: jest.fn(), clearTimeout: jest.fn(), cleanup: jest.fn(), } as jest.Mocked<IntervalManager>;
     MockedBundleOptimizer = { registerLazyModule: jest.fn(), loadCriticalModules: jest.fn(), cleanup: jest.fn(), loadLazyModule: jest.fn(), } as jest.Mocked<BundleOptimizer>;
@@ -118,6 +135,7 @@ describe('AudioTranscriptionApp Unit Tests - Core Setup', () => {
     MockedHealthCheckService = { getHealthStatus: jest.fn(), cleanup: jest.fn(), } as jest.Mocked<HealthCheckService>;
     MockedMemoryManager = { trackInterval: jest.fn(), clearInterval: jest.fn(), clearTimeout: jest.fn(), getStats: jest.fn().mockReturnValue({ intervals: 0, timeouts: 0, eventListeners: 0 }), cleanup: jest.fn(), } as jest.Mocked<MemoryManager>;
 
+    // Configure singleton getInstance mocks
     (PerformanceMonitor.getInstance as jest.Mock).mockReturnValue(MockedPerformanceMonitor);
     (IntervalManager.getInstance as jest.Mock).mockReturnValue(MockedIntervalManager);
     (BundleOptimizer.getInstance as jest.Mock).mockReturnValue(MockedBundleOptimizer);
@@ -125,6 +143,7 @@ describe('AudioTranscriptionApp Unit Tests - Core Setup', () => {
     (HealthCheckService.getInstance as jest.Mock).mockReturnValue(MockedHealthCheckService);
     (MemoryManager.getInstance as jest.Mock).mockReturnValue(MockedMemoryManager);
 
+    // Reset all mocks
     jest.clearAllMocks();
     Object.values(MockedAPIService).forEach(m => typeof m?.mockReset === 'function' && m.mockReset());
     Object.values(MockedAudioRecorder).forEach(m => typeof m?.mockReset === 'function' && m.mockReset());
@@ -139,6 +158,7 @@ describe('AudioTranscriptionApp Unit Tests - Core Setup', () => {
     (ErrorHandler.logError as jest.Mock).mockReset();
     localStorageMock.clear();
 
+    // Initialize DOM element mocks
     mockRecordButton = document.createElement('button'); mockRecordButton.id = 'recordButton';
     mockTranscriptionArea = document.createElement('textarea'); mockTranscriptionArea.id = 'rawTranscription';
     mockPolishedNoteArea = document.createElement('div'); mockPolishedNoteArea.id = 'polishedNote';
@@ -156,10 +176,9 @@ describe('AudioTranscriptionApp Unit Tests - Core Setup', () => {
     mockTestChartButton = document.createElement('button'); mockTestChartButton.id = 'testChartButton';
     mockSampleChartsButton = document.createElement('button'); mockSampleChartsButton.id = 'sampleChartsButton';
     mockNewButton = document.createElement('button'); mockNewButton.id = 'newButton';
-    mockPolishedTab = document.createElement('button'); mockPolishedTab.dataset.tab = 'note'; // Set dataset for querySelector
+    mockPolishedTab = document.createElement('button'); mockPolishedTab.dataset.tab = 'note';
     mockExportButton = document.createElement('button'); mockExportButton.id = 'confirmExport';
     mockPerformanceToggleButton = document.createElement('button'); mockPerformanceToggleButton.id = 'performanceToggleButton';
-
 
     getElementByIdMock = jest.fn((id: string) => {
       switch (id) {
@@ -178,14 +197,13 @@ describe('AudioTranscriptionApp Unit Tests - Core Setup', () => {
         case 'testChartButton': return mockTestChartButton;
         case 'sampleChartsButton': return mockSampleChartsButton;
         case 'newButton': return mockNewButton;
-        case 'confirmExport': return mockExportButton; // Added
-        case 'performanceToggleButton': return mockPerformanceToggleButton; // Added
+        case 'confirmExport': return mockExportButton;
+        case 'performanceToggleButton': return mockPerformanceToggleButton;
         default: return document.createElement('div');
       }
     });
     querySelectorMock = jest.fn().mockImplementation((selector: string) => {
-      if (selector === '[data-tab="note"]') return mockPolishedTab; // Use the shared mock
-      // Add other document.querySelector mocks if needed by initTheme or other unmocked methods
+      if (selector === '[data-tab="note"]') return mockPolishedTab;
       return document.createElement('div');
     });
     appendChildSpy = jest.fn();
@@ -195,6 +213,7 @@ describe('AudioTranscriptionApp Unit Tests - Core Setup', () => {
     Object.defineProperty(window, 'localStorage', { value: localStorageMock, configurable: true });
     Object.defineProperty(window, 'matchMedia', { writable: true, value: jest.fn().mockImplementation(query => ({ matches: false, media: query, onchange: null, addListener: jest.fn(), removeListener: jest.fn(), addEventListener: jest.fn(), removeEventListener: jest.fn(), dispatchEvent: jest.fn(), }))});
 
+    // Set default behaviors for mocked methods AFTER they've been reset
     MockedAPIService.hasValidApiKey.mockReturnValue(true);
     MockedAPIService.testConnection.mockResolvedValue({ success: true });
     MockedAudioRecorder.isSupported.mockReturnValue(true);
@@ -208,39 +227,47 @@ describe('AudioTranscriptionApp Unit Tests - Core Setup', () => {
 
     container = document.createElement('div');
     container.appendChild(mockRecordButton); container.appendChild(mockTranscriptionArea); container.appendChild(mockPolishedNoteArea); container.appendChild(mockStatusDisplay); container.appendChild(mockApiKeyInput); container.appendChild(mockRememberApiKeyCheckbox);
-    // Add modal elements to the main document body as they are typically global
     document.body.appendChild(mockSettingsModal);
     document.body.appendChild(mockCloseSettingsModal);
     document.body.appendChild(mockCancelSettings);
-    document.body.appendChild(mockSaveSettings); // Added to body
+    document.body.appendChild(mockSaveSettings);
     document.body.appendChild(mockSettingsButton);
     document.body.appendChild(mockThemeToggleButton);
     document.body.appendChild(mockTestChartButton);
     document.body.appendChild(mockSampleChartsButton);
     document.body.appendChild(mockNewButton);
-    document.body.appendChild(mockPolishedTab); // Added to body
-    document.body.appendChild(mockExportButton); // Added to body
-    document.body.appendChild(mockPerformanceToggleButton); // Added to body
+    document.body.appendChild(mockPolishedTab);
+    document.body.appendChild(mockExportButton);
+    document.body.appendChild(mockPerformanceToggleButton);
 
-    app = new AudioTranscriptionApp(container);
+    app = new AudioTranscriptionApp(container); // App constructor uses the mocked services
 
-    // jest.spyOn(app as any, 'setupEventListeners').mockImplementation(() => {}); // Keep this unmocked
+    // Get the instance of SettingsModal created by AudioTranscriptionApp
+    if ((SettingsModal as jest.Mock).mock.instances.length > 0) {
+        mockSettingsModalInstance = (SettingsModal as jest.Mock).mock.instances[0] as jest.Mocked<SettingsModal>;
+        mockSettingsModalInstance.open = jest.fn();
+        if (typeof mockSettingsModalInstance.cleanup === 'function') {
+             mockSettingsModalInstance.cleanup = jest.fn();
+        }
+    } else {
+        // Fallback if SettingsModal instance isn't found (should not happen if mock factory works)
+        mockSettingsModalInstance = { open: jest.fn(), cleanup: jest.fn() } as any;
+    }
   });
 
   afterEach(() => {
-    // Clean up elements added to document.body
     if (mockSettingsModal.parentNode === document.body) document.body.removeChild(mockSettingsModal);
     if (mockCloseSettingsModal.parentNode === document.body) document.body.removeChild(mockCloseSettingsModal);
     if (mockCancelSettings.parentNode === document.body) document.body.removeChild(mockCancelSettings);
     if (mockSettingsButton.parentNode === document.body) document.body.removeChild(mockSettingsButton);
     if (mockThemeToggleButton.parentNode === document.body) document.body.removeChild(mockThemeToggleButton);
-    if (mockSaveSettings.parentNode === document.body) document.body.removeChild(mockSaveSettings); // Added cleanup
+    if (mockSaveSettings.parentNode === document.body) document.body.removeChild(mockSaveSettings);
     if (mockTestChartButton.parentNode === document.body) document.body.removeChild(mockTestChartButton);
     if (mockSampleChartsButton.parentNode === document.body) document.body.removeChild(mockSampleChartsButton);
     if (mockNewButton.parentNode === document.body) document.body.removeChild(mockNewButton);
-    if (mockPolishedTab.parentNode === document.body) document.body.removeChild(mockPolishedTab); // Added cleanup
-    if (mockExportButton.parentNode === document.body) document.body.removeChild(mockExportButton); // Added cleanup
-    if (mockPerformanceToggleButton.parentNode === document.body) document.body.removeChild(mockPerformanceToggleButton); // Added cleanup
+    if (mockPolishedTab.parentNode === document.body) document.body.removeChild(mockPolishedTab);
+    if (mockExportButton.parentNode === document.body) document.body.removeChild(mockExportButton);
+    if (mockPerformanceToggleButton.parentNode === document.body) document.body.removeChild(mockPerformanceToggleButton);
     jest.restoreAllMocks();
   });
 
@@ -250,12 +277,11 @@ describe('AudioTranscriptionApp Unit Tests - Core Setup', () => {
       const initThemeSpy = jest.spyOn(app as any, 'initTheme');
       const setupEventListenersSpy = jest.spyOn(app as any, 'setupEventListeners');
 
-
       await app.init();
 
       expect(setupDOMReferencesSpy).toHaveBeenCalled();
       expect(initThemeSpy).toHaveBeenCalled();
-      expect(setupEventListenersSpy).toHaveBeenCalled(); // Now checking this too
+      expect(setupEventListenersSpy).toHaveBeenCalled();
       expect(MockedPerformanceMonitor.startMonitoring).toHaveBeenCalled();
       expect(MockedHealthCheckService.getHealthStatus).toHaveBeenCalled();
       expect(MockedBundleOptimizer.loadCriticalModules).toHaveBeenCalled();
@@ -268,6 +294,19 @@ describe('AudioTranscriptionApp Unit Tests - Core Setup', () => {
       setupDOMReferencesSpy.mockRestore();
       initThemeSpy.mockRestore();
       setupEventListenersSpy.mockRestore();
+    });
+
+    it('should instantiate SettingsModal with APIService and onApiKeyUpdated callback, and callback should trigger testAPIConnection', () => {
+      expect(SettingsModal).toHaveBeenCalledTimes(1);
+      const constructorOptions = (SettingsModal as jest.Mock).mock.calls[0][0];
+      expect(constructorOptions.apiService).toBe(MockedAPIService);
+
+      const testAPIConnectionSpy = jest.spyOn(app as any, 'testAPIConnection').mockResolvedValue(undefined);
+
+      constructorOptions.onApiKeyUpdated();
+      expect(testAPIConnectionSpy).toHaveBeenCalled();
+
+      testAPIConnectionSpy.mockRestore();
     });
 
     it('should correctly find or create essential DOM elements', async () => {
@@ -286,12 +325,10 @@ describe('AudioTranscriptionApp Unit Tests - Core Setup', () => {
       containerQuerySelectorSpy.mockRestore();
     });
 
-    it('should initialize API key from localStorage if present and update input', async () => {
+    it('should initialize API key from localStorage if present', async () => {
       localStorageMock.setItem('geminiApiKey', 'test-api-key-localstorage');
       await app.init();
       expect(MockedAPIService.setApiKey).toHaveBeenCalledWith('test-api-key-localstorage');
-      expect(mockApiKeyInput.value).toBe('test-api-key-localstorage');
-      expect(mockRememberApiKeyCheckbox.checked).toBe(true);
     });
 
     it('should call onRecordingStateChange and onTranscriptAvailable for AudioRecorder setup', async () => {
@@ -338,7 +375,7 @@ describe('AudioTranscriptionApp Unit Tests - Core Setup', () => {
     it('should call toggleRecording when recordButton is clicked', async () => {
       await app.init();
       const toggleRecordingSpy = jest.spyOn(app as any, 'toggleRecording').mockImplementation(() => {});
-      fireEvent.click(mockRecordButton); // mockRecordButton is from beforeEach scope
+      fireEvent.click(mockRecordButton);
       expect(toggleRecordingSpy).toHaveBeenCalled();
       toggleRecordingSpy.mockRestore();
     });
@@ -346,89 +383,14 @@ describe('AudioTranscriptionApp Unit Tests - Core Setup', () => {
     it('should call toggleTheme when themeToggleButton is clicked', async () => {
       await app.init();
       const toggleThemeSpy = jest.spyOn(app as any, 'toggleTheme').mockImplementation(() => {});
-      fireEvent.click(mockThemeToggleButton); // mockThemeToggleButton is from beforeEach scope
+      fireEvent.click(mockThemeToggleButton);
       expect(toggleThemeSpy).toHaveBeenCalled();
       toggleThemeSpy.mockRestore();
-    });
-
-    it('should handle API key input change', async () => {
-      await app.init();
-      const testApiKey = 'test-key-123';
-      const testAPIConnectionSpy = jest.spyOn(app as any, 'testAPIConnection').mockResolvedValue(undefined);
-      fireEvent.change(mockApiKeyInput, { target: { value: testApiKey } });
-      expect(MockedAPIService.setApiKey).toHaveBeenCalledWith(testApiKey);
-      expect(testAPIConnectionSpy).toHaveBeenCalled();
-      testAPIConnectionSpy.mockRestore();
-    });
-
-    it('should open settings modal and load API key from localStorage', async () => {
-      localStorageMock.setItem('geminiApiKey', 'stored-key-456');
-      mockSettingsModal.style.display = 'none';
-      await app.init();
-      fireEvent.click(mockSettingsButton); // mockSettingsButton is from beforeEach scope
-      expect(mockSettingsModal.style.getPropertyValue('display')).toBe('flex');
-      expect(mockApiKeyInput.value).toBe('stored-key-456');
-    });
-
-    it('should close settings modal via close button', async () => {
-      await app.init();
-      mockSettingsModal.style.setProperty('display', 'flex');
-      fireEvent.click(mockCloseSettingsModal); // mockCloseSettingsModal is from beforeEach scope
-      expect(mockSettingsModal.style.getPropertyValue('display')).toBe('none');
-    });
-
-    it('should close settings modal via cancel button', async () => {
-      await app.init();
-      mockSettingsModal.style.setProperty('display', 'flex');
-      fireEvent.click(mockCancelSettings); // mockCancelSettings is from beforeEach scope
-      expect(mockSettingsModal.style.getPropertyValue('display')).toBe('none');
-    });
-
-    it('should save API key to localStorage and close settings modal when save (remember true)', async () => {
-      await app.init();
-      const testApiKey = 'save-this-key-permanently';
-      const testAPIConnectionSpy = jest.spyOn(app as any, 'testAPIConnection').mockResolvedValue(undefined);
-
-      fireEvent.click(mockSettingsButton); // Open modal
-      mockApiKeyInput.value = testApiKey;
-      mockRememberApiKeyCheckbox.checked = true;
-
-      fireEvent.click(mockSaveSettings);
-
-      expect(localStorageMock.setItem).toHaveBeenCalledWith('geminiApiKey', testApiKey);
-      expect(MockedAPIService.setApiKey).toHaveBeenCalledWith(testApiKey);
-      expect(testAPIConnectionSpy).toHaveBeenCalled();
-      expect(mockSettingsModal.style.getPropertyValue('display')).toBe('none');
-
-      testAPIConnectionSpy.mockRestore();
-    });
-
-    it('should set API key for session (remove from localStorage) and close modal when save (remember false)', async () => {
-      await app.init();
-      const testApiKey = 'session-only-key-123';
-      const testAPIConnectionSpy = jest.spyOn(app as any, 'testAPIConnection').mockResolvedValue(undefined);
-
-      // Ensure something might be in local storage first to test removal
-      localStorageMock.setItem('geminiApiKey', 'some-old-key');
-
-      fireEvent.click(mockSettingsButton); // Open modal
-      mockApiKeyInput.value = testApiKey;
-      mockRememberApiKeyCheckbox.checked = false;
-
-      fireEvent.click(mockSaveSettings);
-
-      expect(localStorageMock.removeItem).toHaveBeenCalledWith('geminiApiKey');
-      expect(MockedAPIService.setApiKey).toHaveBeenCalledWith(testApiKey);
-      expect(testAPIConnectionSpy).toHaveBeenCalled();
-      expect(mockSettingsModal.style.getPropertyValue('display')).toBe('none');
-
-      testAPIConnectionSpy.mockRestore();
     });
 
     it('should call generateCharts when testChartButton is clicked', async () => {
       await app.init();
       const generateChartsSpy = jest.spyOn(app as any, 'generateCharts').mockImplementation(async () => {});
-
       fireEvent.click(mockTestChartButton);
       expect(generateChartsSpy).toHaveBeenCalled();
       generateChartsSpy.mockRestore();
@@ -437,7 +399,6 @@ describe('AudioTranscriptionApp Unit Tests - Core Setup', () => {
     it('should call generateSampleCharts when sampleChartsButton is clicked', async () => {
       await app.init();
       const generateSampleChartsSpy = jest.spyOn(app as any, 'generateSampleCharts').mockImplementation(async () => {});
-
       fireEvent.click(mockSampleChartsButton);
       expect(generateSampleChartsSpy).toHaveBeenCalled();
       generateSampleChartsSpy.mockRestore();
@@ -446,7 +407,6 @@ describe('AudioTranscriptionApp Unit Tests - Core Setup', () => {
     it('should call clearCurrentNote when newButton is clicked', async () => {
       await app.init();
       const clearCurrentNoteSpy = jest.spyOn(app as any, 'clearCurrentNote').mockImplementation(() => {});
-
       fireEvent.click(mockNewButton);
       expect(clearCurrentNoteSpy).toHaveBeenCalled();
       clearCurrentNoteSpy.mockRestore();
@@ -455,9 +415,6 @@ describe('AudioTranscriptionApp Unit Tests - Core Setup', () => {
     it('should call switchToPolishedTab when polishedTab is clicked', async () => {
       await app.init();
       const switchToPolishedTabSpy = jest.spyOn(app as any, 'switchToPolishedTab').mockImplementation(() => {});
-
-      // mockPolishedTab is returned by querySelectorMock for '[data-tab="note"]'
-      // setupEventListeners uses document.querySelector for this one.
       fireEvent.click(mockPolishedTab);
       expect(switchToPolishedTabSpy).toHaveBeenCalled();
       switchToPolishedTabSpy.mockRestore();
@@ -466,10 +423,6 @@ describe('AudioTranscriptionApp Unit Tests - Core Setup', () => {
     it('should call exportNotes when exportButton is clicked', async () => {
       await app.init();
       const exportNotesSpy = jest.spyOn(app as any, 'exportNotes').mockImplementation(() => {});
-
-      // mockExportButton should be in the container and found by this.elements.exportButton
-      // if setupDOMReferences correctly assigned it.
-      // Or, if setupEventListeners uses getElementById for it:
       const exportButtonElement = container.querySelector('#confirmExport') || document.getElementById('confirmExport');
       if (exportButtonElement) {
          fireEvent.click(exportButtonElement);
@@ -483,9 +436,6 @@ describe('AudioTranscriptionApp Unit Tests - Core Setup', () => {
     it('should call togglePerformanceIndicator when performanceToggleButton is clicked', async () => {
       await app.init();
       const togglePerformanceIndicatorSpy = jest.spyOn(app as any, 'togglePerformanceIndicator').mockImplementation(() => {});
-
-      // performanceToggleButton is returned by getElementByIdMock for 'performanceToggleButton'
-      // setupEventListeners uses document.getElementById for this one.
       fireEvent.click(mockPerformanceToggleButton);
       expect(togglePerformanceIndicatorSpy).toHaveBeenCalled();
       togglePerformanceIndicatorSpy.mockRestore();
@@ -496,14 +446,11 @@ describe('AudioTranscriptionApp Unit Tests - Core Setup', () => {
     let showToastSpy: jest.SpyInstance;
 
     beforeEach(() => {
-      // Spy on showToast for all tests in this block
       showToastSpy = jest.spyOn(app as any, 'showToast').mockImplementation(() => {});
-      // Reset relevant mocks before each test
       MockedAudioRecorder.isSupported.mockReset();
       MockedAudioRecorder.getIsRecording.mockReset();
       MockedAudioRecorder.startRecording.mockReset();
       MockedAudioRecorder.stopRecording.mockReset();
-      // Reset app state if necessary, though app is new for each test run due to describe/beforeEach structure
       (app as any).state.isRecording = false;
       (app as any).currentTranscript = '';
       (app as any).transcriptBuffer = '';
@@ -517,126 +464,73 @@ describe('AudioTranscriptionApp Unit Tests - Core Setup', () => {
 
     it('should show error if AudioRecorder is not supported', async () => {
       MockedAudioRecorder.isSupported.mockReturnValue(false);
-      await app.init(); // Ensure app is initialized
-
+      await app.init();
       await app.toggleRecording();
-
-      expect(showToastSpy).toHaveBeenCalledWith(expect.objectContaining({
-        type: 'error',
-        message: 'Audio recording is not supported in this browser.',
-      }));
+      expect(showToastSpy).toHaveBeenCalledWith(expect.objectContaining({ type: 'error', message: 'Audio recording is not supported in this browser.', }));
       expect(MockedAudioRecorder.startRecording).not.toHaveBeenCalled();
     });
 
     it('should start recording successfully', async () => {
       MockedAudioRecorder.isSupported.mockReturnValue(true);
-      MockedAudioRecorder.getIsRecording.mockReturnValue(false); // Not currently recording
-      MockedAudioRecorder.startRecording.mockResolvedValue(true); // Successful start
-
-      // Set some initial content to ensure it's cleared
+      MockedAudioRecorder.getIsRecording.mockReturnValue(false);
+      MockedAudioRecorder.startRecording.mockResolvedValue(true);
       mockTranscriptionArea.value = 'previous transcript';
       mockPolishedNoteArea.textContent = 'previous polished note';
-      // Directly setting app's private members for test setup, if absolutely necessary and no other way
-      // (app as any).currentTranscript = 'previous transcript';
-      // (app as any).transcriptBuffer = 'previous buffer';
-
-      await app.init(); // Ensure app is initialized
+      await app.init();
       await app.toggleRecording();
-
       expect(MockedAudioRecorder.startRecording).toHaveBeenCalled();
-      expect((app as any).state.isRecording).toBe(true); // Accessing private state for test
-      // Check that UI is cleared
+      expect((app as any).state.isRecording).toBe(true);
       expect(mockTranscriptionArea.value).toBe('');
       expect(mockPolishedNoteArea.textContent).toBe('');
-      expect(showToastSpy).toHaveBeenCalledWith(expect.objectContaining({
-        type: 'info',
-        title: 'Recording Started',
-      }));
+      expect(showToastSpy).toHaveBeenCalledWith(expect.objectContaining({ type: 'info', title: 'Recording Started', }));
     });
 
     it('should show error if starting a recording fails', async () => {
       MockedAudioRecorder.isSupported.mockReturnValue(true);
       MockedAudioRecorder.getIsRecording.mockReturnValue(false);
-      MockedAudioRecorder.startRecording.mockResolvedValue(false); // Failed start
-      await app.init(); // Ensure app is initialized
-
+      MockedAudioRecorder.startRecording.mockResolvedValue(false);
+      await app.init();
       await app.toggleRecording();
-
       expect(MockedAudioRecorder.startRecording).toHaveBeenCalled();
-      expect((app as any).state.isRecording).toBe(false); // Accessing private state
-      expect(showToastSpy).toHaveBeenCalledWith(expect.objectContaining({
-        type: 'error',
-        title: 'Recording Failed',
-      }));
+      expect((app as any).state.isRecording).toBe(false);
+      expect(showToastSpy).toHaveBeenCalledWith(expect.objectContaining({ type: 'error', title: 'Recording Failed', }));
     });
 
     it('should stop recording successfully with a transcript, and attempt polishing', async () => {
       await app.init();
       MockedAudioRecorder.isSupported.mockReturnValue(true);
-      MockedAudioRecorder.getIsRecording.mockReturnValue(true); // Currently recording
-      // Simulate stopRecording providing a transcript.
-      // The actual app logic for transcript processing from stopRecording is more via onTranscriptAvailable,
-      // but toggleRecording itself directly uses the (now empty) return from stopRecording and then
-      // currentTranscript (which should have been populated by onTranscriptAvailable).
-      // For this test, we'll assume currentTranscript is set correctly before polish is called.
-      // The crucial part is that polishCurrentTranscription is called if currentTranscript is truthy.
+      MockedAudioRecorder.getIsRecording.mockReturnValue(true);
       MockedAudioRecorder.stopRecording.mockImplementation(async () => {
-        // Simulate that by the time stopRecording is done, a transcript was made available
-        // and processed by onTranscriptAvailable callback, setting app's currentTranscript.
         (app as any).currentTranscript = "mock raw transcript";
-        (app as any).transcriptBuffer = "mock raw transcript"; // Ensure buffer also has it
-        return "mock raw transcript"; // Though this direct return value isn't heavily used by app logic for transcript content
+        (app as any).transcriptBuffer = "mock raw transcript";
+        return "mock raw transcript";
       });
-
       const polishSpy = jest.spyOn(app as any, 'polishCurrentTranscription').mockResolvedValue(undefined);
-
       await app.toggleRecording();
-
       expect(MockedAudioRecorder.stopRecording).toHaveBeenCalled();
       expect((app as any).state.isRecording).toBe(false);
-      expect(polishSpy).toHaveBeenCalledWith(); // polishCurrentTranscription uses this.currentTranscript internaly
-      // To check the transcript value, we'd ideally have spied on what this.currentTranscript was set to.
-      // Given the setup, we trust currentTranscript was "mock raw transcript" when polishSpy was called.
-      // A more direct check on the argument would require polishSpy to be called with it,
-      // but polishCurrentTranscription doesn't take an argument.
-
-      // Check toast for recording complete (polish may show its own toasts later)
-      expect(showToastSpy).toHaveBeenCalledWith(expect.objectContaining({
-        type: 'success',
-        title: 'Recording Complete',
-      }));
-
-      // UI might show "Processing..." if polish is called, then "Start Recording" or "Polished"
-      // For this test, we at least expect it not to be "Stop Recording"
-      // A specific state depends on whether polishCurrentTranscription immediately updates UI or awaits.
-      // Given polishSpy is mockResolvedValue(undefined), it resolves quickly.
-      // The finally block in polishCurrentTranscription calls updateUI.
-      // updateUI when not recording and not processing should set recordButton to "Start Recording".
-      expect(mockRecordButton.textContent).toBe('Start Recording'); // After mocked polish resolves and UI updates
-
+      expect(polishSpy).toHaveBeenCalledWith();
+      expect(showToastSpy).toHaveBeenCalledWith(expect.objectContaining({ type: 'success', title: 'Recording Complete', }));
+      expect(mockRecordButton.textContent).toBe('Start Recording');
       polishSpy.mockRestore();
     });
 
     it('should stop recording successfully with NO transcript, and not attempt polishing', async () => {
       await app.init();
       MockedAudioRecorder.isSupported.mockReturnValue(true);
-      MockedAudioRecorder.getIsRecording.mockReturnValue(true); // Currently recording
+      MockedAudioRecorder.getIsRecording.mockReturnValue(true);
       MockedAudioRecorder.stopRecording.mockImplementation(async () => {
-        (app as any).currentTranscript = ""; // Ensure no transcript
+        (app as any).currentTranscript = "";
         (app as any).transcriptBuffer = "";
         return "";
       });
-
       const polishSpy = jest.spyOn(app as any, 'polishCurrentTranscription').mockResolvedValue(undefined);
-
       await app.toggleRecording();
-
       expect(MockedAudioRecorder.stopRecording).toHaveBeenCalled();
       expect((app as any).state.isRecording).toBe(false);
       expect(polishSpy).not.toHaveBeenCalled();
       expect(mockStatusDisplay.textContent).toBe('Status: Idle');
       expect(mockRecordButton.textContent).toBe('Start Recording');
-
       polishSpy.mockRestore();
     });
   });
@@ -646,10 +540,8 @@ describe('AudioTranscriptionApp Unit Tests - Core Setup', () => {
 
     beforeEach(() => {
       showToastSpy = jest.spyOn(app as any, 'showToast').mockImplementation(() => {});
-      // Reset relevant parts of APIService mock for these specific tests
       MockedAPIService.hasValidApiKey.mockReset();
       MockedAPIService.polishTranscription.mockReset();
-      // Ensure currentTranscript is clean unless set by a specific test
       (app as any).currentTranscript = '';
     });
 
@@ -659,30 +551,18 @@ describe('AudioTranscriptionApp Unit Tests - Core Setup', () => {
 
     it('should show warning if no transcript is available to polish', async () => {
       await app.init();
-      (app as any).currentTranscript = ''; // Ensure it's empty
-
+      (app as any).currentTranscript = '';
       await app.polishCurrentTranscription();
-
-      expect(showToastSpy).toHaveBeenCalledWith(expect.objectContaining({
-        type: 'warning',
-        title: 'No Transcription',
-        message: 'Please record something first.',
-      }));
+      expect(showToastSpy).toHaveBeenCalledWith(expect.objectContaining({ type: 'warning', title: 'No Transcription', message: 'Please record something first.', }));
       expect(MockedAPIService.polishTranscription).not.toHaveBeenCalled();
     });
 
     it('should show warning if API key is missing when attempting to polish', async () => {
       await app.init();
-      (app as any).currentTranscript = "some raw transcript"; // Set a transcript
-      MockedAPIService.hasValidApiKey.mockReturnValue(false); // Simulate missing API key
-
+      (app as any).currentTranscript = "some raw transcript";
+      MockedAPIService.hasValidApiKey.mockReturnValue(false);
       await app.polishCurrentTranscription();
-
-      expect(showToastSpy).toHaveBeenCalledWith(expect.objectContaining({
-        type: 'warning',
-        title: 'API Key Required',
-        message: 'Please enter your Gemini API key.',
-      }));
+      expect(showToastSpy).toHaveBeenCalledWith(expect.objectContaining({ type: 'warning', title: 'API Key Required', message: 'Please enter your Gemini API key.', }));
       expect(MockedAPIService.polishTranscription).not.toHaveBeenCalled();
     });
 
@@ -692,23 +572,16 @@ describe('AudioTranscriptionApp Unit Tests - Core Setup', () => {
       (app as any).currentTranscript = rawTranscript;
       MockedAPIService.hasValidApiKey.mockReturnValue(true);
       MockedAPIService.polishTranscription.mockResolvedValue({ success: true, data: "polished mock transcript" });
-
       const updateUISpy = jest.spyOn(app as any, 'updateUI').mockImplementation(() => {});
-
       await app.polishCurrentTranscription();
-
       expect(MockedAPIService.polishTranscription).toHaveBeenCalledWith(rawTranscript);
       expect((app as any).state.currentNote.rawTranscription).toBe(rawTranscript);
       expect((app as any).state.currentNote.polishedNote).toBe("polished mock transcript");
       expect(mockPolishedNoteArea.textContent).toBe("polished mock transcript");
       expect(mockStatusDisplay.textContent).toBe("Status: Polished");
-      expect(showToastSpy).toHaveBeenCalledWith(expect.objectContaining({
-        type: 'success',
-        title: 'Polishing Complete',
-      }));
+      expect(showToastSpy).toHaveBeenCalledWith(expect.objectContaining({ type: 'success', title: 'Polishing Complete', }));
       expect((app as any).state.isProcessing).toBe(false);
-      expect(updateUISpy).toHaveBeenCalled(); // At least in the finally block
-
+      expect(updateUISpy).toHaveBeenCalled();
       updateUISpy.mockRestore();
     });
 
@@ -718,16 +591,10 @@ describe('AudioTranscriptionApp Unit Tests - Core Setup', () => {
       (app as any).currentTranscript = rawTranscript;
       MockedAPIService.hasValidApiKey.mockReturnValue(true);
       MockedAPIService.polishTranscription.mockResolvedValue({ success: false, error: "API polishing failed from test" });
-
       await app.polishCurrentTranscription();
-
       expect(MockedAPIService.polishTranscription).toHaveBeenCalledWith(rawTranscript);
       expect(mockStatusDisplay.textContent).toBe("Status: Error Polishing");
-      expect(showToastSpy).toHaveBeenCalledWith(expect.objectContaining({
-        type: 'error',
-        title: 'Polishing Failed',
-        message: "API polishing failed from test",
-      }));
+      expect(showToastSpy).toHaveBeenCalledWith(expect.objectContaining({ type: 'error', title: 'Polishing Failed', message: "API polishing failed from test", }));
       expect((app as any).state.isProcessing).toBe(false);
     });
 
@@ -737,16 +604,10 @@ describe('AudioTranscriptionApp Unit Tests - Core Setup', () => {
       (app as any).currentTranscript = rawTranscript;
       MockedAPIService.hasValidApiKey.mockReturnValue(true);
       MockedAPIService.polishTranscription.mockRejectedValue(new Error("Network connection error"));
-
       await app.polishCurrentTranscription();
-
       expect(MockedAPIService.polishTranscription).toHaveBeenCalledWith(rawTranscript);
       expect(mockStatusDisplay.textContent).toBe("Status: Error Polishing");
-      expect(showToastSpy).toHaveBeenCalledWith(expect.objectContaining({
-        type: 'error',
-        title: 'Processing Error', // This is the title from the catch block
-        message: 'An error occurred while polishing the transcription.',
-      }));
+      expect(showToastSpy).toHaveBeenCalledWith(expect.objectContaining({ type: 'error', title: 'Processing Error', message: 'An error occurred while polishing the transcription.', }));
       expect((app as any).state.isProcessing).toBe(false);
     });
   });
@@ -762,18 +623,12 @@ describe('AudioTranscriptionApp Unit Tests - Core Setup', () => {
       updateNotesDisplaySpy = jest.spyOn(app as any, 'updateNotesDisplay').mockImplementation(() => {});
       updateTranscriptionAreaSpy = jest.spyOn(app as any, 'updateTranscriptionArea').mockImplementation(() => {});
       updatePolishedNoteAreaSpy = jest.spyOn(app as any, 'updatePolishedNoteArea').mockImplementation(() => {});
-
-      // Reset DataProcessor mocks
       (DataProcessor.saveNote as jest.Mock).mockReset();
       (DataProcessor.getAllNotes as jest.Mock).mockReset();
       (DataProcessor.deleteNote as jest.Mock).mockReset();
-
-      // Reset ChartManager mocks relevant to this block
       MockedChartManager.destroyAllCharts.mockReset();
-
-      // Ensure no current note and clear notes list at the start of these tests
       (app as any).state.currentNote = null;
-      (app as any).state.notes = []; // Clear notes list
+      (app as any).state.notes = [];
     });
 
     afterEach(() => {
@@ -784,17 +639,10 @@ describe('AudioTranscriptionApp Unit Tests - Core Setup', () => {
     });
 
     it('should show warning if trying to save when there is no current note', async () => {
-      await app.init(); // init might not be strictly necessary if saveCurrentNote doesn't depend on full init
-                       // but good for consistency if it might access elements or other state set by init.
-      (app as any).state.currentNote = null; // Explicitly ensure no current note
-
-      app.saveCurrentNote(); // This is a synchronous method
-
-      expect(showToastSpy).toHaveBeenCalledWith(expect.objectContaining({
-        type: 'warning',
-        title: 'No Note',
-        message: 'There is no note to save.',
-      }));
+      await app.init();
+      (app as any).state.currentNote = null;
+      app.saveCurrentNote();
+      expect(showToastSpy).toHaveBeenCalledWith(expect.objectContaining({ type: 'warning', title: 'No Note', message: 'There is no note to save.', }));
       expect(DataProcessor.saveNote).not.toHaveBeenCalled();
     });
 
@@ -802,92 +650,56 @@ describe('AudioTranscriptionApp Unit Tests - Core Setup', () => {
       await app.init();
       const mockNote = { id: 'note1', rawTranscription: 'raw text', polishedNote: 'polished text', timestamp: Date.now() };
       (app as any).state.currentNote = mockNote;
-
-      (DataProcessor.getAllNotes as jest.Mock).mockReturnValue([mockNote]); // Simulate getAllNotes returning notes
-
+      (DataProcessor.getAllNotes as jest.Mock).mockReturnValue([mockNote]);
       app.saveCurrentNote();
-
       expect(DataProcessor.saveNote).toHaveBeenCalledWith(mockNote);
       expect(DataProcessor.getAllNotes).toHaveBeenCalled();
       expect(updateNotesDisplaySpy).toHaveBeenCalled();
-      expect(showToastSpy).toHaveBeenCalledWith(expect.objectContaining({
-        type: 'success',
-        title: 'Note Saved',
-        message: 'Your note has been saved successfully.',
-      }));
+      expect(showToastSpy).toHaveBeenCalledWith(expect.objectContaining({ type: 'success', title: 'Note Saved', message: 'Your note has been saved successfully.', }));
     });
 
     it('should clear current note, transcript, buffer, and charts', async () => {
       await app.init();
-      // Set initial state
       (app as any).currentTranscript = "test transcript";
       (app as any).transcriptBuffer = "test buffer";
       (app as any).state.currentNote = { id: '1', rawTranscription: 'raw', polishedNote: 'polished', timestamp: Date.now() };
-
       const updateUISpy = jest.spyOn(app as any, 'updateUI').mockImplementation(() => {});
-
       app.clearCurrentNote();
-
       expect((app as any).currentTranscript).toBe('');
       expect((app as any).transcriptBuffer).toBe('');
       expect((app as any).state.currentNote).toBeNull();
       expect(MockedChartManager.destroyAllCharts).toHaveBeenCalled();
       expect(updateUISpy).toHaveBeenCalled();
-      expect(showToastSpy).toHaveBeenCalledWith(expect.objectContaining({
-        type: 'info',
-        title: 'Cleared',
-        message: 'Current note and charts have been cleared.',
-      }));
+      expect(showToastSpy).toHaveBeenCalledWith(expect.objectContaining({ type: 'info', title: 'Cleared', message: 'Current note and charts have been cleared.', }));
       updateUISpy.mockRestore();
     });
 
     it('should delete a note successfully and update display', async () => {
       await app.init();
       const noteIdToDelete = 'note-to-delete-id';
-      (DataProcessor.deleteNote as jest.Mock).mockReturnValue(true); // Simulate successful deletion
-      (DataProcessor.getAllNotes as jest.Mock).mockReturnValue([]); // Simulate getting updated notes list
-
+      (DataProcessor.deleteNote as jest.Mock).mockReturnValue(true);
+      (DataProcessor.getAllNotes as jest.Mock).mockReturnValue([]);
       app.deleteNote(noteIdToDelete);
-
       expect(DataProcessor.deleteNote).toHaveBeenCalledWith(noteIdToDelete);
       expect(DataProcessor.getAllNotes).toHaveBeenCalled();
       expect(updateNotesDisplaySpy).toHaveBeenCalled();
-      expect(showToastSpy).toHaveBeenCalledWith(expect.objectContaining({
-        type: 'success',
-        title: 'Note Deleted',
-        message: 'The note has been deleted.',
-      }));
+      expect(showToastSpy).toHaveBeenCalledWith(expect.objectContaining({ type: 'success', title: 'Note Deleted', message: 'The note has been deleted.', }));
     });
 
     it('should not show success toast if DataProcessor fails to delete a note', async () => {
       await app.init();
       const noteIdToDelete = 'another-id';
-      (DataProcessor.deleteNote as jest.Mock).mockReturnValue(false); // Simulate failed deletion
-
+      (DataProcessor.deleteNote as jest.Mock).mockReturnValue(false);
       app.deleteNote(noteIdToDelete);
-
       expect(DataProcessor.deleteNote).toHaveBeenCalledWith(noteIdToDelete);
-      // Check that the specific success toast was NOT called.
-      // The app currently doesn't show an error toast for this specific case.
-      expect(showToastSpy).not.toHaveBeenCalledWith(expect.objectContaining({
-        title: 'Note Deleted',
-      }));
-      // updateNotesDisplay might or might not be called depending on implementation if deleteNote returns false.
-      // For now, we are not asserting on updateNotesDisplaySpy in the failure case.
+      expect(showToastSpy).not.toHaveBeenCalledWith(expect.objectContaining({ title: 'Note Deleted', }));
     });
 
     it('should load a note into the current state and update UI areas', async () => {
       await app.init();
-      const mockNoteToLoad = {
-        id: 'test-id-123',
-        rawTranscription: 'loaded raw transcript',
-        polishedNote: 'loaded polished note',
-        timestamp: Date.now()
-      };
-      (app as any).state.notes = [mockNoteToLoad]; // Populate the notes list
-
+      const mockNoteToLoad = { id: 'test-id-123', rawTranscription: 'loaded raw transcript', polishedNote: 'loaded polished note', timestamp: Date.now() };
+      (app as any).state.notes = [mockNoteToLoad];
       app.loadNote('test-id-123');
-
       expect((app as any).state.currentNote).toEqual(mockNoteToLoad);
       expect((app as any).currentTranscript).toBe(mockNoteToLoad.rawTranscription);
       expect(updateTranscriptionAreaSpy).toHaveBeenCalled();

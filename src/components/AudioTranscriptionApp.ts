@@ -15,6 +15,7 @@ import { ProductionMonitor } from '../services/ProductionMonitor.js';
 import { HealthCheckService } from '../services/HealthCheckService.js';
 import { ErrorHandler, MemoryManager } from '../utils.js';
 import { SUCCESS_MESSAGES, ERROR_MESSAGES } from '../constants.js';
+import { SettingsModal } from './SettingsModal'; // Add this import
 
 export class AudioTranscriptionApp {
   private apiService: APIService;
@@ -25,6 +26,7 @@ export class AudioTranscriptionApp {
   private bundleOptimizer: BundleOptimizer;
   private productionMonitor: ProductionMonitor;
   private healthCheckService: HealthCheckService;
+  private settingsModal: SettingsModal; // Add this
   private state: AppState;
   private currentTranscript: string = '';
   private transcriptBuffer: string = '';
@@ -58,6 +60,14 @@ export class AudioTranscriptionApp {
     this.bundleOptimizer = BundleOptimizer.getInstance();
     this.productionMonitor = ProductionMonitor.getInstance();
     this.healthCheckService = HealthCheckService.getInstance();
+
+    // Add this instantiation
+    this.settingsModal = new SettingsModal({
+        apiService: this.apiService,
+        onApiKeyUpdated: () => {
+            this.testAPIConnection();
+        }
+    });
     
     this.state = {
       isRecording: false,
@@ -148,9 +158,11 @@ export class AudioTranscriptionApp {
     if (this.container || document.getElementById('aiChartDisplayArea')) {
       this.elements.chartContainer = findOrCreate('#aiChartDisplayArea', 'div', undefined, '', this.container);
     }
-    if (this.container || document.getElementById('apiKeyInput')) {
-      this.elements.apiKeyInput = findOrCreate('#apiKeyInput', 'input', undefined, '', this.container) as HTMLInputElement;
-    }
+    // Remove setup for this.elements.apiKeyInput
+    // The SettingsModal component will manage its own apiKeyInput element.
+    // if (this.container || document.getElementById('apiKeyInput')) {
+    //   this.elements.apiKeyInput = findOrCreate('#apiKeyInput', 'input', undefined, '', this.container) as HTMLInputElement;
+    // }
     if (this.container || document.getElementById('notesContainer')) {
       this.elements.notesContainer = findOrCreate('#notesContainer', 'div', undefined, '', this.container);
     }
@@ -174,17 +186,10 @@ export class AudioTranscriptionApp {
       this.toggleRecording();
     });
 
-    // API Key input
-    this.elements.apiKeyInput?.addEventListener('change', (e) => {
-      const apiKey = (e.target as HTMLInputElement).value;
-      if (apiKey) {
-        this.apiService.setApiKey(apiKey);
-        this.testAPIConnection();
-      }
-    });
+    // API Key input change listener is removed as SettingsModal handles API key input now.
 
-    // Settings modal
-    const settingsButton = document.getElementById('settingsButton');
+    // Settings modal event listeners are removed as SettingsModal handles them internally.
+    // const settingsButton = document.getElementById('settingsButton');
     const settingsModal = document.getElementById('settingsModal');
     const closeSettingsModal = document.getElementById('closeSettingsModal');
     const cancelSettings = document.getElementById('cancelSettings');
@@ -226,11 +231,11 @@ export class AudioTranscriptionApp {
     });
 
     // Close modal when clicking outside
-    settingsModal?.addEventListener('click', (e) => {
-      if (e.target === settingsModal) {
-        settingsModal?.style.setProperty('display', 'none');
-      }
-    });
+    // settingsModal?.addEventListener('click', (e) => {
+    //   if (e.target === settingsModal) {
+    //     settingsModal?.style.setProperty('display', 'none');
+    //   }
+    // });
 
     // Test Chart button (replaces generateChartsButton)
     const testChartButton = document.getElementById('testChartButton');
@@ -292,16 +297,8 @@ export class AudioTranscriptionApp {
         console.log('🔑 Loading saved API key from localStorage');
         this.apiService.setApiKey(savedApiKey);
         
-        // Update the API key input field if it exists
-        if (this.elements.apiKeyInput) {
-          this.elements.apiKeyInput.value = savedApiKey;
-        }
-        
-        // Also update the "remember key" checkbox
-        const rememberKeyCheckbox = document.getElementById('rememberApiKey') as HTMLInputElement;
-        if (rememberKeyCheckbox) {
-          rememberKeyCheckbox.checked = true;
-        }
+        // DOM updates for apiKeyInput and rememberKeyCheckbox are removed.
+        // SettingsModal will handle populating its own inputs when it opens.
       } else {
         console.log('⚠️ No API key found in localStorage - user will need to configure one');
       }
@@ -768,6 +765,10 @@ export class AudioTranscriptionApp {
     this.performanceMonitor.cleanup();
     this.intervalManager.cleanup();
     this.bundleOptimizer.cleanup();
+
+    if (this.settingsModal && typeof (this.settingsModal as any).cleanup === 'function') {
+        (this.settingsModal as any).cleanup();
+    }
     
     // Cleanup existing services
     this.audioRecorder.cleanup();

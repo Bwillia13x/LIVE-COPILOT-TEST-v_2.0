@@ -4,6 +4,7 @@
  */
 
 import { APP_CONFIG, IS_PRODUCTION, getEnvironmentInfo } from '../config/environment.js';
+import { PerformanceWithMemory } from '../types/index.js'; // Import PerformanceWithMemory
 
 export interface HealthCheckResult {
   status: 'healthy' | 'warning' | 'unhealthy';
@@ -278,12 +279,12 @@ export class HealthCheckService {
       }
 
       // Check memory usage if available
-      const memory = (performance as any).memory;
-      if (memory) {
-        const usedMemory = memory.usedJSHeapSize / 1024 / 1024; // MB
-        const totalMemory = memory.totalJSHeapSize / 1024 / 1024; // MB
+      const perfWithMemory = performance as PerformanceWithMemory;
+      if (perfWithMemory.memory) {
+        const usedMemory = perfWithMemory.memory.usedJSHeapSize / 1024 / 1024; // MB
+        // const totalMemory = perfWithMemory.memory.totalJSHeapSize / 1024 / 1024; // MB - not used
         
-        if (usedMemory > 100) { // More than 100MB
+        if (usedMemory > 100) { // More than 100MB - consider making 100 a constant
           return {
             status: 'warn',
             message: `High memory usage: ${usedMemory.toFixed(2)}MB`,
@@ -313,9 +314,9 @@ export class HealthCheckService {
     const start = performance.now();
 
     try {
-      const memory = (performance as any).memory;
+      const perfWithMemory = performance as PerformanceWithMemory;
       
-      if (!memory) {
+      if (!perfWithMemory.memory) {
         return {
           status: 'warn',
           message: 'Memory usage information not available',
@@ -323,9 +324,9 @@ export class HealthCheckService {
         };
       }
 
-      const used = memory.usedJSHeapSize / 1024 / 1024; // MB
-      const total = memory.totalJSHeapSize / 1024 / 1024; // MB
-      const limit = memory.jsHeapSizeLimit / 1024 / 1024; // MB
+      const used = perfWithMemory.memory.usedJSHeapSize / 1024 / 1024; // MB
+      // const total = perfWithMemory.memory.totalJSHeapSize / 1024 / 1024; // MB - not used
+      const limit = perfWithMemory.memory.jsHeapSizeLimit / 1024 / 1024; // MB
 
       const usage = (used / limit) * 100;
       const duration = performance.now() - start;

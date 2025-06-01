@@ -5,10 +5,9 @@
 
 import { GoogleGenAI } from '@google/genai';
 import { APIResponse, AllAIChartData, AIChartDataPayload } from '../types/index.js';
-import { ERROR_MESSAGES, API_CONFIG, STORAGE_KEYS, CHART_TYPES } from '../constants.js';
+import { ERROR_MESSAGES, STORAGE_KEYS, CHART_TYPES } from '../constants.js'; // API_CONFIG removed
 import { ErrorHandler } from '../utils.js';
-
-// Model name is now API_CONFIG.GEMINI.DEFAULT_MODEL_NAME
+import { AppConfig } from '../config/AppConfig.js'; // Import AppConfig
 
 export class APIService {
   private genAI: GoogleGenAI | null = null;
@@ -20,19 +19,18 @@ export class APIService {
 
   private async initializeAPI(): Promise<void> {
     try {
-      // Get API key from localStorage or environment variables
-      const storedKey = localStorage.getItem(STORAGE_KEYS.API_KEY); // Use constant
-      const envKey = import.meta.env.VITE_GEMINI_API_KEY;
+      // Get API key: Prioritize localStorage, then AppConfig (env), then null
+      const storedKey = localStorage.getItem(STORAGE_KEYS.API_KEY);
+      const envApiKey = AppConfig.getGeminiApiKey(); // Gets from env
+
+      this.apiKey = (storedKey?.trim()) || envApiKey;
       
-      // Only use the key if it's not null, undefined, or empty
-      this.apiKey = (storedKey && storedKey.trim()) || (envKey && envKey.trim()) || null;
-      
-      if (this.apiKey && this.apiKey.length > 10) { // Basic validation for API key format
+      if (this.apiKey && this.apiKey.length > 10) {
         try {
-          this.genAI = new GoogleGenAI(this.apiKey as any); // API_CONFIG.GEMINI.API_KEY is not how GoogleGenAI is constructed
+          this.genAI = new GoogleGenAI(this.apiKey);
           console.log('🔑 API service initialized with API key');
-        } catch (genAIError: any) {
-          ErrorHandler.logError('Failed to initialize GoogleGenAI during API setup', genAIError);
+        } catch (genAIError) {
+          ErrorHandler.logError('Failed to initialize GoogleGenAI during API setup', genAIError instanceof Error ? genAIError : new Error(String(genAIError)));
           this.genAI = null;
           this.apiKey = null;
         }
@@ -41,8 +39,8 @@ export class APIService {
         this.genAI = null;
         this.apiKey = null;
       }
-    } catch (error: any) {
-      ErrorHandler.logError('API initialization failed', error);
+    } catch (error) { // error is unknown
+      ErrorHandler.logError('API initialization failed', error instanceof Error ? error : new Error(String(error)));
       this.genAI = null;
       this.apiKey = null;
     }
@@ -58,18 +56,19 @@ export class APIService {
         };
       }
 
-      const model = (this.genAI as any).getGenerativeModel({ model: API_CONFIG.GEMINI.DEFAULT_MODEL_NAME }); // Use constant
+      const model = (this.genAI as any).getGenerativeModel({ model: AppConfig.getDefaultModelName() }); // Use AppConfig
       const result = await model.generateContent('Test connection');
       
       return {
         success: true,
         data: true
       };
-    } catch (error: any) {
-      ErrorHandler.logError('API connection test failed', error);
+    } catch (error) { // error is unknown
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      ErrorHandler.logError('API connection test failed', error instanceof Error ? error : new Error(String(error)));
       return {
         success: false,
-        error: `API connection failed: ${error?.message || 'Unknown error'}`
+        error: `API connection failed: ${errorMessage}`
       };
     }
   }
@@ -80,16 +79,17 @@ export class APIService {
       return { success: false, error: ERROR_MESSAGES.API.API_KEY_MISSING };
     }
     try {
-      const model = (this.genAI as any).getGenerativeModel({ model: API_CONFIG.GEMINI.DEFAULT_MODEL_NAME }); // Use constant
+      const model = (this.genAI as any).getGenerativeModel({ model: AppConfig.getDefaultModelName() }); // Use AppConfig
       const result = await model.generateContent(prompt);
       const response = await result.response;
       const textResponse = response.text();
       return { success: true, data: textResponse };
-    } catch (error: any) {
-      ErrorHandler.logError(`${operationNameForLogging} failed during AI interaction`, error);
+    } catch (error) { // error is unknown
+      const errorMessage = error instanceof Error ? error.message : 'Unknown AI error';
+      ErrorHandler.logError(`${operationNameForLogging} failed during AI interaction`, error instanceof Error ? error : new Error(String(error)));
       return {
         success: false,
-        error: `AI interaction failed for ${operationNameForLogging}: ${error?.message || 'Unknown AI error'}`,
+        error: `AI interaction failed for ${operationNameForLogging}: ${errorMessage}`,
       };
     }
   }
@@ -150,13 +150,14 @@ Please provide only the improved text without any additional comments or explana
     try {
       const parsedData = JSON.parse(aiResponse.data);
       // Type assertion can be tricky here. Assuming 'all' returns AllAIChartData, and specific types return AIChartDataPayload.
-      const chartData = (chartType === CHART_TYPES.ALL ? parsedData : parsedData) as AllAIChartData | AIChartDataPayload; // Use constant
+      const chartData = (chartType === CHART_TYPES.ALL ? parsedData : parsedData) as AllAIChartData | AIChartDataPayload;
       return { success: true, data: chartData };
-    } catch (parseError: any) {
-      ErrorHandler.logError(`Failed to parse JSON response for ${operationName}`, parseError);
+    } catch (parseError) { // parseError is unknown
+      const errorMessage = parseError instanceof Error ? parseError.message : 'JSON parsing error';
+      ErrorHandler.logError(`Failed to parse JSON response for ${operationName}`, parseError instanceof Error ? parseError : new Error(String(parseError)));
       return {
         success: false,
-        error: `Failed to generate chart data: ${error?.message || 'Unknown error'}`
+        error: `Failed to parse chart data: ${errorMessage}` // Corrected to use errorMessage from parseError
       };
     }
   }
@@ -230,8 +231,8 @@ Transcription: "${transcription}"`;
       localStorage.setItem(STORAGE_KEYS.API_KEY, this.apiKey); // Use constant
       this.genAI = new GoogleGenAI(this.apiKey as any);
       console.log('🔑 API key set and service initialized successfully');
-    } catch (error: any) {
-      ErrorHandler.logError('Failed to set API key', error);
+    } catch (error) { // error is unknown
+      ErrorHandler.logError('Failed to set API key', error instanceof Error ? error : new Error(String(error)));
       this.apiKey = null;
       this.genAI = null;
     }

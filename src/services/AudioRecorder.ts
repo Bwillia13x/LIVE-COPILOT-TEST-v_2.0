@@ -3,6 +3,10 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+import { ErrorHandler } from '../utils.js';
+import { SpeechRecognitionInstance, SpeechRecognitionEvent, SpeechRecognitionErrorEvent } from '../types/index.js';
+import { AppConfig } from '../config/AppConfig.js'; // Import AppConfig
+
 export interface RecordingState {
   isRecording: boolean;
   isPaused: boolean;
@@ -22,7 +26,7 @@ export class AudioRecorder {
   };
   private onDataAvailable?: (transcript: string) => void;
   private onStateChange?: (state: RecordingState) => void;
-  private recognition: any = null;
+  private recognition: SpeechRecognitionInstance | null = null; // Use new type
   private durationInterval: number | null = null;
 
   constructor() {
@@ -32,21 +36,22 @@ export class AudioRecorder {
   private initializeSpeechRecognition(): void {
     try {
       // Check for speech recognition support
-      const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+      const SpeechRecognitionAPI = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
       
-      if (SpeechRecognition) {
-        this.recognition = new SpeechRecognition();
+      if (SpeechRecognitionAPI) {
+        this.recognition = new SpeechRecognitionAPI() as SpeechRecognitionInstance;
+        const recorderConfig = AppConfig.getAudioRecorderConfig(); // Get config
         this.recognition.continuous = true;
         this.recognition.interimResults = true;
-        this.recognition.lang = AUDIO_RECORDER_CONFIG.LANG; // Use constant
+        this.recognition.lang = recorderConfig.LANG;
 
-        this.recognition.onresult = (event: any) => {
+        this.recognition.onresult = (event: SpeechRecognitionEvent) => {
           let finalTranscript = '';
           
           for (let i = event.resultIndex; i < event.results.length; i++) {
-            const transcript = event.results[i][0].transcript;
-            if (event.results[i].isFinal) {
-              finalTranscript += transcript + ' ';
+            const transcriptSegment = event.results[i];
+            if (transcriptSegment.isFinal && transcriptSegment[0]) {
+              finalTranscript += transcriptSegment[0].transcript + ' ';
             }
           }
 
@@ -55,8 +60,8 @@ export class AudioRecorder {
           }
         };
 
-        this.recognition.onerror = (event: any) => {
-          ErrorHandler.logError('Speech recognition error', event.error);
+        this.recognition.onerror = (event: SpeechRecognitionErrorEvent) => { // Use new type
+          ErrorHandler.logError('Speech recognition error', event.error || event.message || 'Unknown recognition error');
         };
 
         this.recognition.onend = () => {
@@ -66,12 +71,12 @@ export class AudioRecorder {
               if (this.recognition && this.state.isRecording) {
                 this.recognition.start();
               }
-            }, AUDIO_RECORDER_CONFIG.RECOGNITION_RESTART_DELAY); // Use constant
+            }, AppConfig.getAudioRecorderConfig().RECOGNITION_RESTART_DELAY);
           }
         };
       }
-    } catch (error) {
-      ErrorHandler.logError('Failed to initialize speech recognition', error);
+    } catch (error) { // error is unknown
+      ErrorHandler.logError('Failed to initialize speech recognition', error instanceof Error ? error : new Error(String(error)));
     }
   }
 
@@ -88,7 +93,7 @@ export class AudioRecorder {
 
       // Set up MediaRecorder for audio recording
       this.mediaRecorder = new MediaRecorder(this.stream, {
-        mimeType: AUDIO_RECORDER_CONFIG.MIME_TYPE // Use constant
+        mimeType: AppConfig.getAudioRecorderConfig().MIME_TYPE
       });
 
       this.audioChunks = [];
@@ -105,7 +110,7 @@ export class AudioRecorder {
       };
 
       // Start recording
-      this.mediaRecorder.start(AUDIO_RECORDER_CONFIG.TIMESLICE_INTERVAL); // Use constant
+      this.mediaRecorder.start(AppConfig.getAudioRecorderConfig().TIMESLICE_INTERVAL);
 
       // Start speech recognition
       if (this.recognition) {
@@ -125,44 +130,34 @@ export class AudioRecorder {
       this.notifyStateChange();
 
       return true;
-    } catch (error) {
-      ErrorHandler.logError('Failed to start recording', error);
+    } catch (error) { // error is unknown
+      ErrorHandler.logError('Failed to start recording', error instanceof Error ? error : new Error(String(error)));
       return false;
     }
   }
 
   public stopRecording(): void {
     try {
-      // Stop MediaRecorder
       if (this.mediaRecorder && this.mediaRecorder.state !== 'inactive') {
         this.mediaRecorder.stop();
       }
-
-      // Stop speech recognition
       if (this.recognition) {
         this.recognition.stop();
       }
-
-      // Stop stream
       if (this.stream) {
         this.stream.getTracks().forEach(track => track.stop());
         this.stream = null;
       }
-
-      // Stop duration tracking
       this.stopDurationTracking();
-
-      // Update state
       this.state = {
         isRecording: false,
         isPaused: false,
         duration: this.state.duration,
         startTime: null,
       };
-
       this.notifyStateChange();
-    } catch (error) {
-      ErrorHandler.logError('Failed to stop recording', error);
+    } catch (error) { // error is unknown
+      ErrorHandler.logError('Failed to stop recording', error instanceof Error ? error : new Error(String(error)));
     }
   }
 
@@ -170,17 +165,15 @@ export class AudioRecorder {
     try {
       if (this.mediaRecorder && this.state.isRecording && !this.state.isPaused) {
         this.mediaRecorder.pause();
-        
         if (this.recognition) {
           this.recognition.stop();
         }
-
         this.state.isPaused = true;
         this.stopDurationTracking();
         this.notifyStateChange();
       }
-    } catch (error) {
-      ErrorHandler.logError('Failed to pause recording', error);
+    } catch (error) { // error is unknown
+      ErrorHandler.logError('Failed to pause recording', error instanceof Error ? error : new Error(String(error)));
     }
   }
 
@@ -188,18 +181,16 @@ export class AudioRecorder {
     try {
       if (this.mediaRecorder && this.state.isRecording && this.state.isPaused) {
         this.mediaRecorder.resume();
-        
         if (this.recognition) {
           this.recognition.start();
         }
-
         this.state.isPaused = false;
         this.state.startTime = Date.now() - this.state.duration;
         this.startDurationTracking();
         this.notifyStateChange();
       }
-    } catch (error) {
-      ErrorHandler.logError('Failed to resume recording', error);
+    } catch (error) { // error is unknown
+      ErrorHandler.logError('Failed to resume recording', error instanceof Error ? error : new Error(String(error)));
     }
   }
 
@@ -209,7 +200,7 @@ export class AudioRecorder {
         this.state.duration = Date.now() - this.state.startTime;
         this.notifyStateChange();
       }
-    }, AUDIO_RECORDER_CONFIG.DURATION_UPDATE_INTERVAL); // Use constant
+    }, AppConfig.getAudioRecorderConfig().DURATION_UPDATE_INTERVAL);
   }
 
   private stopDurationTracking(): void {

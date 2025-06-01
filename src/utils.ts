@@ -3,8 +3,9 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import { APP_CONFIG, LOG_LEVELS, ENV, type LogLevel, UTIL_CONFIG } from './constants.js'; // Import UTIL_CONFIG
+import { LOG_LEVELS, ENV, type LogLevel, UTIL_CONFIG } from './constants.js'; // APP_CONFIG removed for direct AppConfig use
 import { ToastOptions } from '../types/index.js';
+import { AppConfig } from '../config/AppConfig.js'; // Import AppConfig
 
 /**
  * Centralized logging service with different levels and environment-aware output
@@ -12,10 +13,12 @@ import { ToastOptions } from '../types/index.js';
 export class LoggerService {
   private static instance: LoggerService;
   private currentLevel: LogLevel = ENV.IS_DEVELOPMENT ? LOG_LEVELS.DEBUG : LOG_LEVELS.WARN;
-  private logHistory: Array<{timestamp: number, level: LogLevel, message: string, data?: any}> = [];
-  private readonly maxHistorySize = UTIL_CONFIG.LOGGER_MAX_HISTORY; // Use constant
+  private logHistory: Array<{timestamp: number, level: LogLevel, message: string, data?: unknown}> = [];
+  private readonly maxHistorySize: number;
 
-  private constructor() {}
+  private constructor() {
+    this.maxHistorySize = AppConfig.getLoggerConfig().MAX_HISTORY; // Get from AppConfig
+  }
 
   public static getInstance(): LoggerService {
     if (!LoggerService.instance) {
@@ -28,23 +31,23 @@ export class LoggerService {
     this.currentLevel = level;
   }
 
-  public error(message: string, data?: any): void {
+  public error(message: string, data?: unknown): void { // data: any -> unknown
     this.log(LOG_LEVELS.ERROR, message, data);
   }
 
-  public warn(message: string, data?: any): void {
+  public warn(message: string, data?: unknown): void { // data: any -> unknown
     this.log(LOG_LEVELS.WARN, message, data);
   }
 
-  public info(message: string, data?: any): void {
+  public info(message: string, data?: unknown): void { // data: any -> unknown
     this.log(LOG_LEVELS.INFO, message, data);
   }
 
-  public debug(message: string, data?: any): void {
+  public debug(message: string, data?: unknown): void { // data: any -> unknown
     this.log(LOG_LEVELS.DEBUG, message, data);
   }
 
-  private log(level: LogLevel, message: string, data?: any): void {
+  private log(level: LogLevel, message: string, data?: unknown): void { // data: any -> unknown
     if (level <= this.currentLevel) {
       const timestamp = Date.now();
       const logEntry = { timestamp, level, message, data };
@@ -80,7 +83,7 @@ export class LoggerService {
   }
 
   public getHistory(): Array<{timestamp: number, level: LogLevel, message: string, data?: any}> {
-    return [...this.logHistory];
+    return [...this.logHistory] as Array<{timestamp: number, level: LogLevel, message: string, data?: unknown}>; // Ensure return type matches
   }
 
   public clearHistory(): void {
@@ -115,7 +118,7 @@ export class MemoryManager {
     window.addEventListener('beforeunload', () => this.cleanup());
     
     // Periodic memory monitoring
-    setInterval(() => this.monitorMemory(), APP_CONFIG.PERFORMANCE.CLEANUP_INTERVAL);
+    setInterval(() => this.monitorMemory(), AppConfig.getPerformanceConfig().CLEANUP_INTERVAL); // Get from AppConfig
   }
 
   public static getInstance(): MemoryManager {
@@ -250,7 +253,8 @@ export class ErrorHandler {
       fallback?: () => T | Promise<T>;
     }
   ): Promise<T> {
-    const { operationName, maxRetries = APP_CONFIG.RETRY.MAX_ATTEMPTS, retryDelay = APP_CONFIG.RETRY.BACKOFF_BASE } = context;
+    const retryConfig = AppConfig.getRetryConfig(); // Get from AppConfig
+    const { operationName, maxRetries = retryConfig.MAX_ATTEMPTS, retryDelay = retryConfig.BACKOFF_BASE } = context;
     
     let lastError: Error;
     
@@ -272,7 +276,7 @@ export class ErrorHandler {
         this.logger.warn(`${operationName} failed (attempt ${attempt}/${maxRetries}): ${lastError.message}`);
         
         if (attempt < maxRetries) {
-          const delay = retryDelay * Math.pow(APP_CONFIG.RETRY.BACKOFF_MULTIPLIER, attempt - 1);
+          const delay = retryDelay * Math.pow(retryConfig.BACKOFF_MULTIPLIER, attempt - 1); // Use from retryConfig
           await this.delay(delay);
         }
       }
@@ -331,12 +335,13 @@ export class ErrorHandler {
   /**
    * Instance method for comprehensive error handling
    */
-  public handleError(error: Error, context: { operationName: string; fallback?: () => any }): void {
+  public handleError(error: Error, context: { operationName: string; fallback?: () => unknown }): void { // fallback return any -> unknown
     this.logger.error(`${context.operationName} failed: ${error.message}`, error);
     
     if (context.fallback) {
       this.logger.info(`Using fallback for ${context.operationName}`);
-      return context.fallback();
+      context.fallback(); // Removed return, just execute
+      return; // Added explicit return
     }
   }
 }
@@ -416,5 +421,5 @@ export function showToast(options: ToastOptions): void {
 
   setTimeout(() => {
     toast.remove();
-  }, options.duration || APP_CONFIG.TIMING.TOAST_DURATION); // Verify/ensure using constant
+  }, options.duration || AppConfig.getTimingConfig().TOAST_DURATION); // Get from AppConfig
 }

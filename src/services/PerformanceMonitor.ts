@@ -4,6 +4,7 @@
  */
 
 import { LoggerService, MemoryManager } from '../utils.js';
+import { PerformanceWithMemory, LayoutShiftEntry } from '../types/index.js'; // Import new types
 
 export interface PerformanceMetrics {
   memoryUsage: number;
@@ -33,7 +34,6 @@ export class PerformanceMonitor {
   private monitoringInterval: number | null = null;
   private readonly maxMetricsHistory = 100;
   
-  // Performance thresholds
   private readonly thresholds = {
     memory: 100 * 1024 * 1024, // 100MB
     renderTime: 100, // 100ms
@@ -59,12 +59,12 @@ export class PerformanceMonitor {
 
   public startMonitoring(): void {
     if (this.monitoringInterval) {
-      return; // Already monitoring
+      return;
     }
 
     this.monitoringInterval = window.setInterval(() => {
       this.collectMetrics();
-    }, 5000); // Collect metrics every 5 seconds
+    }, 5000);
 
     this.memoryManager.trackInterval(this.monitoringInterval);
     this.logger.info('Performance monitoring started');
@@ -84,17 +84,16 @@ export class PerformanceMonitor {
 
     const metrics: PerformanceMetrics = {
       memoryUsage,
-      renderTime: 0, // Will be updated by specific operations
-      apiResponseTime: 0, // Will be updated by API calls
-      chartRenderTime: 0, // Will be updated by chart operations
-      audioLatency: 0, // Will be updated by audio operations
+      renderTime: 0,
+      apiResponseTime: 0,
+      chartRenderTime: 0,
+      audioLatency: 0,
       activeTimers: stats.intervals + stats.timeouts,
       activeListeners: stats.eventListeners,
     };
 
     this.metrics.push(metrics);
     
-    // Keep only recent metrics
     if (this.metrics.length > this.maxMetricsHistory) {
       this.metrics.shift();
     }
@@ -104,7 +103,8 @@ export class PerformanceMonitor {
 
   private getMemoryUsage(): number {
     if ('memory' in performance) {
-      return (performance as any).memory.usedJSHeapSize;
+      // Use the PerformanceWithMemory type assertion
+      return (performance as PerformanceWithMemory).memory?.usedJSHeapSize || 0;
     }
     return 0;
   }
@@ -112,7 +112,6 @@ export class PerformanceMonitor {
   private checkThresholds(metrics: PerformanceMetrics): void {
     const timestamp = Date.now();
 
-    // Memory usage check
     if (metrics.memoryUsage > this.thresholds.memory) {
       this.addAlert({
         type: 'memory',
@@ -124,7 +123,6 @@ export class PerformanceMonitor {
       });
     }
 
-    // Timer count check
     if (metrics.activeTimers > this.thresholds.maxTimers) {
       this.addAlert({
         type: 'resource',
@@ -136,7 +134,6 @@ export class PerformanceMonitor {
       });
     }
 
-    // Event listener count check
     if (metrics.activeListeners > this.thresholds.maxListeners) {
       this.addAlert({
         type: 'resource',
@@ -159,13 +156,9 @@ export class PerformanceMonitor {
 
   private addAlert(alert: PerformanceAlert): void {
     this.alerts.push(alert);
-    
-    // Keep only recent alerts (last 50)
-    if (this.alerts.length > 50) {
+    if (this.alerts.length > 50) { // Consider making 50 a constant
       this.alerts.shift();
     }
-
-    // Log critical and high severity alerts
     if (alert.severity === 'critical' || alert.severity === 'high') {
       this.logger.warn(`Performance Alert [${alert.severity}]: ${alert.message}`);
     }
@@ -177,18 +170,20 @@ export class PerformanceMonitor {
 
   public measureOperation<T>(
     operation: () => T | Promise<T>,
-    operationType: keyof PerformanceMetrics,
+    operationType: keyof PerformanceMetrics, // This ensures operationType is a valid key
     operationName?: string
   ): T | Promise<T> {
     const startTime = performance.now();
     
-    const updateMetrics = (duration: number) => {
+    const updateMetricsAndCheckThresholds = (duration: number) => {
       const currentMetrics = this.metrics[this.metrics.length - 1];
       if (currentMetrics) {
-        currentMetrics[operationType] = duration;
+        // Ensure that operationType is a valid key for currentMetrics that expects a number
+        if (typeof currentMetrics[operationType] === 'number') {
+            (currentMetrics[operationType] as number) = duration;
+        }
       }
 
-      // Check threshold for this operation
       const thresholdKey = operationType as keyof typeof this.thresholds;
       const threshold = this.thresholds[thresholdKey] as number;
       
@@ -209,47 +204,31 @@ export class PerformanceMonitor {
     if (result instanceof Promise) {
       return result.then((value) => {
         const duration = performance.now() - startTime;
-        updateMetrics(duration);
-
-        // Store the operation details
-        this.recentOperations.push({ name: operationName || '', duration });
-        // Keep only the last 10 operations, for example
-        if (this.recentOperations.length > 10) {
-          this.recentOperations.shift();
-        }
-
+        updateMetricsAndCheckThresholds(duration);
+        this.recentOperations.push({ name: operationName || String(operationType), duration });
+        if (this.recentOperations.length > 10) this.recentOperations.shift(); // Consider making 10 a constant
         return value;
-      }).catch((error) => {
+      }).catch((error: unknown) => { // Changed catch error to unknown
         const duration = performance.now() - startTime;
-        updateMetrics(duration);
+        // Assuming operationType for errors should also be updated, though it's less direct
+        // updateMetricsAndCheckThresholds(duration); // Or handle error duration differently
         this.addAlert({
           type: 'error',
           severity: 'high',
-          message: `Operation failed: ${operationName || operationType}`,
+          message: `Operation failed: ${operationName || operationType}. ${error instanceof Error ? error.message : String(error)}`,
           value: duration,
           threshold: 0,
           timestamp: Date.now(),
         });
-
-        // Store the error operation details
-        this.recentOperations.push({ name: `${operationName} (Error)`, duration: 0 });
-        if (this.recentOperations.length > 10) {
-          this.recentOperations.shift();
-        }
-
+        this.recentOperations.push({ name: `${operationName || String(operationType)} (Error)`, duration });
+        if (this.recentOperations.length > 10) this.recentOperations.shift();
         throw error;
       });
     } else {
       const duration = performance.now() - startTime;
-      updateMetrics(duration);
-
-      // Store the operation details
-      this.recentOperations.push({ name: operationName || '', duration });
-      // Keep only the last 10 operations, for example
-      if (this.recentOperations.length > 10) {
-        this.recentOperations.shift();
-      }
-
+      updateMetricsAndCheckThresholds(duration);
+      this.recentOperations.push({ name: operationName || String(operationType), duration });
+      if (this.recentOperations.length > 10) this.recentOperations.shift();
       return result;
     }
   }

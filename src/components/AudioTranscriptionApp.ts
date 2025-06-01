@@ -392,7 +392,7 @@ export class AudioTranscriptionApp {
     });
   }
 
-  private createNoteElement(note: any): HTMLElement { // TODO: Type 'note' properly with StoredNote
+  private createNoteElement(note: StoredNote): HTMLElement { // Changed note: any to note: StoredNote
     const noteDiv = document.createElement('div');
     noteDiv.className = 'note-item';
     noteDiv.innerHTML = `

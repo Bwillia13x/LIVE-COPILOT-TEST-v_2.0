@@ -21,7 +21,7 @@ export interface ToastOptions {
 
 export interface ErrorContext {
   operation: string;
-  details?: any;
+  details?: unknown; // Changed from any to unknown
   userMessage: string;
   retryable: boolean;
   retryAction?: () => void;
@@ -127,4 +127,57 @@ export interface APIResponse<T = any> {
   data?: T;
   error?: string;
   code?: number;
+}
+
+// For PerformanceMonitor
+export interface PerformanceWithMemory extends Performance {
+  memory?: {
+    usedJSHeapSize: number;
+    totalJSHeapSize: number;
+    jsHeapSizeLimit: number;
+  };
+}
+
+export interface LayoutShiftEntry extends PerformanceEntry {
+  value: number;
+  hadRecentInput: boolean;
+  // Add other properties if needed based on actual usage
+}
+
+// For ProductionMonitor error queue
+export interface ErrorReport {
+  type: string;
+  data: Record<string, unknown>; // Was Record<string, any>
+  timestamp: number;
+  url: string;
+  userAgent: string;
+}
+
+// Basic interfaces for SpeechRecognition events used in AudioRecorder.ts
+// These can be expanded if more properties are accessed.
+export interface SpeechRecognitionResult {
+  isFinal: boolean;
+  [index: number]: { transcript: string };
+}
+
+export interface SpeechRecognitionEvent {
+  resultIndex: number;
+  results: SpeechRecognitionResult[];
+}
+
+export interface SpeechRecognitionErrorEvent {
+  error: string;
+  message?: string;
+}
+
+// A minimal interface for the SpeechRecognition object itself
+export interface SpeechRecognitionInstance {
+  continuous: boolean;
+  interimResults: boolean;
+  lang: string;
+  onresult: (event: SpeechRecognitionEvent) => void;
+  onerror: (event: SpeechRecognitionErrorEvent) => void;
+  onend: () => void;
+  start: () => void;
+  stop: () => void;
 }

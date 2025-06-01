@@ -106,38 +106,28 @@ Transcription: "${rawText}"
 
 Please provide only the improved text without any additional comments or explanations.`;
 
-    // The _executePrompt method already handles the try/catch and API key check.
-    // It returns an APIResponse<string> which matches this method's signature.
     return this._executePrompt(prompt, operationName);
   }
 
-  // Updated to reflect that chartType 'all' returns AllAIChartData, others return AIChartDataPayload
   public async generateChartData(transcription: string, chartType: string): Promise<APIResponse<AllAIChartData | AIChartDataPayload>> {
     const operationName = `Chart data generation for ${chartType}`;
     let prompt = '';
-      // If chartType is 'all', we might need a different prompt or multiple calls.
-      // For now, this example assumes specific chart type prompts.
-      // The 'all' case in AudioTranscriptionApp will need to iterate or API needs to support it.
-      // Let's assume for now `generateChartData` is called per specific type by the app,
-      // or an 'all' type prompt returns a structured AllAIChartData.
-      // For simplicity, this example will assume chartType is specific for now.
-      // If chartType === 'all', the prompt and parsing logic would be more complex.
       switch (chartType) {
-        case CHART_TYPES.TOPICS: // Use constant
+        case CHART_TYPES.TOPICS:
           prompt = this.getTopicsPrompt(transcription);
           break;
-        case CHART_TYPES.SENTIMENT: // Use constant
+        case CHART_TYPES.SENTIMENT:
           prompt = this.getSentimentPrompt(transcription);
           break;
-        case CHART_TYPES.WORD_FREQUENCY: // Use constant
+        case CHART_TYPES.WORD_FREQUENCY:
           prompt = this.getWordFrequencyPrompt(transcription);
           break;
         default:
-          if (chartType !== CHART_TYPES.ALL) { // Use constant
+          if (chartType !== CHART_TYPES.ALL) {
             ErrorHandler.logError(`Unsupported chart type: ${chartType}`, operationName);
             return { success: false, error: `Unsupported chart type: ${chartType}`};
           }
-          prompt = `Analyze the following transcription and provide data for topics, sentiment, and word frequency charts. Transcription: "${transcription}". Respond in JSON format with keys "topics", "sentiment", "wordFrequency", each containing respective data.`;
+          prompt = `Analyze the following transcription and provide data for topics, sentiment, and word frequency charts. Transcription: "${transcription}". Respond in JSON format with keys "topics", "sentiment", "wordFrequency", each containing respective data. For topics, provide labels (array of strings) and data (array of numbers for percentages). For sentiment, provide labels ["Positive", "Neutral", "Negative"] and data (percentages). For wordFrequency, provide labels (array of strings - top 10 significant words) and data (their frequencies). Ensure percentages add up to 100 where applicable. Ensure all string values in JSON are double-quoted.`;
           break;
       }
 
@@ -149,15 +139,14 @@ Please provide only the improved text without any additional comments or explana
 
     try {
       const parsedData = JSON.parse(aiResponse.data);
-      // Type assertion can be tricky here. Assuming 'all' returns AllAIChartData, and specific types return AIChartDataPayload.
       const chartData = (chartType === CHART_TYPES.ALL ? parsedData : parsedData) as AllAIChartData | AIChartDataPayload;
       return { success: true, data: chartData };
-    } catch (parseError) { // parseError is unknown
+    } catch (parseError) {
       const errorMessage = parseError instanceof Error ? parseError.message : 'JSON parsing error';
       ErrorHandler.logError(`Failed to parse JSON response for ${operationName}`, parseError instanceof Error ? parseError : new Error(String(parseError)));
       return {
         success: false,
-        error: `Failed to parse chart data: ${errorMessage}` // Corrected to use errorMessage from parseError
+        error: `Failed to parse chart data: ${errorMessage}. Raw AI response: ${aiResponse.data}`
       };
     }
   }
@@ -170,7 +159,7 @@ Please provide only the improved text without any additional comments or explana
   "backgroundColor": ["#FF6384", "#36A2EB", "#FFCE56"]
 }
 
-The percentages should add up to 100. Transcription: "${transcription}"`;
+The percentages should add up to 100. Ensure all string values in JSON are double-quoted. Transcription: "${transcription}"`;
   }
 
   private getSentimentPrompt(transcription: string): string {
@@ -181,7 +170,7 @@ The percentages should add up to 100. Transcription: "${transcription}"`;
   "backgroundColor": ["#4CAF50", "#FFC107", "#F44336"]
 }
 
-The percentages should add up to 100. Transcription: "${transcription}"`;
+The percentages should add up to 100. Ensure all string values in JSON are double-quoted. Transcription: "${transcription}"`;
   }
 
   private getWordFrequencyPrompt(transcription: string): string {
@@ -191,14 +180,38 @@ The percentages should add up to 100. Transcription: "${transcription}"`;
   "data": [frequency1, frequency2, frequency3, ...],
   "backgroundColor": ["#FF6384", "#36A2EB", "#FFCE56", ...]
 }
-
-Transcription: "${transcription}"`;
+Ensure all string values in JSON are double-quoted. Transcription: "${transcription}"`;
   }
 
-  // Added for generateSampleChartData
+  public async getConsolidatedTopics(combinedText: string): Promise<APIResponse<string[]>> {
+    const operationName = "Consolidated Topic Analysis";
+    const prompt = `Based on the following combined text from a main note and potentially several related documents, please identify and extract the 3 to 5 most significant topics. Return these topics as a valid JSON array of strings. For example: ["Topic A", "Topic B", "Topic C"]. Ensure the output is ONLY the JSON array.
+
+Combined Text:
+---
+${combinedText}
+---`;
+
+    const response = await this._executePrompt(prompt, operationName);
+
+    if (response.success && response.data) {
+      try {
+        // Attempt to parse the string data into a string array
+        const topics = JSON.parse(response.data) as string[];
+        if (!Array.isArray(topics) || !topics.every(topic => typeof topic === 'string')) {
+            throw new Error("API did not return a valid JSON array of strings for topics.");
+        }
+        return { success: true, data: topics };
+      } catch (parseError) {
+        ErrorHandler.logError("Failed to parse consolidated topics from API response", { error: parseError, rawResponse: response.data });
+        return { success: false, error: "Failed to parse topics from API response. Ensure the AI is returning a valid JSON array of strings." };
+      }
+    }
+    return { success: false, error: response.error || "Failed to get consolidated topics from API." };
+  }
+
+
   public async generateSampleChartData(): Promise<APIResponse<AllAIChartData>> {
-    // This is a mock implementation. In a real scenario, this might call a different API endpoint
-    // or use predefined sample data.
     console.log("APIService: Generating sample chart data (mocked)");
     const sampleData: AllAIChartData = {
       topics: {
@@ -228,10 +241,10 @@ Transcription: "${transcription}"`;
     
     try {
       this.apiKey = apiKey.trim();
-      localStorage.setItem(STORAGE_KEYS.API_KEY, this.apiKey); // Use constant
-      this.genAI = new GoogleGenAI(this.apiKey as any);
+      localStorage.setItem(STORAGE_KEYS.API_KEY, this.apiKey);
+      this.genAI = new GoogleGenAI(this.apiKey as any); // Type assertion to any for GoogleGenAI constructor
       console.log('🔑 API key set and service initialized successfully');
-    } catch (error) { // error is unknown
+    } catch (error) {
       ErrorHandler.logError('Failed to set API key', error instanceof Error ? error : new Error(String(error)));
       this.apiKey = null;
       this.genAI = null;

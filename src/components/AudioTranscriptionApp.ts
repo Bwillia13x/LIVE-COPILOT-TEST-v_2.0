@@ -78,12 +78,14 @@ export class AudioTranscriptionApp {
     contentLibraryButton?: HTMLButtonElement;
     closeLibraryButton?: HTMLButtonElement;
     filesList?: HTMLElement;
+    analyzeContentButton?: HTMLButtonElement; // Renamed from testAggregateButton
+    consolidatedTopicsDisplay?: HTMLElement; // New display area for topics
   } = {};
 
   constructor() {
     this.apiService = new APIService();
     this.chartManager = new ChartManager();
-    this.audioRecorder = new AudioRecorder(); // Used for live recording, not file processing here
+    this.audioRecorder = new AudioRecorder();
     this.performanceMonitor = PerformanceMonitor.getInstance();
     this.intervalManager = IntervalManager.getInstance();
     this.bundleOptimizer = BundleOptimizer.getInstance();
@@ -115,6 +117,11 @@ export class AudioTranscriptionApp {
       this.setupAudioRecorder();
       this.loadExistingNotes();
       this.updateUI();
+      if (this.state.currentNote) {
+        this.fullTranscription = this.state.currentNote.polishedNote || this.state.currentNote.rawTranscription;
+      } else if (this.currentTranscript) {
+        this.fullTranscription = this.currentTranscript;
+      }
       this.setupAutoSave();
       this.setupPeriodicUpdates();
       await this.testAPIConnection();
@@ -142,6 +149,8 @@ export class AudioTranscriptionApp {
       contentLibraryButton: document.getElementById(UI_IDS.CONTENT_LIBRARY_BUTTON) as HTMLButtonElement,
       closeLibraryButton: document.getElementById(UI_IDS.CLOSE_LIBRARY_BUTTON) as HTMLButtonElement,
       filesList: document.getElementById(UI_IDS.FILES_LIST) as HTMLElement,
+      analyzeContentButton: document.getElementById(UI_IDS.ANALYZE_CONTENT_BUTTON) as HTMLButtonElement,
+      consolidatedTopicsDisplay: document.getElementById(UI_IDS.CONSOLIDATED_TOPICS_DISPLAY) as HTMLElement,
     };
     const coreRequiredElementIds = ['recordButton', UI_IDS.CONTENT_PANE_RAW, UI_IDS.CONTENT_PANE_POLISHED, UI_IDS.CHART_DISPLAY_AREA];
     for (const elementId of coreRequiredElementIds) {
@@ -202,6 +211,34 @@ export class AudioTranscriptionApp {
     this.elements.exportButton?.addEventListener('click', () => this.exportNotes());
     document.getElementById('performanceToggleButton')?.addEventListener('click', () => this.togglePerformanceIndicator());
     document.getElementById('themeToggleButton')?.addEventListener('click', () => this.toggleTheme());
+
+    // Analyze Content Button Listener (repurposed from testAggregateButton)
+    if (this.elements.analyzeContentButton) {
+        this.elements.analyzeContentButton.addEventListener('click', async () => {
+          const aggregatedText = this._aggregateAllTextContent();
+          if (!aggregatedText || aggregatedText === "No text content available for aggregation.") {
+            utilShowToast({type: 'warning', title: 'No Content', message: 'No text content available to analyze.'});
+            return;
+          }
+
+          utilShowToast({type: 'info', title: 'Processing...', message: 'Analyzing content for consolidated topics.'});
+          console.log("Aggregated Text for Topic Analysis:", aggregatedText.substring(0, 500) + "..."); // Log snippet
+
+          try {
+            const response = await this.apiService.getConsolidatedTopics(aggregatedText);
+            if (response.success && response.data) {
+              console.log("Consolidated Topics:", response.data);
+              this._displayConsolidatedTopics(response.data);
+              utilShowToast({type: 'success', title: 'Analysis Complete', message: 'Consolidated topics generated.'});
+            } else {
+              this._handleOperationError(response.error || 'Failed to get consolidated topics', 'analyzeContentButton', 'Topic Analysis Failed', response.error || 'Unknown error from API');
+            }
+          } catch (error) {
+             this._handleOperationError(error, 'analyzeContentButton', 'Topic Analysis Error', 'An unexpected error occurred during topic analysis.');
+          }
+        });
+    }
+
     window.addEventListener('beforeunload', () => this.cleanup());
     window.addEventListener('resize', this.handleResize);
 
@@ -280,7 +317,9 @@ export class AudioTranscriptionApp {
 
   private setupAudioRecorder(): void {
     this.audioRecorder.onTranscriptAvailable((transcript) => {
-      this.transcriptBuffer += transcript + ' '; this.updateTranscriptionArea();
+      this.transcriptBuffer += transcript + ' ';
+      this.fullTranscription = this.transcriptBuffer;
+      this.updateTranscriptionArea();
     });
     this.audioRecorder.onRecordingStateChange((recordingState) => this.updateRecordingUI(recordingState));
   }
@@ -291,12 +330,15 @@ export class AudioTranscriptionApp {
         utilShowToast({ type: 'error', title: 'Not Supported', message: ERROR_MESSAGES.MICROPHONE.NOT_SUPPORTED }); return;
       }
       if (this.state.isRecording) {
-        this.audioRecorder.stopRecording(); this.currentTranscript = this.transcriptBuffer.trim(); this.state.isRecording = false;
+        this.audioRecorder.stopRecording();
+        this.currentTranscript = this.transcriptBuffer.trim();
+        this.fullTranscription = this.currentTranscript;
+        this.state.isRecording = false;
         if (this.currentTranscript) utilShowToast({ type: 'success', title: 'Recording Complete', message: 'Transcription ready for polishing.' });
       } else {
         const success = await this.audioRecorder.startRecording();
         if (success) {
-          this.state.isRecording = true; this.transcriptBuffer = '';
+          this.state.isRecording = true; this.transcriptBuffer = ''; this.fullTranscription = '';
           utilShowToast({ type: 'info', title: 'Recording Started', message: 'Speak now...' });
         } else utilShowToast({ type: 'error', title: 'Recording Failed', message: ERROR_MESSAGES.MICROPHONE.GENERIC_ERROR });
       }
@@ -308,16 +350,23 @@ export class AudioTranscriptionApp {
 
   private async polishCurrentTranscription(): Promise<void> {
     try {
-      if (!this.currentTranscript) {
-        utilShowToast({ type: 'warning', title: 'No Transcription', message: 'Please record something first.' }); return;
+      const textToPolish = this.fullTranscription || this.currentTranscript;
+      if (!textToPolish) {
+        utilShowToast({ type: 'warning', title: 'No Transcription', message: 'Please record or type something first.' }); return;
       }
       if (!this.apiService.hasValidApiKey()) {
         utilShowToast({ type: 'warning', title: 'API Key Required', message: ERROR_MESSAGES.API.API_KEY_MISSING }); return;
       }
       this.state.isProcessing = true; this.updateUI();
-      const result = await this.performanceMonitor.measureOperation(() => this.apiService.polishTranscription(this.currentTranscript), 'apiResponseTime', 'PolishTranscription');
+      const result = await this.performanceMonitor.measureOperation(() => this.apiService.polishTranscription(textToPolish), 'apiResponseTime', 'PolishTranscription');
       if (result.success && result.data) {
-        this.state.currentNote = { id: Date.now().toString(), rawTranscription: this.currentTranscript, polishedNote: result.data, timestamp: Date.now() };
+        this.state.currentNote = {
+            id: this.state.currentNote?.id || Date.now().toString(),
+            rawTranscription: textToPolish,
+            polishedNote: result.data,
+            timestamp: this.state.currentNote?.timestamp || Date.now()
+        };
+        this.fullTranscription = result.data;
         this.updatePolishedNoteArea();
         utilShowToast({ type: 'success', title: 'Polishing Complete', message: 'Your transcription has been improved.' });
       } else utilShowToast({ type: 'error', title: 'Polishing Failed', message: result.error || 'Unknown error occurred.' });
@@ -335,10 +384,10 @@ export class AudioTranscriptionApp {
     console.log('Generating charts from AI...');
     this.state.isProcessing = true; this.updateUI();
     try {
-      const textToAnalyze = this.fullTranscription || this.currentTranscript;
-      if (!textToAnalyze) {
+      const textToAnalyze = this._aggregateAllTextContent();
+      if (!textToAnalyze || textToAnalyze === "No text content available for aggregation.") {
         ErrorHandler.logWarning('No transcription data available to generate AI charts.', 'generateCharts');
-        utilShowToast({ type: 'warning', title: 'Missing Data', message: 'No transcription data available for AI chart generation.' });
+        utilShowToast({ type: 'warning', title: 'Missing Data', message: 'No transcription or file data available for AI chart generation.' });
         this.state.isProcessing = false; this.updateUI(); return;
       }
       const chartDataResponse = await this.performanceMonitor.measureOperation(() => this.apiService.generateChartData(textToAnalyze, CHART_TYPES.ALL), 'apiResponseTime', 'generateChartData_AI');
@@ -362,11 +411,29 @@ export class AudioTranscriptionApp {
 
   private saveCurrentNote(): void {
     try {
-      if (!this.state.currentNote) {
+      if (this.elements.polishedNoteArea?.textContent) {
+          this.fullTranscription = this.elements.polishedNoteArea.textContent;
+      } else if (this.elements.transcriptionArea?.textContent) {
+          this.fullTranscription = this.elements.transcriptionArea.textContent;
+      }
+
+      if (!this.state.currentNote && !this.fullTranscription.trim()) {
         utilShowToast({ type: 'warning', title: 'No Note', message: 'There is no note to save.' }); return;
       }
-      DataProcessor.saveNote(this.state.currentNote);
-      this.state.notes = DataProcessor.getAllNotes(); this.updateNotesDisplay();
+
+      const noteToSave: StoredNote = this.state.currentNote ?
+        { ...this.state.currentNote, polishedNote: this.fullTranscription, rawTranscription: this.state.currentNote.rawTranscription } :
+        {
+          id: Date.now().toString(),
+          rawTranscription: this.currentTranscript,
+          polishedNote: this.fullTranscription,
+          timestamp: Date.now()
+        };
+
+      DataProcessor.saveNote(noteToSave);
+      this.state.notes = DataProcessor.getAllNotes();
+      this.state.currentNote = noteToSave;
+      this.updateNotesDisplay();
       utilShowToast({ type: 'success', title: 'Note Saved', message: 'Your note has been saved successfully.' });
     } catch (error) {
       this._handleOperationError(error, 'saveCurrentNote', 'Save Failed', 'Failed to save the note');
@@ -374,8 +441,15 @@ export class AudioTranscriptionApp {
   }
 
   private clearCurrentNote(): void {
-    this.currentTranscript = ''; this.transcriptBuffer = ''; this.state.currentNote = null;
-    this.chartManager.destroyAllCharts(); this.updateUI();
+    this.currentTranscript = '';
+    this.transcriptBuffer = '';
+    this.fullTranscription = '';
+    this.state.currentNote = null;
+    if(this.elements.transcriptionArea) this.elements.transcriptionArea.textContent = '';
+    if(this.elements.polishedNoteArea) this.elements.polishedNoteArea.textContent = '';
+    this.chartManager.destroyAllCharts();
+    if (this.elements.consolidatedTopicsDisplay) this.elements.consolidatedTopicsDisplay.innerHTML = ''; // Clear topics
+    this.updateUI();
     utilShowToast({ type: 'info', title: 'Cleared', message: 'Current note and charts have been cleared.' });
   }
 
@@ -410,9 +484,24 @@ export class AudioTranscriptionApp {
     }
   }
 
-  private loadExistingNotes(): void { this.state.notes = DataProcessor.getAllNotes(); this.updateNotesDisplay(); }
-  private updateTranscriptionArea(): void { if (this.elements.transcriptionArea) this.elements.transcriptionArea.textContent = this.transcriptBuffer; }
-  private updatePolishedNoteArea(): void { if (this.elements.polishedNoteArea && this.state.currentNote) this.elements.polishedNoteArea.textContent = this.state.currentNote.polishedNote; }
+  private loadExistingNotes(): void {
+      this.state.notes = DataProcessor.getAllNotes();
+      if (this.state.notes.length > 0) {
+      }
+      this.updateNotesDisplay();
+  }
+  private updateTranscriptionArea(): void {
+      if (this.elements.transcriptionArea) this.elements.transcriptionArea.textContent = this.transcriptBuffer;
+      if (!this.elements.polishedNoteArea?.textContent?.trim()) {
+          this.fullTranscription = this.transcriptBuffer;
+      }
+  }
+  private updatePolishedNoteArea(): void {
+      if (this.elements.polishedNoteArea && this.state.currentNote) {
+          this.elements.polishedNoteArea.textContent = this.state.currentNote.polishedNote;
+          this.fullTranscription = this.state.currentNote.polishedNote;
+      }
+  }
 
   private updateRecordingUI(recordingState: RecordingState): void {
     if (this.elements.recordButton) {
@@ -438,15 +527,24 @@ export class AudioTranscriptionApp {
     const noteDiv = document.createElement('div');
     noteDiv.className = 'note-item';
     noteDiv.innerHTML = `
-      <div class="note-header"><h3>${note.title}</h3><span class="note-date">${new Date(note.timestamp).toLocaleDateString()}</span></div>
-      <div class="note-content">${note.polishedNote.substring(0, 200)}...</div>
-      <div class="note-actions"><button onclick="app.loadNote('${note.id}')">Load</button><button onclick="app.deleteNote('${note.id}')">Delete</button></div>`;
+      <div class="note-header"><h3>${note.title || 'Untitled Note'}</h3><span class="note-date">${new Date(note.timestamp).toLocaleDateString()}</span></div>
+      <div class="note-content">${(note.polishedNote || note.rawTranscription || '').substring(0, 200)}...</div>
+      <div class="note-actions"><button data-note-id="${note.id}" class="load-note-btn">Load</button><button data-note-id="${note.id}" class="delete-note-btn">Delete</button></div>`;
+
+    noteDiv.querySelector('.load-note-btn')?.addEventListener('click', () => this.loadNote(note.id));
+    noteDiv.querySelector('.delete-note-btn')?.addEventListener('click', () => this.deleteNote(note.id));
     return noteDiv;
   }
 
   private updateUI(): void {
     if (this.elements.recordButton) this.elements.recordButton.disabled = this.state.isProcessing;
     document.querySelectorAll('.processing-indicator').forEach(el => (el as HTMLElement).style.display = this.state.isProcessing ? 'block' : 'none');
+    if (this.elements.polishedNoteArea) {
+        this.elements.polishedNoteArea.textContent = this.state.currentNote?.polishedNote || this.fullTranscription || '';
+    }
+    if (this.elements.transcriptionArea) {
+        this.elements.transcriptionArea.textContent = this.state.currentNote?.rawTranscription || this.currentTranscript || '';
+    }
   }
 
   private cleanup(): void {
@@ -470,8 +568,23 @@ export class AudioTranscriptionApp {
 
   private setupAutoSave(): void {
     this.autoSaveInterval = this.intervalManager.createRecurringTask('AutoSave', APP_CONFIG.TIMING.AUTO_SAVE_INTERVAL, () => {
-      if (this.state.currentNote && !this.state.isProcessing) {
-        this.performanceMonitor.measureOperation(() => DataProcessor.saveNote(this.state.currentNote!), 'renderTime', 'AutoSave');
+      if (this.elements.polishedNoteArea?.textContent && this.elements.polishedNoteArea.textContent.trim() !== '') {
+          this.fullTranscription = this.elements.polishedNoteArea.textContent;
+      } else if (this.elements.transcriptionArea?.textContent && this.elements.transcriptionArea.textContent.trim() !== '') {
+          this.fullTranscription = this.elements.transcriptionArea.textContent;
+      }
+
+      if (this.fullTranscription.trim() && !this.state.isProcessing) {
+        const noteToSave: StoredNote = this.state.currentNote ?
+            { ...this.state.currentNote, polishedNote: this.fullTranscription, rawTranscription: this.state.currentNote.rawTranscription || this.currentTranscript } :
+            {
+                id: Date.now().toString(),
+                rawTranscription: this.currentTranscript,
+                polishedNote: this.fullTranscription,
+                timestamp: Date.now()
+            };
+        this.performanceMonitor.measureOperation(() => DataProcessor.saveNote(noteToSave), 'renderTime', 'AutoSave');
+        this.state.currentNote = noteToSave;
       }
     }, { onError: (error) => console.warn('Auto-save failed:', error) });
   }
@@ -514,16 +627,26 @@ export class AudioTranscriptionApp {
   }
 
   public loadNote(noteId: string): void {
-    const note = this.state.notes.find(n => n.id === noteId);
+    const note = DataProcessor.getNoteById(noteId);
     if (note) {
-      this.state.currentNote = note; this.currentTranscript = note.rawTranscription;
-      this.updateTranscriptionArea(); this.updatePolishedNoteArea();
+      this.state.currentNote = note;
+      this.currentTranscript = note.rawTranscription || '';
+      this.fullTranscription = note.polishedNote || note.rawTranscription || '';
+      this.transcriptBuffer = this.currentTranscript;
+      this.updateUI();
+      utilShowToast({type: 'info', title: 'Note Loaded', message: `Loaded note: ${note.title || note.id}`});
+    } else {
+      utilShowToast({type: 'error', title: 'Load Error', message: `Could not load note ID: ${noteId}`});
     }
   }
 
   public deleteNote(noteId: string): void {
     if (DataProcessor.deleteNote(noteId)) {
-      this.state.notes = DataProcessor.getAllNotes(); this.updateNotesDisplay();
+      this.state.notes = DataProcessor.getAllNotes();
+      if (this.state.currentNote && this.state.currentNote.id === noteId) {
+        this.clearCurrentNote();
+      }
+      this.updateNotesDisplay();
       utilShowToast({ type: 'success', title: 'Note Deleted', message: 'The note has been deleted.' });
     }
   }
@@ -720,7 +843,6 @@ export class AudioTranscriptionApp {
       } else if (file.type.startsWith('audio/')) {
         console.log(`Attempting client-side transcription for audio file: ${managedFile.name}`);
         const promise = new Promise<ManagedFile>(async (resolve) => {
-            // Strategy B: Document limitations as direct SpeechRecognition from file buffer is not standard
             ErrorHandler.logWarning(`Client-side transcription for audio file '${managedFile.name}' via SpeechRecognition API from buffer is not directly supported. This would typically require a server-side API or a specialized client-side library.`, '_handleSelectedFiles - audio');
             managedFile.textContent = 'Client-side audio file transcription not directly supported by browser SpeechRecognition.';
             resolve(managedFile);
@@ -938,5 +1060,51 @@ export class AudioTranscriptionApp {
       case CHART_TYPES.WORD_FREQUENCY: return 'Most frequently used words in your transcription';
       default: return 'Data visualization';
     }
+  }
+
+  private _aggregateAllTextContent(): string {
+    const allTextParts: string[] = [];
+    const placeholderAudioMessage = "Client-side audio file transcription not directly supported by browser SpeechRecognition.";
+
+    let mainNoteText = "";
+    if (this.elements.polishedNoteArea && this.elements.polishedNoteArea.textContent && this.elements.polishedNoteArea.textContent.trim() !== '') {
+        mainNoteText = this.elements.polishedNoteArea.textContent.trim();
+    } else if (this.elements.transcriptionArea && this.elements.transcriptionArea.textContent && this.elements.transcriptionArea.textContent.trim() !== '') {
+        mainNoteText = this.elements.transcriptionArea.textContent.trim();
+    } else if (this.fullTranscription && this.fullTranscription.trim() !== '') {
+        mainNoteText = this.fullTranscription.trim();
+    } else if (this.currentTranscript && this.currentTranscript.trim() !== '') {
+        mainNoteText = this.currentTranscript.trim();
+    }
+
+    if (mainNoteText) {
+      allTextParts.push("== Main Note Transcription ==\n" + mainNoteText);
+    }
+
+    for (const managedFile of this.managedFiles) {
+      if (managedFile.textContent &&
+          managedFile.textContent.trim() !== '' &&
+          managedFile.textContent !== placeholderAudioMessage) {
+        allTextParts.push(`== Content from file: ${managedFile.name} ==\n${managedFile.textContent}`);
+      }
+    }
+
+    if (allTextParts.length === 0) {
+      return "No text content available for aggregation.";
+    }
+    return allTextParts.join('\n\n');
+  }
+
+  private _displayConsolidatedTopics(topics: string[]): void {
+    if (!this.elements.consolidatedTopicsDisplay) {
+      ErrorHandler.logError("Consolidated topics display area not found.", "_displayConsolidatedTopics");
+      return;
+    }
+    if (topics.length === 0) {
+      this.elements.consolidatedTopicsDisplay.innerHTML = "<p>No specific topics identified.</p>";
+      return;
+    }
+    const listItems = topics.map(topic => `<li>${topic}</li>`).join('');
+    this.elements.consolidatedTopicsDisplay.innerHTML = `<h3>Consolidated Topics:</h3><ul>${listItems}</ul>`;
   }
 }

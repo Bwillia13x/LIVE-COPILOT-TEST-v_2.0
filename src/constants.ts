@@ -172,6 +172,8 @@ export const UI_IDS = {
   CONTENT_LIBRARY_BUTTON: 'contentLibraryButton', // Assuming this is the button to open the panel
   CLOSE_LIBRARY_BUTTON: 'closeLibrary', // Button to close the panel - updated as per instruction
   FILES_LIST: 'filesList', // The UL or DIV to list files
+  ANALYZE_CONTENT_BUTTON: 'analyzeContentButton', // Repurposed testAggregateButton
+  CONSOLIDATED_TOPICS_DISPLAY: 'consolidatedTopicsDisplay', // New display area
   // Add other frequently used DOM IDs
 } as const;
 

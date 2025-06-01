@@ -2633,6 +2633,33 @@ body.light-mode .record-button.recording .record-button-inner { color: white; }
   overflow-y: auto; /* Keep this for scrolling if many charts are added */
 }
 
+.consolidated-topics-display {
+  padding: 12px;
+  margin-top: 16px;
+  background-color: var(--color-surface); /* Use a surface color */
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  font-size: 0.9rem;
+  color: var(--color-text-secondary);
+}
+
+.consolidated-topics-display h3 {
+  margin-top: 0;
+  margin-bottom: 8px;
+  font-size: 1rem;
+  color: var(--color-text);
+}
+
+.consolidated-topics-display ul {
+  list-style-type: disc;
+  padding-left: 20px;
+  margin: 0;
+}
+
+.consolidated-topics-display li {
+  margin-bottom: 4px;
+}
+
 .ai-chart-raw-display:empty::before {
   content: "Charts will appear here when generated...";
   color: var(--text-secondary);

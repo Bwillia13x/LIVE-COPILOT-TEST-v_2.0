@@ -2584,24 +2584,23 @@ body.light-mode .record-button.recording .record-button-inner { color: white; }
   max-width: 100%;
   width: 100%;
   position: relative;
-  /* Constrain chart dimensions to prevent infinite growth */
-  max-height: 500px; /* Or remove if aspect-ratio handles height */
-  overflow: hidden;
-  /* Added for responsive scaling and aspect ratio */
-  display: flex; /* Use flexbox to help center canvas if needed */
+  overflow: hidden; /* Keep content from spilling, though aspect-ratio should manage size */
+  display: flex;
   justify-content: center;
   align-items: center;
-  width: 100%; /* Ensure it takes full width of its parent */
-  /* aspect-ratio: 16 / 9; /* Example: Set a default aspect ratio, adjust as needed per chart type if possible */
-  /* max-width: 800px; /* Example: Set a max-width for larger screens */
+  /* aspect-ratio: 16 / 9; /* Default aspect ratio, can be adjusted or made more dynamic if needed */
+  /* Consider a more square ratio for pie/doughnut, taller for bar charts if specific styling is desired later */
+  aspect-ratio: 2 / 1; /* A common general-purpose aspect ratio for charts like bar/line */
+  /* max-width: 800px; /* Optional: if charts should not exceed a certain width on very large screens */
 }
 
 .chart-container canvas {
-  /* Canvas should fill the container but respect aspect ratio from Chart.js options */
+  /* Canvas should fill the container. Chart.js with responsive:true and maintainAspectRatio:false
+     will make the canvas adapt to the container's size defined by CSS (including aspect-ratio). */
   max-width: 100%;
-  max-height: 100%; /* Canvas should not exceed container height */
-  width: 100%; /* Let Chart.js control this, but provide a basis */
-  height: auto; /* Let Chart.js control this, but provide a basis */
+  max-height: 100%;
+  /* width and height attributes on canvas are set by Chart.js. Avoid explicit w/h styles here
+     unless specifically needed to override Chart.js behavior, which is usually not the case for responsiveness. */
 }
 
 .chart-container h4 {
@@ -2628,8 +2627,10 @@ body.light-mode .record-button.recording .record-button-inner { color: white; }
   border: 1px solid var(--border-color);
   border-radius: 8px;
   margin-top: 16px;
-  display: block;
-  overflow-y: auto;
+  display: flex; /* Changed to flex */
+  flex-direction: column; /* Stack chart containers vertically */
+  gap: 16px; /* Add space between chart containers */
+  overflow-y: auto; /* Keep this for scrolling if many charts are added */
 }
 
 .ai-chart-raw-display:empty::before {

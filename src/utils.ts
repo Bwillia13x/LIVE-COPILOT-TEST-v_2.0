@@ -3,9 +3,9 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import { LOG_LEVELS, ENV, type LogLevel, UTIL_CONFIG } from './constants.js'; // APP_CONFIG removed for direct AppConfig use
+import { LOG_LEVELS, ENV, type LogLevel, UTIL_CONFIG, APP_CONFIG } from './constants.js'; // APP_CONFIG added
 import { ToastOptions } from '../types/index.js';
-import { AppConfig } from '../config/AppConfig.js'; // Import AppConfig
+// import { AppConfig } from '../config/AppConfig.js'; // Removed problematic import
 
 /**
  * Centralized logging service with different levels and environment-aware output
@@ -17,7 +17,7 @@ export class LoggerService {
   private readonly maxHistorySize: number;
 
   private constructor() {
-    this.maxHistorySize = AppConfig.getLoggerConfig().MAX_HISTORY; // Get from AppConfig
+    this.maxHistorySize = UTIL_CONFIG.LOGGER_MAX_HISTORY; // Use UTIL_CONFIG from constants
   }
 
   public static getInstance(): LoggerService {
@@ -118,7 +118,7 @@ export class MemoryManager {
     window.addEventListener('beforeunload', () => this.cleanup());
     
     // Periodic memory monitoring
-    setInterval(() => this.monitorMemory(), AppConfig.getPerformanceConfig().CLEANUP_INTERVAL); // Get from AppConfig
+    setInterval(() => this.monitorMemory(), APP_CONFIG.PERFORMANCE.CLEANUP_INTERVAL); // Use APP_CONFIG from constants
   }
 
   public static getInstance(): MemoryManager {
@@ -253,7 +253,7 @@ export class ErrorHandler {
       fallback?: () => T | Promise<T>;
     }
   ): Promise<T> {
-    const retryConfig = AppConfig.getRetryConfig(); // Get from AppConfig
+    const retryConfig = APP_CONFIG.RETRY; // Use APP_CONFIG from constants
     const { operationName, maxRetries = retryConfig.MAX_ATTEMPTS, retryDelay = retryConfig.BACKOFF_BASE } = context;
     
     let lastError: Error;
@@ -421,5 +421,18 @@ export function showToast(options: ToastOptions): void {
 
   setTimeout(() => {
     toast.remove();
-  }, options.duration || AppConfig.getTimingConfig().TOAST_DURATION); // Get from AppConfig
+  }, options.duration || APP_CONFIG.TIMING.TOAST_DURATION);  // Use APP_CONFIG from constants
+}
+
+/**
+ * Formats file size from bytes to a human-readable string (KB, MB, GB, TB).
+ * @param bytes - The file size in bytes.
+ * @returns A string representing the formatted file size.
+ */
+export function formatFileSize(bytes: number): string {
+  if (bytes === 0) return '0 Bytes';
+  const k = 1024;
+  const sizes = ['Bytes', 'KB', 'MB', 'GB', 'TB'];
+  const i = Math.floor(Math.log(bytes) / Math.log(k));
+  return `${parseFloat((bytes / Math.pow(k, i)).toFixed(1))} ${sizes[i]}`;
 }

@@ -163,6 +163,15 @@ export const UI_IDS = {
   // Other common element IDs can be added if necessary
   SETTINGS_MODAL: 'settingsModal',
   API_KEY_INPUT: 'apiKeyInput',
+  // File Upload Elements
+  FILE_DROP_ZONE: 'fileDropZone',
+  FILE_INPUT: 'fileInput',
+  UPLOAD_FILES_BTN: 'uploadFilesBtn',
+  // Content Library Panel
+  CONTENT_LIBRARY_PANEL: 'contentLibraryPanel',
+  CONTENT_LIBRARY_BUTTON: 'contentLibraryButton', // Assuming this is the button to open the panel
+  CLOSE_LIBRARY_BUTTON: 'closeLibrary', // Button to close the panel - updated as per instruction
+  FILES_LIST: 'filesList', // The UL or DIV to list files
   // Add other frequently used DOM IDs
 } as const;
 

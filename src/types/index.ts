@@ -153,6 +153,16 @@ export interface ErrorReport {
   userAgent: string;
 }
 
+export interface ManagedFile {
+  id: string;
+  fileObject: File; // Store the actual File object
+  name: string;
+  type: string;
+  size: number;
+  lastModified: number;
+  textContent?: string; // New field for extracted text content
+}
+
 // Basic interfaces for SpeechRecognition events used in AudioRecorder.ts
 // These can be expanded if more properties are accessed.
 export interface SpeechRecognitionResult {

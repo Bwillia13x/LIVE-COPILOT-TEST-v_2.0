@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import { Note, AppState, ErrorContext, AllAIChartData, AIChartDataPayload, TopicDataInput, SentimentDataInput, WordFrequencyInput } from '../types/index.js';
+import { Note, AppState, ErrorContext, AllAIChartData, AIChartDataPayload, TopicDataInput, SentimentDataInput, WordFrequencyInput, ManagedFile, StoredNote } from '../types/index.js';
 import { APIService } from '../services/APIService.js';
 import { ChartManager } from '../services/ChartManager.js';
 import { TabNavigator } from './UIComponents/TabNavigator.js';
@@ -14,7 +14,7 @@ import { IntervalManager } from '../services/IntervalManager.js';
 import { BundleOptimizer } from '../services/BundleOptimizer.js';
 import { ProductionMonitor } from '../services/ProductionMonitor.js';
 import { HealthCheckService } from '../services/HealthCheckService.js';
-import { ErrorHandler, MemoryManager, showToast as utilShowToast } from '../utils.js';
+import { ErrorHandler, MemoryManager, showToast as utilShowToast, formatFileSize } from '../utils.js';
 import { SUCCESS_MESSAGES, ERROR_MESSAGES, STORAGE_KEYS, UI_IDS, APP_CONFIG, CHART_TYPES } from '../constants.js';
 
 export class AudioTranscriptionApp {
@@ -32,6 +32,8 @@ export class AudioTranscriptionApp {
   private transcriptBuffer: string = '';
   private isSampleData: boolean = false;
   private fullTranscription: string = '';
+  private managedFiles: ManagedFile[] = [];
+  private nextFileId: number = 1;
 
   private autoSaveInterval: number | null = null;
   private uiUpdateInterval: number | null = null;
@@ -41,10 +43,19 @@ export class AudioTranscriptionApp {
     transcriptionArea?: HTMLDivElement;
     polishedNoteArea?: HTMLDivElement;
     statusDisplay?: HTMLElement;
-    chartContainer?: HTMLElement;
+    chartContainer?: HTMLElement; // This is likely CHART_DISPLAY_AREA, not a single container
     apiKeyInput?: HTMLInputElement;
     notesContainer?: HTMLElement;
     exportButton?: HTMLButtonElement;
+    // File Upload Elements
+    fileDropZone?: HTMLElement;
+    fileInput?: HTMLInputElement;
+    uploadFilesBtn?: HTMLButtonElement;
+    // Content Library Panel Elements
+    contentLibraryPanel?: HTMLElement;
+    contentLibraryButton?: HTMLButtonElement;
+    closeLibraryButton?: HTMLButtonElement;
+    filesList?: HTMLElement;
   } = {};
 
   constructor() {
@@ -85,6 +96,7 @@ export class AudioTranscriptionApp {
       this.setupAutoSave();
       this.setupPeriodicUpdates();
       await this.testAPIConnection();
+      this._renderManagedFiles();
       console.log('🎙️ Audio Transcription App initialized successfully');
     } catch (error) {
       this._handleOperationError(error, 'initializeApp', 'Initialization Error', 'Failed to initialize the application');
@@ -101,11 +113,18 @@ export class AudioTranscriptionApp {
       apiKeyInput: document.getElementById(UI_IDS.API_KEY_INPUT) as HTMLInputElement,
       notesContainer: document.getElementById('notesContainer') as HTMLElement,
       exportButton: document.getElementById('confirmExport') as HTMLButtonElement,
+      fileDropZone: document.getElementById(UI_IDS.FILE_DROP_ZONE) as HTMLElement,
+      fileInput: document.getElementById(UI_IDS.FILE_INPUT) as HTMLInputElement,
+      uploadFilesBtn: document.getElementById(UI_IDS.UPLOAD_FILES_BTN) as HTMLButtonElement,
+      contentLibraryPanel: document.getElementById(UI_IDS.CONTENT_LIBRARY_PANEL) as HTMLElement,
+      contentLibraryButton: document.getElementById(UI_IDS.CONTENT_LIBRARY_BUTTON) as HTMLButtonElement,
+      closeLibraryButton: document.getElementById(UI_IDS.CLOSE_LIBRARY_BUTTON) as HTMLButtonElement,
+      filesList: document.getElementById(UI_IDS.FILES_LIST) as HTMLElement,
     };
-    const requiredElementIds = ['recordButton', UI_IDS.CONTENT_PANE_RAW, UI_IDS.CONTENT_PANE_POLISHED];
-    for (const elementId of requiredElementIds) {
-        if (!document.getElementById(elementId)) { // Check directly if element exists
-             throw new Error(`Required element '${elementId}' not found in DOM`);
+    const coreRequiredElementIds = ['recordButton', UI_IDS.CONTENT_PANE_RAW, UI_IDS.CONTENT_PANE_POLISHED, UI_IDS.CHART_DISPLAY_AREA];
+    for (const elementId of coreRequiredElementIds) {
+        if (!document.getElementById(elementId)) {
+             ErrorHandler.logError(`Core required element '${elementId}' not found in DOM. Some features may not work.`, 'setupDOMReferences');
         }
     }
   }
@@ -163,6 +182,61 @@ export class AudioTranscriptionApp {
     document.getElementById('themeToggleButton')?.addEventListener('click', () => this.toggleTheme());
     window.addEventListener('beforeunload', () => this.cleanup());
     window.addEventListener('resize', this.handleResize);
+
+    this._setupFileUploadListeners();
+    this._setupContentLibraryPanelListeners();
+  }
+
+  private _setupContentLibraryPanelListeners(): void {
+    if (this.elements.contentLibraryButton && this.elements.contentLibraryPanel) {
+      this.elements.contentLibraryButton.addEventListener('click', () => {
+        this.elements.contentLibraryPanel!.classList.toggle('open');
+        if (this.elements.contentLibraryPanel!.classList.contains('open')) {
+            this._renderManagedFiles();
+        }
+      });
+    }
+    if (this.elements.closeLibraryButton && this.elements.contentLibraryPanel) {
+      this.elements.closeLibraryButton.addEventListener('click', () => {
+        this.elements.contentLibraryPanel!.classList.remove('open');
+      });
+    }
+  }
+
+  private _setupFileUploadListeners(): void {
+    if (this.elements.fileDropZone) {
+      this.elements.fileDropZone.style.display = 'flex';
+      this.elements.fileDropZone.addEventListener('dragenter', (event) => {
+        event.preventDefault(); this.elements.fileDropZone?.classList.add('drag-over'); console.log('Drag enter');
+      });
+      this.elements.fileDropZone.addEventListener('dragover', (event) => event.preventDefault());
+      this.elements.fileDropZone.addEventListener('dragleave', (event) => {
+        event.preventDefault(); this.elements.fileDropZone?.classList.remove('drag-over'); console.log('Drag leave');
+      });
+      this.elements.fileDropZone.addEventListener('drop', (event) => {
+        event.preventDefault(); this.elements.fileDropZone?.classList.remove('drag-over');
+        const droppedFiles = event.dataTransfer?.files;
+        if (droppedFiles) this._handleSelectedFiles(droppedFiles);
+        console.log('Files dropped');
+      });
+    } else console.warn(`Element with ID '${UI_IDS.FILE_DROP_ZONE}' not found.`);
+
+    if (this.elements.fileInput) {
+      this.elements.fileInput.addEventListener('change', (event) => {
+        const selectedFiles = (event.target as HTMLInputElement).files;
+        if (selectedFiles) this._handleSelectedFiles(selectedFiles);
+        console.log('Files selected via input.');
+      });
+    } else console.warn(`Element with ID '${UI_IDS.FILE_INPUT}' not found.`);
+
+    if (this.elements.uploadFilesBtn && this.elements.fileInput) {
+      this.elements.uploadFilesBtn.addEventListener('click', () => {
+        this.elements.fileInput?.click(); console.log('Upload button clicked.');
+      });
+    } else {
+      if (!this.elements.uploadFilesBtn) console.warn(`Element with ID '${UI_IDS.UPLOAD_FILES_BTN}' not found.`);
+      if (!this.elements.fileInput) console.warn(`Element with ID '${UI_IDS.FILE_INPUT}' not found (for upload button).`);
+    }
   }
 
   private handleResize = () => this.chartManager.resizeAllCharts();
@@ -176,9 +250,7 @@ export class AudioTranscriptionApp {
         if (this.elements.apiKeyInput) this.elements.apiKeyInput.value = savedApiKey;
         const rememberKeyCheckbox = document.getElementById('rememberApiKey') as HTMLInputElement;
         if (rememberKeyCheckbox) rememberKeyCheckbox.checked = true;
-      } else {
-        console.log('⚠️ No API key found in localStorage - user will need to configure one');
-      }
+      } else console.log('⚠️ No API key found in localStorage - user will need to configure one');
     } catch (error) {
       ErrorHandler.logError('Failed to initialize API key', error);
     }
@@ -186,8 +258,7 @@ export class AudioTranscriptionApp {
 
   private setupAudioRecorder(): void {
     this.audioRecorder.onTranscriptAvailable((transcript) => {
-      this.transcriptBuffer += transcript + ' ';
-      this.updateTranscriptionArea();
+      this.transcriptBuffer += transcript + ' '; this.updateTranscriptionArea();
     });
     this.audioRecorder.onRecordingStateChange((recordingState) => this.updateRecordingUI(recordingState));
   }
@@ -195,25 +266,17 @@ export class AudioTranscriptionApp {
   private async toggleRecording(): Promise<void> {
     try {
       if (!this.audioRecorder.isSupported()) {
-        utilShowToast({ type: 'error', title: 'Not Supported', message: ERROR_MESSAGES.MICROPHONE.NOT_SUPPORTED });
-        return;
+        utilShowToast({ type: 'error', title: 'Not Supported', message: ERROR_MESSAGES.MICROPHONE.NOT_SUPPORTED }); return;
       }
       if (this.state.isRecording) {
-        this.audioRecorder.stopRecording();
-        this.currentTranscript = this.transcriptBuffer.trim();
-        this.state.isRecording = false;
-        if (this.currentTranscript) {
-          utilShowToast({ type: 'success', title: 'Recording Complete', message: 'Transcription ready for polishing.' });
-        }
+        this.audioRecorder.stopRecording(); this.currentTranscript = this.transcriptBuffer.trim(); this.state.isRecording = false;
+        if (this.currentTranscript) utilShowToast({ type: 'success', title: 'Recording Complete', message: 'Transcription ready for polishing.' });
       } else {
         const success = await this.audioRecorder.startRecording();
         if (success) {
-          this.state.isRecording = true;
-          this.transcriptBuffer = '';
+          this.state.isRecording = true; this.transcriptBuffer = '';
           utilShowToast({ type: 'info', title: 'Recording Started', message: 'Speak now...' });
-        } else {
-          utilShowToast({ type: 'error', title: 'Recording Failed', message: ERROR_MESSAGES.MICROPHONE.GENERIC_ERROR });
-        }
+        } else utilShowToast({ type: 'error', title: 'Recording Failed', message: ERROR_MESSAGES.MICROPHONE.GENERIC_ERROR });
       }
       this.updateUI();
     } catch (error) {
@@ -224,56 +287,39 @@ export class AudioTranscriptionApp {
   private async polishCurrentTranscription(): Promise<void> {
     try {
       if (!this.currentTranscript) {
-        utilShowToast({ type: 'warning', title: 'No Transcription', message: 'Please record something first.' });
-        return;
+        utilShowToast({ type: 'warning', title: 'No Transcription', message: 'Please record something first.' }); return;
       }
       if (!this.apiService.hasValidApiKey()) {
-        utilShowToast({ type: 'warning', title: 'API Key Required', message: ERROR_MESSAGES.API.API_KEY_MISSING });
-        return;
+        utilShowToast({ type: 'warning', title: 'API Key Required', message: ERROR_MESSAGES.API.API_KEY_MISSING }); return;
       }
-      this.state.isProcessing = true;
-      this.updateUI();
-      const result = await this.performanceMonitor.measureOperation(
-        () => this.apiService.polishTranscription(this.currentTranscript),
-        'apiResponseTime', 'PolishTranscription'
-      );
+      this.state.isProcessing = true; this.updateUI();
+      const result = await this.performanceMonitor.measureOperation(() => this.apiService.polishTranscription(this.currentTranscript), 'apiResponseTime', 'PolishTranscription');
       if (result.success && result.data) {
-        this.state.currentNote = {
-          id: Date.now().toString(), rawTranscription: this.currentTranscript,
-          polishedNote: result.data, timestamp: Date.now(),
-        };
+        this.state.currentNote = { id: Date.now().toString(), rawTranscription: this.currentTranscript, polishedNote: result.data, timestamp: Date.now() };
         this.updatePolishedNoteArea();
         utilShowToast({ type: 'success', title: 'Polishing Complete', message: 'Your transcription has been improved.' });
-      } else {
-        utilShowToast({ type: 'error', title: 'Polishing Failed', message: result.error || 'Unknown error occurred.' });
-      }
+      } else utilShowToast({ type: 'error', title: 'Polishing Failed', message: result.error || 'Unknown error occurred.' });
     } catch (error) {
       this._handleOperationError(error, 'polishCurrentTranscription', 'Processing Error', 'An error occurred while polishing the transcription');
     } finally {
-      this.state.isProcessing = false;
-      this.updateUI();
+      this.state.isProcessing = false; this.updateUI();
     }
   }
 
   private async generateCharts(): Promise<void> {
     if (this.isSampleData) {
-        console.log("generateCharts called while isSampleData is true; AI chart generation skipped.");
-        this.isSampleData = false;
-        return;
+      console.log("generateCharts called while isSampleData is true; AI chart generation skipped."); this.isSampleData = false; return;
     }
     console.log('Generating charts from AI...');
     this.state.isProcessing = true; this.updateUI();
     try {
       const textToAnalyze = this.fullTranscription || this.currentTranscript;
       if (!textToAnalyze) {
-          ErrorHandler.logWarning('No transcription data available to generate AI charts.', 'generateCharts');
-          utilShowToast({ type: 'warning', title: 'Missing Data', message: 'No transcription data available for AI chart generation.' });
-          this.state.isProcessing = false; this.updateUI(); return;
+        ErrorHandler.logWarning('No transcription data available to generate AI charts.', 'generateCharts');
+        utilShowToast({ type: 'warning', title: 'Missing Data', message: 'No transcription data available for AI chart generation.' });
+        this.state.isProcessing = false; this.updateUI(); return;
       }
-      const chartDataResponse = await this.performanceMonitor.measureOperation(
-        () => this.apiService.generateChartData(textToAnalyze, CHART_TYPES.ALL),
-        'apiResponseTime', 'generateChartData_AI'
-      );
+      const chartDataResponse = await this.performanceMonitor.measureOperation(() => this.apiService.generateChartData(textToAnalyze, CHART_TYPES.ALL), 'apiResponseTime', 'generateChartData_AI');
       if (chartDataResponse.success && chartDataResponse.data) {
         if (typeof chartDataResponse.data === 'object' && (('topics' in chartDataResponse.data) || ('sentiment' in chartDataResponse.data) || ('wordFrequency' in chartDataResponse.data))) {
           this._renderCharts(chartDataResponse.data as AllAIChartData, 'ai');
@@ -295,12 +341,10 @@ export class AudioTranscriptionApp {
   private saveCurrentNote(): void {
     try {
       if (!this.state.currentNote) {
-        utilShowToast({ type: 'warning', title: 'No Note', message: 'There is no note to save.' });
-        return;
+        utilShowToast({ type: 'warning', title: 'No Note', message: 'There is no note to save.' }); return;
       }
       DataProcessor.saveNote(this.state.currentNote);
-      this.state.notes = DataProcessor.getAllNotes();
-      this.updateNotesDisplay();
+      this.state.notes = DataProcessor.getAllNotes(); this.updateNotesDisplay();
       utilShowToast({ type: 'success', title: 'Note Saved', message: 'Your note has been saved successfully.' });
     } catch (error) {
       this._handleOperationError(error, 'saveCurrentNote', 'Save Failed', 'Failed to save the note');
@@ -308,25 +352,21 @@ export class AudioTranscriptionApp {
   }
 
   private clearCurrentNote(): void {
-    this.currentTranscript = ''; this.transcriptBuffer = '';
-    this.state.currentNote = null;
+    this.currentTranscript = ''; this.transcriptBuffer = ''; this.state.currentNote = null;
     this.chartManager.destroyAllCharts(); this.updateUI();
     utilShowToast({ type: 'info', title: 'Cleared', message: 'Current note and charts have been cleared.' });
   }
 
   private exportNotes(): void {
     try {
-      const format = 'markdown';
-      const includeRaw = true;
+      const format = 'markdown'; const includeRaw = true;
       const exportData = DataProcessor.exportNotes(format, includeRaw);
       if (exportData) {
         const blob = new Blob([exportData], { type: 'text/markdown' });
         const url = URL.createObjectURL(blob);
         const a = document.createElement('a');
-        a.href = url;
-        a.download = `voice-notes-${new Date().toISOString().split('T')[0]}.md`;
-        document.body.appendChild(a); a.click(); document.body.removeChild(a);
-        URL.revokeObjectURL(url);
+        a.href = url; a.download = `voice-notes-${new Date().toISOString().split('T')[0]}.md`;
+        document.body.appendChild(a); a.click(); document.body.removeChild(a); URL.revokeObjectURL(url);
         utilShowToast({ type: 'success', title: 'Export Complete', message: 'Notes have been exported successfully.' });
       }
     } catch (error) {
@@ -340,46 +380,25 @@ export class AudioTranscriptionApp {
       if (result.success) {
         utilShowToast({ type: 'success', title: 'API Connected', message: 'Gemini API connection successful.', duration: 3000 });
       } else {
-        if (result.error?.includes(ERROR_MESSAGES.API.API_KEY_MISSING)) {
-          console.log('ℹ️ No API key configured - user can set one in settings');
-        } else {
-          utilShowToast({ type: 'error', title: 'API Connection Failed', message: result.error || 'Unknown error' });
-        }
+        if (result.error?.includes(ERROR_MESSAGES.API.API_KEY_MISSING)) console.log('ℹ️ No API key configured - user can set one in settings');
+        else utilShowToast({ type: 'error', title: 'API Connection Failed', message: result.error || 'Unknown error' });
       }
     } catch (error) {
       ErrorHandler.logError('API connection test failed', error);
     }
   }
 
-  private loadExistingNotes(): void {
-    this.state.notes = DataProcessor.getAllNotes(); this.updateNotesDisplay();
-  }
-
-  private updateTranscriptionArea(): void {
-    if (this.elements.transcriptionArea) this.elements.transcriptionArea.textContent = this.transcriptBuffer;
-  }
-
-  private updatePolishedNoteArea(): void {
-    if (this.elements.polishedNoteArea && this.state.currentNote) this.elements.polishedNoteArea.textContent = this.state.currentNote.polishedNote;
-  }
+  private loadExistingNotes(): void { this.state.notes = DataProcessor.getAllNotes(); this.updateNotesDisplay(); }
+  private updateTranscriptionArea(): void { if (this.elements.transcriptionArea) this.elements.transcriptionArea.textContent = this.transcriptBuffer; }
+  private updatePolishedNoteArea(): void { if (this.elements.polishedNoteArea && this.state.currentNote) this.elements.polishedNoteArea.textContent = this.state.currentNote.polishedNote; }
 
   private updateRecordingUI(recordingState: RecordingState): void {
     if (this.elements.recordButton) {
-      if (recordingState.isRecording) {
-        this.elements.recordButton.textContent = recordingState.isPaused ? 'Resume' : 'Stop Recording';
-        this.elements.recordButton.className = 'button-stop';
-      } else {
-        this.elements.recordButton.textContent = 'Start Recording';
-        this.elements.recordButton.className = 'button-record';
-      }
+      this.elements.recordButton.textContent = recordingState.isRecording ? (recordingState.isPaused ? 'Resume' : 'Stop Recording') : 'Start Recording';
+      this.elements.recordButton.className = recordingState.isRecording ? 'button-stop' : 'button-record';
     }
     if (this.elements.statusDisplay) {
-      if (recordingState.isRecording) {
-        const duration = this.audioRecorder.formatDuration(recordingState.duration);
-        this.elements.statusDisplay.textContent = `${recordingState.isPaused ? 'Paused' : 'Recording'} - ${duration}`;
-      } else {
-        this.elements.statusDisplay.textContent = 'Ready';
-      }
+      this.elements.statusDisplay.textContent = recordingState.isRecording ? `${recordingState.isPaused ? 'Paused' : 'Recording'} - ${this.audioRecorder.formatDuration(recordingState.duration)}` : 'Ready';
     }
   }
 
@@ -390,16 +409,16 @@ export class AudioTranscriptionApp {
       const noteElement = this.createNoteElement(note);
       this.elements.notesContainer!.appendChild(noteElement);
     });
+    this._renderManagedFiles();
   }
 
-  private createNoteElement(note: StoredNote): HTMLElement { // Changed note: any to note: StoredNote
+  private createNoteElement(note: StoredNote): HTMLElement {
     const noteDiv = document.createElement('div');
     noteDiv.className = 'note-item';
     noteDiv.innerHTML = `
       <div class="note-header"><h3>${note.title}</h3><span class="note-date">${new Date(note.timestamp).toLocaleDateString()}</span></div>
       <div class="note-content">${note.polishedNote.substring(0, 200)}...</div>
-      <div class="note-actions"><button onclick="app.loadNote('${note.id}')">Load</button><button onclick="app.deleteNote('${note.id}')">Delete</button></div>
-    `;
+      <div class="note-actions"><button onclick="app.loadNote('${note.id}')">Load</button><button onclick="app.deleteNote('${note.id}')">Delete</button></div>`;
     return noteDiv;
   }
 
@@ -624,7 +643,95 @@ export class AudioTranscriptionApp {
     }
   }
 
-  private _handleOperationError(error: any, operationName: string, userFriendlyTitle: string, userFriendlyMessagePrefix: string): void {
+  // MODIFIED _handleSelectedFiles for text content extraction
+  private async _handleSelectedFiles(files: FileList): Promise<void> {
+    if (files.length === 0) {
+      return;
+    }
+
+    const fileArray = Array.from(files);
+    const fileProcessingPromises: Promise<ManagedFile>[] = [];
+    const newlyAddedFileNames: string[] = [];
+
+    for (const file of fileArray) {
+      const fileId = `file-${this.nextFileId++}`;
+      const managedFileBase: Omit<ManagedFile, 'textContent'> = { // Create base object first
+        id: fileId,
+        fileObject: file,
+        name: file.name,
+        type: file.type,
+        size: file.size,
+        lastModified: file.lastModified,
+      };
+      newlyAddedFileNames.push(file.name);
+
+      if (file.type === 'text/plain') {
+        const promise = new Promise<ManagedFile>((resolve, reject) => {
+          const reader = new FileReader();
+          reader.onload = (e) => {
+            resolve({
+              ...managedFileBase,
+              textContent: e.target?.result as string,
+            });
+          };
+          reader.onerror = (e) => {
+            ErrorHandler.logError(`Error reading file ${file.name}`, e);
+            resolve({ ...managedFileBase }); // Resolve without textContent on error
+          };
+          reader.readAsText(file);
+        });
+        fileProcessingPromises.push(promise);
+      } else {
+        // For non-text files, resolve immediately with no textContent
+        fileProcessingPromises.push(Promise.resolve({ ...managedFileBase }));
+      }
+    }
+
+    try {
+      const processedFiles = await Promise.all(fileProcessingPromises);
+      this.managedFiles.push(...processedFiles); // Add all processed files (some with textContent, some without)
+
+      console.log('Managed files after processing:', this.managedFiles);
+
+      utilShowToast({
+          type: 'success',
+          title: 'Files Added',
+          message: `Added: ${newlyAddedFileNames.join(', ')}`
+      });
+    } catch (error) {
+      ErrorHandler.logError('Error processing one or more files.', error);
+      utilShowToast({
+        type: 'error',
+        title: 'File Processing Error',
+        message: 'Some files could not be processed.',
+      });
+      // Even if some promises failed (though our setup resolves them),
+      // it's safer to render what we have. Promise.all rejects on first error.
+      // A better approach might be Promise.allSettled if we want to add partial successes.
+      // For now, this catch might not be hit if individual file reads handle their errors by resolving.
+    }
+
+    this._renderManagedFiles();
+  }
+
+  public removeManagedFileById(fileId: string): void {
+    const initialCount = this.managedFiles.length;
+    this.managedFiles = this.managedFiles.filter(mf => mf.id !== fileId);
+    if (this.managedFiles.length < initialCount) {
+      console.log(`Removed file with ID: ${fileId}. Updated managed files:`, this.managedFiles);
+      utilShowToast({type: 'info', title: 'File Removed', message: `File removed.`});
+    } else {
+      console.warn(`File with ID: ${fileId} not found for removal.`);
+      utilShowToast({type: 'warning', title: 'Removal Failed', message: `File not found.`});
+    }
+    this._renderManagedFiles();
+  }
+
+  public getManagedFiles(): ManagedFile[] {
+    return [...this.managedFiles];
+  }
+
+  private _handleOperationError(error: unknown, operationName: string, userFriendlyTitle: string, userFriendlyMessagePrefix: string): void {
     ErrorHandler.logError(`${userFriendlyMessagePrefix} (${operationName}) failed`, error);
     let message = `${userFriendlyMessagePrefix}.`;
     if (error instanceof Error && error.message) {
@@ -680,10 +787,86 @@ export class AudioTranscriptionApp {
     }
   }
 
+  private _getFileTypeInfo(fileType: string): { iconText: string, typeClass: string } {
+    if (fileType.startsWith('image/')) return { iconText: '[IMG]', typeClass: 'img' };
+    if (fileType.startsWith('audio/')) return { iconText: '[AUD]', typeClass: 'audio' };
+    if (fileType === 'application/pdf') return { iconText: '[PDF]', typeClass: 'pdf' };
+    if (fileType.includes('word')) return { iconText: '[DOC]', typeClass: 'doc' };
+    if (fileType === 'text/plain') return { iconText: '[TXT]', typeClass: 'txt' };
+    return { iconText: '[FILE]', typeClass: 'default' };
+  }
+
+  private _renderManagedFiles(): void {
+    if (!this.elements.filesList) {
+      ErrorHandler.logError("Files list element (UI_IDS.FILES_LIST) not found for rendering.", '_renderManagedFiles');
+      return;
+    }
+    this.elements.filesList.innerHTML = '';
+
+    const emptyStateDiv = document.getElementById('filesEmptyState');
+
+    if (this.managedFiles.length === 0) {
+      if (emptyStateDiv) {
+        (emptyStateDiv as HTMLElement).style.display = 'flex';
+      } else {
+        const p = document.createElement('p');
+        p.textContent = 'No files uploaded yet. Drag & drop or use the upload button.';
+        p.className = 'files-empty-state-text';
+        this.elements.filesList.appendChild(p);
+      }
+      return;
+    }
+
+    if (emptyStateDiv) {
+      (emptyStateDiv as HTMLElement).style.display = 'none';
+    }
+
+    this.managedFiles.forEach(managedFile => {
+      const itemDiv = document.createElement('div');
+      itemDiv.className = 'file-item';
+
+      const { iconText, typeClass } = this._getFileTypeInfo(managedFile.type);
+      let faIconClass = 'fa-file-alt';
+      if (typeClass === 'img') faIconClass = 'fa-file-image';
+      else if (typeClass === 'audio') faIconClass = 'fa-file-audio';
+      else if (typeClass === 'pdf') faIconClass = 'fa-file-pdf';
+      else if (typeClass === 'doc') faIconClass = 'fa-file-word';
+      else if (typeClass === 'txt') faIconClass = 'fa-file-alt';
+
+      itemDiv.innerHTML = `
+        <div class="file-icon ${typeClass}">
+          <i class="fas ${faIconClass}"></i> ${iconText}
+        </div>
+        <div class="file-info">
+          <div class="file-name">${managedFile.name}</div>
+          <div class="file-meta">
+            <span>${formatFileSize(managedFile.size)}</span> | <span>${managedFile.type || 'unknown'}</span>
+          </div>
+        </div>
+        <div class="file-actions">
+          <button class="file-action-btn remove-file-btn" data-file-id="${managedFile.id}" title="Remove file">
+            <i class="fas fa-trash"></i>
+          </button>
+        </div>
+      `;
+      this.elements.filesList!.appendChild(itemDiv);
+    });
+
+    this.elements.filesList.querySelectorAll('.remove-file-btn').forEach(button => {
+      button.addEventListener('click', (event) => {
+        const targetButton = event.currentTarget as HTMLButtonElement;
+        const fileId = targetButton.dataset.fileId || targetButton.getAttribute('data-file-id');
+        if (fileId) {
+          this.removeManagedFileById(fileId);
+        }
+      });
+    });
+  }
+
   private createChartContainer(canvasId: string, title: string, description: string): void {
     const chartDisplayArea = document.getElementById(UI_IDS.CHART_DISPLAY_AREA);
     if (!chartDisplayArea) {
-      console.error(`Chart display area '${UI_IDS.CHART_DISPLAY_AREA}' not found for canvasId: ${canvasId}`);
+      ErrorHandler.logError(`Chart display area '${UI_IDS.CHART_DISPLAY_AREA}' not found for canvasId: ${canvasId}`, 'createChartContainer');
       return;
     }
     const chartContainer = document.createElement('div');

@@ -219,7 +219,7 @@ export const CHART_DEFAULTS = {
 // Utility-specific constants
 export const UTIL_CONFIG = {
   LOGGER_MAX_HISTORY: 1000, // Max log entries for LoggerService history
-  NETWORK_ERROR_PATTERNS: ['network', 'timeout', 'fetch', 'connection', 'cors', 'offline'],
+  NETWORK_ERROR_PATTERNS: ['network', 'timeout', 'fetch', 'connection', 'cors', 'offline', 'load'], // Added 'load'
 } as const;
 
 // Chart related constants

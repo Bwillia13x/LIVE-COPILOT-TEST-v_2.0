@@ -56,7 +56,7 @@ export class AppConfig {
    * Retrieves the default Gemini model name.
    */
   public static getDefaultModelName(): string {
-    return DEFAULT_API_CONFIG.GEMINI.DEFAULT_MODEL_NAME || 'gemini-1.0-pro'; // Fallback just in case
+    return DEFAULT_API_CONFIG.DEFAULT_MODEL_NAME || 'gemini-1.0-pro'; // Corrected path
   }
 
   /**

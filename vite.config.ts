@@ -1,5 +1,21 @@
 import path from 'path';
 import { defineConfig, loadEnv } from 'vite';
+import type { UserConfig as VitestUserConfigInterface } from 'vitest/config'; // Import Vitest UserConfig
+
+// Define Vitest configuration separately for clarity
+const vitestConfig: VitestUserConfigInterface = {
+  test: {
+    globals: true, // Use global APIs like describe, it, expect
+    environment: 'jsdom', // DOM environment for testing UI components
+    setupFiles: ['./tests/setup.ts'], // Optional: for global test setup
+    // reporters: ['default', 'html'], // HTML reporter can be enabled via UI or CLI
+    coverage: { // Optional: basic coverage setup
+      provider: 'v8', // or 'istanbul'
+      reporter: ['text', 'json', 'html'],
+      reportsDirectory: './coverage', // Specify coverage output directory
+    },
+  },
+};
 
 export default defineConfig(({ mode }) => {
     const env = loadEnv(mode, '.', '');
@@ -115,6 +131,9 @@ export default defineConfig(({ mode }) => {
         cors: true,
         // Enable compression
         middlewareMode: false
-      }
+      },
+      // Integrate Vitest configuration
+      // @ts-ignore - Vite's defineConfig might not know about 'test', but Vitest will pick it up.
+      test: vitestConfig.test,
     };
 });

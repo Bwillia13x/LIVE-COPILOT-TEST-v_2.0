@@ -313,8 +313,10 @@ export class ErrorHandler {
     return new Promise(resolve => setTimeout(resolve, ms));
   }
 
-  public isNetworkError(error: Error): boolean {
-    // Use constant for network error patterns
+  public isNetworkError(error: Error | null | undefined): boolean {
+    if (!error || !error.message) { // Check for null/undefined error or message
+        return false;
+    }
     const message = error.message.toLowerCase();
     return UTIL_CONFIG.NETWORK_ERROR_PATTERNS.some(pattern => message.includes(pattern));
   }
@@ -430,9 +432,23 @@ export function showToast(options: ToastOptions): void {
  * @returns A string representing the formatted file size.
  */
 export function formatFileSize(bytes: number): string {
+  if (bytes < 0) return '0 Bytes'; // Handle negative numbers
   if (bytes === 0) return '0 Bytes';
   const k = 1024;
   const sizes = ['Bytes', 'KB', 'MB', 'GB', 'TB'];
+  // For bytes < 1, Math.log(bytes) is negative. Math.log(0) is -Infinity.
+  // Handle bytes < 1 explicitly to avoid issues with Math.log or ensure i is 0.
+  if (bytes < 1) return (bytes).toFixed(1) + ' Bytes'; // Or handle as you see fit, e.g. '0.x Bytes' or return '0 Bytes'
+
   const i = Math.floor(Math.log(bytes) / Math.log(k));
-  return `${parseFloat((bytes / Math.pow(k, i)).toFixed(1))} ${sizes[i]}`;
+
+  // Ensure 'i' is within the bounds of the 'sizes' array.
+  // This handles extremely large numbers that might exceed 'TB'.
+  const clamped_i = Math.min(i, sizes.length - 1);
+
+  // If the original unit was Bytes (i.e., i was 0), and we want to show .0,
+  // we need to ensure toFixed(1) is used.
+  // Otherwise, for larger units, toFixed(1) is fine.
+  const num = bytes / Math.pow(k, clamped_i);
+  return `${num.toFixed(clamped_i === 0 && num % 1 === 0 ? 0 : 1)} ${sizes[clamped_i]}`;
 }

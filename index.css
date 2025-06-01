@@ -2554,6 +2554,34 @@ body.light-mode .record-button.recording .record-button-inner { color: white; }
   text-align: center;
 }
 
+.workflow-items-list {
+  list-style-type: none;
+  padding: 0;
+  margin-top: 10px;
+}
+
+.workflow-item-entry {
+  background-color: var(--color-bg-alt);
+  border: 1px solid var(--color-border);
+  border-radius: 6px;
+  padding: 10px 12px;
+  margin-bottom: 8px;
+  font-size: 0.85rem;
+}
+
+.workflow-item-name {
+  font-weight: 600;
+  color: var(--color-text);
+  margin-bottom: 4px;
+}
+
+.workflow-item-trigger,
+.workflow-item-actions {
+  font-size: 0.8rem;
+  color: var(--color-text-secondary);
+  margin-bottom: 2px;
+}
+
 .metric-large {
   font-size: 2.5rem;
   font-weight: 700;
@@ -2659,6 +2687,95 @@ body.light-mode .record-button.recording .record-button-inner { color: white; }
 .consolidated-topics-display li {
   margin-bottom: 4px;
 }
+
+/* Workflow Panel UI Enhancements */
+.workflow-creator-section, .saved-workflows-section {
+  margin-bottom: 20px;
+  padding-bottom: 10px; /* Add some padding if there's no <hr> */
+}
+
+.workflow-creator-section h4, .saved-workflows-section h4 {
+  margin-bottom: 12px;
+  color: var(--color-text);
+  font-size: 1.05rem; /* Slightly larger than default p for section headers */
+}
+
+/* General form group styling if not already globally available */
+.form-group {
+  margin-bottom: 15px;
+}
+
+.form-group label {
+  display: block;
+  margin-bottom: 5px;
+  font-weight: 500;
+  font-size: 0.85rem;
+  color: var(--color-text-secondary);
+}
+
+.form-input, .form-select {
+  width: 100%;
+  padding: 10px;
+  border: 1px solid var(--color-border);
+  border-radius: 6px;
+  background-color: var(--color-bg-alt);
+  color: var(--color-text);
+  font-size: 0.9rem;
+  box-sizing: border-box; /* Ensure padding and border don't increase width */
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.form-input:focus, .form-select:focus {
+  outline: none;
+  border-color: var(--color-accent);
+  box-shadow: 0 0 0 2px rgba(var(--color-accent-rgb), 0.2); /* Create an accent glow */
+}
+
+/* Placeholder styling for inputs */
+.form-input::placeholder {
+  color: var(--color-text-tertiary);
+  opacity: 0.8;
+}
+
+/* Style for the <p><strong>Trigger... element */
+.workflow-creator-section p {
+  font-size: 0.9rem;
+  margin-bottom: 10px;
+  color: var(--color-text-secondary);
+}
+.workflow-creator-section p strong {
+  color: var(--color-text);
+}
+
+
+/* Styling for the list of saved workflows (if any) and manual actions */
+.workflows-list .workflow-action-item { /* Class for buttons moved into the panel */
+  display: block; /* Make each button take full width */
+  width: 100%;
+  margin-bottom: 8px; /* Space between buttons */
+  text-align: left; /* Align text to the left */
+  padding: 10px 12px; /* Adjust padding for better appearance */
+  background-color: var(--color-surface-hover); /* Different background for panel items */
+  border: 1px solid var(--color-border);
+  color: var(--color-text);
+}
+.workflows-list .workflow-action-item:hover {
+  background-color: var(--color-surface-active);
+  border-color: var(--color-accent);
+}
+.workflows-list .workflow-action-item i {
+  margin-right: 8px; /* Space between icon and text */
+}
+
+
+.saved-workflows-section .empty-state-text,
+#workflowsList .workflow-empty-state p { /* Shared styling for empty states */
+  color: var(--color-text-tertiary);
+  font-style: italic;
+  padding: 10px 0;
+  text-align: center;
+}
+
 
 .automated-summary-display {
   padding: 12px;

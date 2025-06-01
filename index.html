@@ -474,6 +474,43 @@
         </button>
       </div>
       <div class="workflow-content">
+        <div class="workflow-creator-section">
+          <h4>Create New Workflow</h4>
+          <form id="createWorkflowForm">
+            <div class="form-group">
+              <label for="workflowNameInput">Workflow Name:</label>
+              <input type="text" id="workflowNameInput" class="form-input" placeholder="e.g., Summarize meeting notes">
+            </div>
+            <p><strong>Trigger:</strong> When keywords are detected in the Main Note</p>
+            <div class="form-group">
+              <label for="keywordTriggerInput">Keywords (comma-separated):</label>
+              <input type="text" id="keywordTriggerInput" class="form-input" placeholder="e.g., action item, TODO, follow up">
+            </div>
+            <div class="form-group">
+              <label for="actionSelect">Action to Perform:</label>
+              <select id="actionSelect" class="form-select">
+                <option value="SUMMARIZE_CONTENT">Summarize All Content</option>
+                <option value="CONSOLIDATE_TOPICS">Consolidate Topics</option>
+                <option value="TRANSLATE_CONTENT">Translate All Content</option>
+              </select>
+            </div>
+            <div class="form-group" id="targetLanguageDiv" style="display: none;">
+              <label for="targetLanguageInput">Target Language (for translation):</label>
+              <input type="text" id="targetLanguageInput" class="form-input" placeholder="e.g., Spanish, French">
+            </div>
+            <button type="submit" id="createWorkflowButton" class="btn btn-primary">Create Workflow</button>
+          </form>
+        </div>
+        <hr>
+        <div class="saved-workflows-section">
+          <h4>Saved Workflows</h4>
+          <div id="savedWorkflowsList" class="workflows-list">
+            <p class="empty-state-text">No workflows created yet.</p>
+          </div>
+        </div>
+        <hr>
+        <h4>Manual Actions</h4>
+        <!-- The existing workflow-toolbar and workflowsList for manual actions -->
         <div class="workflow-toolbar">
           <button class="btn btn-sm btn-primary" id="createWorkflowBtn">
             <i class="fas fa-plus"></i> New Workflow

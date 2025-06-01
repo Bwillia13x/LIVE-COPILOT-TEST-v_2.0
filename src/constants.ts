@@ -25,6 +25,8 @@ export const APP_CONFIG = {
     TOAST_DURATION: 5000,             // 5 seconds
     SUGGESTION_UPDATE_INTERVAL: 5000,  // 5 seconds
     REAL_TIME_PROCESSING: 2000,       // 2 seconds
+    WORKFLOW_TRIGGER_DEBOUNCE_MS: 5000, // 5 seconds for workflow re-trigger prevention
+    INPUT_DEBOUNCE_MS: 1500,          // 1.5 seconds for debouncing text input for triggers
   },
   
   // Retry and error handling
@@ -184,6 +186,15 @@ export const UI_IDS = {
   // Translation Action Elements
   TRANSLATE_CONTENT_BUTTON: 'translateContentButton',
   TRANSLATED_CONTENT_DISPLAY: 'translatedContentDisplay',
+  // Workflow Creation Form Elements
+  CREATE_WORKFLOW_FORM: 'createWorkflowForm',
+  WORKFLOW_NAME_INPUT: 'workflowNameInput',
+  KEYWORD_TRIGGER_INPUT: 'keywordTriggerInput',
+  ACTION_SELECT: 'actionSelect',
+  TARGET_LANGUAGE_DIV: 'targetLanguageDiv',
+  TARGET_LANGUAGE_INPUT: 'targetLanguageInput',
+  CREATE_WORKFLOW_BUTTON: 'createWorkflowButton',
+  SAVED_WORKFLOWS_LIST: 'savedWorkflowsList',
   // Add other frequently used DOM IDs
 } as const;
 

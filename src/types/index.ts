@@ -191,3 +191,87 @@ export interface SpeechRecognitionInstance {
   start: () => void;
   stop: () => void;
 }
+
+// Workflow System Types
+
+export enum TriggerType {
+  MANUAL = 'MANUAL', // For actions triggered directly by user from workflow panel
+  NEW_FILE_UPLOADED = 'NEW_FILE_UPLOADED',
+  KEYWORD_DETECTED_MAIN_NOTE = 'KEYWORD_DETECTED_MAIN_NOTE',
+  // Future: KEYWORD_DETECTED_IN_FILE = 'KEYWORD_DETECTED_IN_FILE',
+  // Future: SENTIMENT_THRESHOLD_CROSSED = 'SENTIMENT_THRESHOLD_CROSSED',
+  // Future: SPECIFIC_TOPIC_IDENTIFIED = 'SPECIFIC_TOPIC_IDENTIFIED',
+  // Future: NOTE_SAVED = 'NOTE_SAVED',
+}
+
+export enum ActionType {
+  SUMMARIZE_CONTENT = 'SUMMARIZE_CONTENT',
+  TRANSLATE_CONTENT = 'TRANSLATE_CONTENT',
+  CONSOLIDATE_TOPICS = 'CONSOLIDATE_TOPICS',
+  // Future: EXTRACT_ACTION_ITEMS = 'EXTRACT_ACTION_ITEMS',
+  // Future: SAVE_TO_CLOUD = 'SAVE_TO_CLOUD',
+  // Future: SEND_NOTIFICATION = 'SEND_NOTIFICATION',
+}
+
+// Base and Specific Interfaces for Workflow Action Parameters
+export interface BaseWorkflowActionParams {}
+
+export interface TranslateActionParams extends BaseWorkflowActionParams {
+  targetLanguage: string;
+}
+// Example for future extension:
+// export interface SummarizeActionParams extends BaseWorkflowActionParams {
+//   summaryLength?: 'short' | 'medium' | 'long';
+// }
+
+// Union type for all possible action parameters
+export type WorkflowActionParamsUnion = BaseWorkflowActionParams | TranslateActionParams; // Add other param types here
+
+export interface WorkflowAction {
+  id: string; // Unique ID for this action instance within a workflow
+  type: ActionType;
+  parameters: WorkflowActionParamsUnion;
+  // Optional: specify input source for the action, defaults to aggregated content or trigger output
+  // inputSource?: 'triggerOutput' | 'aggregatedContent' | 'mainNote' | 'specificFileById';
+}
+
+// Base and Specific Interfaces for Trigger Parameters
+export interface BaseTriggerParams {}
+
+export interface KeywordDetectedTriggerParams extends BaseTriggerParams {
+  keywords: string[];
+}
+
+export interface NewFileUploadedTriggerParams extends BaseTriggerParams {
+  fileTypePattern?: string; // e.g., 'image/*' or '.pdf'
+}
+
+// Union type for all possible trigger parameters
+export type TriggerParamsUnion = BaseTriggerParams | KeywordDetectedTriggerParams | NewFileUploadedTriggerParams;
+
+// Interface for Workflow Triggers (though simplified for initial implementation)
+export interface WorkflowTrigger {
+  id: string; // Unique ID for this trigger configuration
+  type: TriggerType;
+  parameters: TriggerParamsUnion;
+}
+
+// Interface for Workflows
+export interface Workflow {
+  id: string; // Unique ID for the workflow
+  name: string;
+  isEnabled: boolean;
+  // Simplified embedded trigger definition for initial keyword-based workflow.
+  // This can be evolved to an array of trigger IDs (triggerIds: string[])
+  // and a separate list of WorkflowTrigger objects if a workflow needs to respond
+  // to multiple, independently defined triggers.
+  trigger: {
+    type: TriggerType;
+    parameters: TriggerParamsUnion; // Specifically KeywordDetectedTriggerParams for keyword trigger
+  };
+  actions: WorkflowAction[]; // Sequence of actions to perform
+  // Optional future enhancements:
+  // conditions?: WorkflowCondition[];
+  // lastRun?: Date;
+  // runCount?: number;
+}

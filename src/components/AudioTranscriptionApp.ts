@@ -3,7 +3,14 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import { Note, AppState, ErrorContext, AllAIChartData, AIChartDataPayload, TopicDataInput, SentimentDataInput, WordFrequencyInput, ManagedFile, StoredNote } from '../types/index.js';
+import {
+    Note, AppState, ErrorContext,
+    AllAIChartData, AIChartDataPayload, TopicDataInput, SentimentDataInput, WordFrequencyInput,
+    ManagedFile, StoredNote,
+    // Workflow Types
+    Workflow, WorkflowAction, TriggerType, ActionType,
+    WorkflowActionParamsUnion, TranslateActionParams, KeywordDetectedTriggerParams, BaseWorkflowActionParams
+} from '../types/index.js';
 import { APIService } from '../services/APIService.js';
 import { ChartManager } from '../services/ChartManager.js';
 import { TabNavigator } from './UIComponents/TabNavigator.js';
@@ -58,6 +65,11 @@ export class AudioTranscriptionApp {
   private fullTranscription: string = '';
   private managedFiles: ManagedFile[] = [];
   private nextFileId: number = 1;
+  private workflows: Workflow[] = [];
+  private nextWorkflowId: number = 1;
+  private lastTriggeredWorkflowAction: Map<string, number> = new Map(); // For trigger debouncing
+  private keywordTriggerDebounceTimeout: number | null = null; // For debouncing input events
+
 
   private autoSaveInterval: number | null = null;
   private uiUpdateInterval: number | null = null;
@@ -82,13 +94,22 @@ export class AudioTranscriptionApp {
     consolidatedTopicsDisplay?: HTMLElement;
     summarizeContentButton?: HTMLButtonElement;
     automatedSummaryDisplay?: HTMLElement;
-    translateContentButton?: HTMLButtonElement; // New button for translation
-    translatedContentDisplay?: HTMLElement;  // New display area for translation
+    translateContentButton?: HTMLButtonElement;
+    translatedContentDisplay?: HTMLElement;
     // Workflow Panel Elements
     workflowButton?: HTMLButtonElement;
     workflowPanel?: HTMLElement;
     closeWorkflowButton?: HTMLButtonElement;
     workflowsListContainer?: HTMLElement;
+    // Workflow Creation Form Elements
+    createWorkflowForm?: HTMLFormElement;
+    workflowNameInput?: HTMLInputElement;
+    keywordTriggerInput?: HTMLInputElement;
+    actionSelect?: HTMLSelectElement;
+    targetLanguageDiv?: HTMLElement;
+    targetLanguageInput?: HTMLInputElement;
+    createWorkflowButton?: HTMLButtonElement;
+    savedWorkflowsList?: HTMLElement;
   } = {};
 
   constructor() {
@@ -135,6 +156,7 @@ export class AudioTranscriptionApp {
       this.setupPeriodicUpdates();
       await this.testAPIConnection();
       this._renderManagedFiles();
+      this._renderSavedWorkflows();
       console.log('🎙️ Audio Transcription App initialized successfully');
     } catch (error) {
       this._handleOperationError(error, 'initializeApp', 'Initialization Error', 'Failed to initialize the application');
@@ -169,6 +191,15 @@ export class AudioTranscriptionApp {
       workflowPanel: document.getElementById(UI_IDS.WORKFLOW_PANEL) as HTMLElement,
       closeWorkflowButton: document.getElementById(UI_IDS.CLOSE_WORKFLOW_BUTTON) as HTMLButtonElement,
       workflowsListContainer: document.getElementById(UI_IDS.WORKFLOWS_LIST_CONTAINER) as HTMLElement,
+      // Workflow Creation Form Elements
+      createWorkflowForm: document.getElementById(UI_IDS.CREATE_WORKFLOW_FORM) as HTMLFormElement,
+      workflowNameInput: document.getElementById(UI_IDS.WORKFLOW_NAME_INPUT) as HTMLInputElement,
+      keywordTriggerInput: document.getElementById(UI_IDS.KEYWORD_TRIGGER_INPUT) as HTMLInputElement,
+      actionSelect: document.getElementById(UI_IDS.ACTION_SELECT) as HTMLSelectElement,
+      targetLanguageDiv: document.getElementById(UI_IDS.TARGET_LANGUAGE_DIV) as HTMLElement,
+      targetLanguageInput: document.getElementById(UI_IDS.TARGET_LANGUAGE_INPUT) as HTMLInputElement,
+      createWorkflowButton: document.getElementById(UI_IDS.CREATE_WORKFLOW_BUTTON) as HTMLButtonElement,
+      savedWorkflowsList: document.getElementById(UI_IDS.SAVED_WORKFLOWS_LIST) as HTMLElement,
     };
     const coreRequiredElementIds = ['recordButton', UI_IDS.CONTENT_PANE_RAW, UI_IDS.CONTENT_PANE_POLISHED, UI_IDS.CHART_DISPLAY_AREA];
     for (const elementId of coreRequiredElementIds) {
@@ -177,6 +208,15 @@ export class AudioTranscriptionApp {
         }
     }
   }
+
+  private _onMainNoteContentUpdate = (event: Event) => {
+    if (this.keywordTriggerDebounceTimeout) clearTimeout(this.keywordTriggerDebounceTimeout);
+    this.keywordTriggerDebounceTimeout = window.setTimeout(() => {
+        const currentText = (event.target as HTMLElement).innerText || (event.target as HTMLInputElement).value;
+        this.fullTranscription = currentText; // Keep fullTranscription in sync
+        this._checkKeywordTriggers(currentText);
+    }, APP_CONFIG.TIMING.INPUT_DEBOUNCE_MS || 1500);
+  };
 
   private setupEventListeners(): void {
     this.elements.recordButton?.addEventListener('click', () => this.toggleRecording());
@@ -187,6 +227,11 @@ export class AudioTranscriptionApp {
         this.testAPIConnection();
       }
     });
+
+    // Event listeners for main note areas to check keyword triggers
+    this.elements.polishedNoteArea?.addEventListener('input', this._onMainNoteContentUpdate);
+    this.elements.transcriptionArea?.addEventListener('input', this._onMainNoteContentUpdate);
+
 
     const settingsButton = document.getElementById('settingsButton');
     const settingsModal = document.getElementById(UI_IDS.SETTINGS_MODAL);
@@ -301,7 +346,7 @@ export class AudioTranscriptionApp {
 
             utilShowToast({type: 'info', title: 'Translating...', message: `Translating content to ${targetLanguage}.`});
             if (this.elements.translatedContentDisplay) {
-                this.elements.translatedContentDisplay.style.display = 'none'; // Hide initially
+                this.elements.translatedContentDisplay.style.display = 'none';
             }
             console.log(`Aggregated Text for Translation to ${targetLanguage}:`, aggregatedText.substring(0, 500) + "...");
 
@@ -355,7 +400,85 @@ export class AudioTranscriptionApp {
         this.elements.workflowPanel!.classList.remove('open');
       });
     }
+
+    if (this.elements.actionSelect && this.elements.targetLanguageDiv) {
+        this.elements.actionSelect.addEventListener('change', () => {
+            if (this.elements.actionSelect!.value === ActionType.TRANSLATE_CONTENT) {
+                this.elements.targetLanguageDiv!.style.display = 'block';
+            } else {
+                this.elements.targetLanguageDiv!.style.display = 'none';
+            }
+        });
+    }
+
+    if (this.elements.createWorkflowForm) {
+        this.elements.createWorkflowForm.addEventListener('submit', (event) => {
+            event.preventDefault();
+            if (!this.elements.workflowNameInput || !this.elements.keywordTriggerInput ||
+                !this.elements.actionSelect || !this.elements.targetLanguageInput ||
+                !this.elements.createWorkflowForm || !this.elements.targetLanguageDiv) {
+                ErrorHandler.logError("Workflow form elements not found.", "createWorkflowFormSubmit");
+                utilShowToast({type: 'error', title: 'Error', message: 'Workflow form elements missing. Cannot create workflow.'});
+                return;
+            }
+
+            const workflowName = this.elements.workflowNameInput.value.trim();
+            const keywordsRaw = this.elements.keywordTriggerInput.value.trim();
+            const selectedActionType = this.elements.actionSelect.value as ActionType;
+            const targetLanguage = this.elements.targetLanguageInput.value.trim();
+
+            if (!workflowName) {
+                utilShowToast({type: 'warning', title: 'Validation Error', message: 'Workflow name is required.'});
+                return;
+            }
+            if (!keywordsRaw) {
+                utilShowToast({type: 'warning', title: 'Validation Error', message: 'Keywords are required.'});
+                return;
+            }
+            const keywords = keywordsRaw.split(',').map(k => k.trim()).filter(k => k.length > 0);
+            if (keywords.length === 0) {
+                utilShowToast({type: 'warning', title: 'Validation Error', message: 'Please enter valid keywords, separated by commas.'});
+                return;
+            }
+            if (selectedActionType === ActionType.TRANSLATE_CONTENT && !targetLanguage) {
+                utilShowToast({type: 'warning', title: 'Validation Error', message: 'Target language is required for translation action.'});
+                return;
+            }
+
+            let actionParams: WorkflowActionParamsUnion = {};
+            if (selectedActionType === ActionType.TRANSLATE_CONTENT) {
+                actionParams = { targetLanguage } as TranslateActionParams;
+            }
+
+            const workflowAction: WorkflowAction = {
+                id: `action-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`,
+                type: selectedActionType,
+                parameters: actionParams
+            };
+
+            const newWorkflow: Workflow = {
+                id: `workflow-${this.nextWorkflowId++}`,
+                name: workflowName,
+                isEnabled: true,
+                trigger: {
+                    type: TriggerType.KEYWORD_DETECTED_MAIN_NOTE,
+                    parameters: { keywords } as KeywordDetectedTriggerParams
+                },
+                actions: [workflowAction]
+            };
+
+            this.workflows.push(newWorkflow);
+            console.log('Workflow created:', newWorkflow);
+            console.log('All workflows:', this.workflows);
+            utilShowToast({type: 'success', title: 'Workflow Created', message: `Workflow '${workflowName}' created successfully!`});
+
+            this.elements.createWorkflowForm.reset();
+            this.elements.targetLanguageDiv.style.display = 'none';
+            this._renderSavedWorkflows();
+        });
+    }
   }
+
 
   private _setupFileUploadListeners(): void {
     if (this.elements.fileDropZone) {
@@ -415,6 +538,8 @@ export class AudioTranscriptionApp {
       this.transcriptBuffer += transcript + ' ';
       this.fullTranscription = this.transcriptBuffer;
       this.updateTranscriptionArea();
+      // Check triggers on interim results if desired, or wait for final.
+      // For now, _onMainNoteContentUpdate handles input events on text areas.
     });
     this.audioRecorder.onRecordingStateChange((recordingState) => this.updateRecordingUI(recordingState));
   }
@@ -429,7 +554,10 @@ export class AudioTranscriptionApp {
         this.currentTranscript = this.transcriptBuffer.trim();
         this.fullTranscription = this.currentTranscript;
         this.state.isRecording = false;
-        if (this.currentTranscript) utilShowToast({ type: 'success', title: 'Recording Complete', message: 'Transcription ready for polishing.' });
+        if (this.currentTranscript) {
+            utilShowToast({ type: 'success', title: 'Recording Complete', message: 'Transcription ready for polishing.' });
+            this._checkKeywordTriggers(this.currentTranscript); // Check triggers after recording stops
+        }
       } else {
         const success = await this.audioRecorder.startRecording();
         if (success) {
@@ -463,6 +591,7 @@ export class AudioTranscriptionApp {
         };
         this.fullTranscription = result.data;
         this.updatePolishedNoteArea();
+        this._checkKeywordTriggers(this.fullTranscription); // Check triggers after polishing
         utilShowToast({ type: 'success', title: 'Polishing Complete', message: 'Your transcription has been improved.' });
       } else utilShowToast({ type: 'error', title: 'Polishing Failed', message: result.error || 'Unknown error occurred.' });
     } catch (error) {
@@ -548,7 +677,7 @@ export class AudioTranscriptionApp {
         this.elements.automatedSummaryDisplay.innerHTML = '';
         this.elements.automatedSummaryDisplay.style.display = 'none';
     }
-    if (this.elements.translatedContentDisplay) { // Clear translation display
+    if (this.elements.translatedContentDisplay) {
         this.elements.translatedContentDisplay.innerHTML = '';
         this.elements.translatedContentDisplay.style.display = 'none';
     }
@@ -1219,5 +1348,70 @@ export class AudioTranscriptionApp {
     }
     this.elements.automatedSummaryDisplay.innerHTML = `<h3>Automated Summary:</h3><p>${summary}</p>`;
     this.elements.automatedSummaryDisplay.style.display = 'block';
+  }
+
+  private _displayTranslatedContent(translatedText: string, language: string): void {
+    if (!this.elements.translatedContentDisplay) {
+        ErrorHandler.logError("Translated content display area not found.", "_displayTranslatedContent");
+        return;
+    }
+    this.elements.translatedContentDisplay.innerHTML = `<h3>Translation (<span class="language-tag">${language}</span>):</h3><p>${translatedText}</p>`;
+    this.elements.translatedContentDisplay.style.display = 'block';
+  }
+
+  private _renderSavedWorkflows(): void {
+    if (!this.elements.savedWorkflowsList) {
+        ErrorHandler.logWarning("Saved workflows list element not found.", "_renderSavedWorkflows");
+        return;
+    }
+    this.elements.savedWorkflowsList.innerHTML = '';
+
+    const emptyStateText = this.elements.savedWorkflowsList.parentElement?.querySelector('.empty-state-text') as HTMLElement | null;
+
+
+    if (this.workflows.length === 0) {
+        if (emptyStateText) {
+            emptyStateText.style.display = 'block';
+        } else {
+            this.elements.savedWorkflowsList.innerHTML = '<p class="empty-state-text">No workflows created yet.</p>';
+        }
+        return;
+    }
+
+    if (emptyStateText) {
+        emptyStateText.style.display = 'none';
+    }
+
+    const ul = document.createElement('ul');
+    ul.className = 'workflow-items-list';
+    this.workflows.forEach(workflow => {
+        const li = document.createElement('li');
+        li.className = 'workflow-item-entry';
+
+        let triggerDetails = '';
+        if (workflow.trigger.type === TriggerType.KEYWORD_DETECTED_MAIN_NOTE) {
+            const params = workflow.trigger.parameters as KeywordDetectedTriggerParams;
+            triggerDetails = `Keywords: ${params.keywords.join(', ')}`;
+        }
+
+
+        let actionsDetails = workflow.actions.map(action => {
+            let paramsStr = '';
+            if (action.type === ActionType.TRANSLATE_CONTENT) {
+                const params = action.parameters as TranslateActionParams;
+                paramsStr = ` (to ${params.targetLanguage})`;
+            }
+            return `${action.type.replace(/_/g, ' ')}${paramsStr}`;
+        }).join(', ');
+
+        li.innerHTML = `
+            <div class="workflow-item-name">${workflow.name} (${workflow.isEnabled ? 'Enabled' : 'Disabled'})</div>
+            <div class="workflow-item-trigger">Trigger: ${workflow.trigger.type.replace(/_/g, ' ')} (${triggerDetails})</div>
+            <div class="workflow-item-actions">Actions: ${actionsDetails}</div>
+        `;
+
+        ul.appendChild(li);
+    });
+    this.elements.savedWorkflowsList.appendChild(ul);
   }
 }

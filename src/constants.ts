@@ -181,6 +181,9 @@ export const UI_IDS = {
   WORKFLOW_PANEL: 'workflowPanel',
   CLOSE_WORKFLOW_BUTTON: 'closeWorkflow',
   WORKFLOWS_LIST_CONTAINER: 'workflowsList',
+  // Translation Action Elements
+  TRANSLATE_CONTENT_BUTTON: 'translateContentButton',
+  TRANSLATED_CONTENT_DISPLAY: 'translatedContentDisplay',
   // Add other frequently used DOM IDs
 } as const;
 

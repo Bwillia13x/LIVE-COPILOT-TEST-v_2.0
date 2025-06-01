@@ -227,6 +227,20 @@ Ensure the summary is well-written and captures the key points.`;
     return { success: false, error: response.error || "Failed to get automated summary." };
   }
 
+  public async translateText(textToTranslate: string, targetLanguage: string): Promise<APIResponse<string>> {
+    const operationName = `Translation to ${targetLanguage}`;
+    const prompt = `Translate the following text into ${targetLanguage}. Only provide the translated text, with no additional commentary or explanations:
+
+${textToTranslate}`;
+
+    const response = await this._executePrompt(prompt, operationName);
+
+    if (response.success && response.data) {
+        return { success: true, data: response.data.trim() };
+    }
+    return { success: false, error: response.error || `Failed to translate text to ${targetLanguage}.` };
+  }
+
   public async generateSampleChartData(): Promise<APIResponse<AllAIChartData>> {
     console.log("APIService: Generating sample chart data (mocked)");
     const sampleData: AllAIChartData = {

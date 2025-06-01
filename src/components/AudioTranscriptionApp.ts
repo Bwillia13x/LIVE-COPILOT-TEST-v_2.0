@@ -82,11 +82,13 @@ export class AudioTranscriptionApp {
     consolidatedTopicsDisplay?: HTMLElement;
     summarizeContentButton?: HTMLButtonElement;
     automatedSummaryDisplay?: HTMLElement;
+    translateContentButton?: HTMLButtonElement; // New button for translation
+    translatedContentDisplay?: HTMLElement;  // New display area for translation
     // Workflow Panel Elements
     workflowButton?: HTMLButtonElement;
     workflowPanel?: HTMLElement;
     closeWorkflowButton?: HTMLButtonElement;
-    workflowsListContainer?: HTMLElement; // Container for workflow action buttons
+    workflowsListContainer?: HTMLElement;
   } = {};
 
   constructor() {
@@ -160,6 +162,8 @@ export class AudioTranscriptionApp {
       consolidatedTopicsDisplay: document.getElementById(UI_IDS.CONSOLIDATED_TOPICS_DISPLAY) as HTMLElement,
       summarizeContentButton: document.getElementById(UI_IDS.SUMMARIZE_CONTENT_BUTTON) as HTMLButtonElement,
       automatedSummaryDisplay: document.getElementById(UI_IDS.AUTOMATED_SUMMARY_DISPLAY) as HTMLElement,
+      translateContentButton: document.getElementById(UI_IDS.TRANSLATE_CONTENT_BUTTON) as HTMLButtonElement,
+      translatedContentDisplay: document.getElementById(UI_IDS.TRANSLATED_CONTENT_DISPLAY) as HTMLElement,
       // Workflow Panel Elements
       workflowButton: document.getElementById(UI_IDS.WORKFLOW_BUTTON) as HTMLButtonElement,
       workflowPanel: document.getElementById(UI_IDS.WORKFLOW_PANEL) as HTMLElement,
@@ -281,12 +285,47 @@ export class AudioTranscriptionApp {
         });
     }
 
+    if (this.elements.translateContentButton) {
+        this.elements.translateContentButton.addEventListener('click', async () => {
+            const aggregatedText = this._aggregateAllTextContent();
+            if (!aggregatedText || aggregatedText === "No text content available for aggregation.") {
+                utilShowToast({type: 'warning', title: 'No Content', message: 'No text content available to translate.'});
+                return;
+            }
+
+            const targetLanguage = prompt("Enter target language (e.g., Spanish, French, German):", "Spanish");
+            if (!targetLanguage) {
+                utilShowToast({type: 'info', title: 'Translation Cancelled', message: 'Translation was cancelled by the user.'});
+                return;
+            }
+
+            utilShowToast({type: 'info', title: 'Translating...', message: `Translating content to ${targetLanguage}.`});
+            if (this.elements.translatedContentDisplay) {
+                this.elements.translatedContentDisplay.style.display = 'none'; // Hide initially
+            }
+            console.log(`Aggregated Text for Translation to ${targetLanguage}:`, aggregatedText.substring(0, 500) + "...");
+
+            try {
+                const response = await this.apiService.translateText(aggregatedText, targetLanguage);
+                if (response.success && response.data) {
+                    console.log(`Translated to ${targetLanguage}:`, response.data);
+                    this._displayTranslatedContent(response.data, targetLanguage);
+                    utilShowToast({type: 'success', title: 'Translation Complete', message: `Content translated to ${targetLanguage}.`});
+                } else {
+                    this._handleOperationError(response.error || `Failed to translate to ${targetLanguage}`, 'translateContentButton', 'Translation Failed', response.error || `Unknown error translating to ${targetLanguage}.`);
+                }
+            } catch (error) {
+                 this._handleOperationError(error, 'translateContentButton', 'Translation Error', `An unexpected error occurred during translation to ${targetLanguage}.`);
+            }
+        });
+    }
+
     window.addEventListener('beforeunload', () => this.cleanup());
     window.addEventListener('resize', this.handleResize);
 
     this._setupFileUploadListeners();
     this._setupContentLibraryPanelListeners();
-    this._setupWorkflowPanelListeners(); // Setup for the new panel
+    this._setupWorkflowPanelListeners();
   }
 
   private _setupContentLibraryPanelListeners(): void {
@@ -508,6 +547,10 @@ export class AudioTranscriptionApp {
     if (this.elements.automatedSummaryDisplay) {
         this.elements.automatedSummaryDisplay.innerHTML = '';
         this.elements.automatedSummaryDisplay.style.display = 'none';
+    }
+    if (this.elements.translatedContentDisplay) { // Clear translation display
+        this.elements.translatedContentDisplay.innerHTML = '';
+        this.elements.translatedContentDisplay.style.display = 'none';
     }
     this.updateUI();
     utilShowToast({ type: 'info', title: 'Cleared', message: 'Current note and charts have been cleared.' });

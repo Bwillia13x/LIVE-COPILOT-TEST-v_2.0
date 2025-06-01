@@ -38,7 +38,7 @@ export class AudioRecorder {
         this.recognition = new SpeechRecognition();
         this.recognition.continuous = true;
         this.recognition.interimResults = true;
-        this.recognition.lang = 'en-US';
+        this.recognition.lang = AUDIO_RECORDER_CONFIG.LANG; // Use constant
 
         this.recognition.onresult = (event: any) => {
           let finalTranscript = '';
@@ -66,7 +66,7 @@ export class AudioRecorder {
               if (this.recognition && this.state.isRecording) {
                 this.recognition.start();
               }
-            }, 100);
+            }, AUDIO_RECORDER_CONFIG.RECOGNITION_RESTART_DELAY); // Use constant
           }
         };
       }
@@ -88,7 +88,7 @@ export class AudioRecorder {
 
       // Set up MediaRecorder for audio recording
       this.mediaRecorder = new MediaRecorder(this.stream, {
-        mimeType: 'audio/webm;codecs=opus'
+        mimeType: AUDIO_RECORDER_CONFIG.MIME_TYPE // Use constant
       });
 
       this.audioChunks = [];
@@ -105,7 +105,7 @@ export class AudioRecorder {
       };
 
       // Start recording
-      this.mediaRecorder.start(1000); // Collect data every second
+      this.mediaRecorder.start(AUDIO_RECORDER_CONFIG.TIMESLICE_INTERVAL); // Use constant
 
       // Start speech recognition
       if (this.recognition) {
@@ -209,7 +209,7 @@ export class AudioRecorder {
         this.state.duration = Date.now() - this.state.startTime;
         this.notifyStateChange();
       }
-    }, 100);
+    }, AUDIO_RECORDER_CONFIG.DURATION_UPDATE_INTERVAL); // Use constant
   }
 
   private stopDurationTracking(): void {

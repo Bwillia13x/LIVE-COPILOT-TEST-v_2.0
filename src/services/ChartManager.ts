@@ -18,8 +18,8 @@ import {
   Tooltip,
   Title,
 } from 'chart.js';
-import { ChartConfig, BaseChartData, TopicDataInput, SentimentDataInput, WordFrequencyInput, ChartDataset } from '../types/index.js'; // Updated imports
-import { COLORS } from '../constants.js';
+import { ChartConfig, BaseChartData, TopicDataInput, SentimentDataInput, WordFrequencyInput, ChartDataset } from '../types/index.js';
+import { COLORS, CHART_DEFAULTS } from '../constants.js'; // Import CHART_DEFAULTS
 import { ErrorHandler } from '../utils.js';
 
 // Register Chart.js components
@@ -124,8 +124,8 @@ export class ChartManager {
       labels: inputData.labels || ['Positive', 'Neutral', 'Negative'],
       datasets: [{
         data: inputData.data || [0, 0, 0],
-        backgroundColor: inputData.backgroundColor || ['#4CAF50', '#FFC107', '#F44336'],
-        borderColor: COLORS.chartBorders, // Default border color
+        backgroundColor: inputData.backgroundColor || CHART_DEFAULTS.SENTIMENT_CHART_COLORS,
+        borderColor: CHART_DEFAULTS.SENTIMENT_CHART_BORDER_COLORS,
         borderWidth: 2,
         hoverOffset: 4,
       } as ChartDataset],
@@ -134,18 +134,18 @@ export class ChartManager {
     const config: ChartConfig = {
       type: 'doughnut',
       data: chartData,
-      options: { // Options can be further typed
+      options: {
         plugins: {
           title: {
             display: true,
             text: title,
-            font: { size: 16, weight: 'bold' },
+            font: { size: CHART_DEFAULTS.DEFAULT_FONT_SIZE, weight: CHART_DEFAULTS.DEFAULT_FONT_STYLE as 'normal' | 'bold' | 'lighter' | 'bolder' | undefined },
           },
           legend: {
             position: 'bottom',
           },
         },
-        cutout: '50%',
+        cutout: CHART_DEFAULTS.SENTIMENT_CHART_CUTOUT,
       },
     };
 
@@ -172,7 +172,7 @@ export class ChartManager {
           title: {
             display: true,
             text: title,
-            font: { size: 16, weight: 'bold' },
+            font: { size: CHART_DEFAULTS.DEFAULT_FONT_SIZE, weight: CHART_DEFAULTS.DEFAULT_FONT_STYLE as 'normal' | 'bold' | 'lighter' | 'bolder' | undefined },
           },
           legend: {
             display: false,
@@ -222,7 +222,7 @@ export class ChartManager {
           title: {
             display: true,
             text: title,
-            font: { size: 16, weight: 'bold' },
+            font: { size: CHART_DEFAULTS.DEFAULT_FONT_SIZE, weight: CHART_DEFAULTS.DEFAULT_FONT_STYLE as 'normal' | 'bold' | 'lighter' | 'bolder' | undefined },
           },
         },
         scales: {

@@ -4,11 +4,11 @@
  */
 
 import { GoogleGenAI } from '@google/genai';
-import { APIResponse, AllAIChartData, AIChartDataPayload } from '../types/index.js'; // Added AllAIChartData, AIChartDataPayload
-import { ERROR_MESSAGES } from '../constants.js';
+import { APIResponse, AllAIChartData, AIChartDataPayload } from '../types/index.js';
+import { ERROR_MESSAGES, API_CONFIG, STORAGE_KEYS, CHART_TYPES } from '../constants.js';
 import { ErrorHandler } from '../utils.js';
 
-const MODEL_NAME = 'gemini-2.5-flash-preview-04-17';
+// Model name is now API_CONFIG.GEMINI.DEFAULT_MODEL_NAME
 
 export class APIService {
   private genAI: GoogleGenAI | null = null;
@@ -21,7 +21,7 @@ export class APIService {
   private async initializeAPI(): Promise<void> {
     try {
       // Get API key from localStorage or environment variables
-      const storedKey = localStorage.getItem('geminiApiKey');
+      const storedKey = localStorage.getItem(STORAGE_KEYS.API_KEY); // Use constant
       const envKey = import.meta.env.VITE_GEMINI_API_KEY;
       
       // Only use the key if it's not null, undefined, or empty
@@ -29,7 +29,7 @@ export class APIService {
       
       if (this.apiKey && this.apiKey.length > 10) { // Basic validation for API key format
         try {
-          this.genAI = new GoogleGenAI(this.apiKey as any);
+          this.genAI = new GoogleGenAI(this.apiKey as any); // API_CONFIG.GEMINI.API_KEY is not how GoogleGenAI is constructed
           console.log('🔑 API service initialized with API key');
         } catch (genAIError: any) {
           ErrorHandler.logError('Failed to initialize GoogleGenAI during API setup', genAIError);
@@ -58,7 +58,7 @@ export class APIService {
         };
       }
 
-      const model = (this.genAI as any).getGenerativeModel({ model: MODEL_NAME });
+      const model = (this.genAI as any).getGenerativeModel({ model: API_CONFIG.GEMINI.DEFAULT_MODEL_NAME }); // Use constant
       const result = await model.generateContent('Test connection');
       
       return {
@@ -74,14 +74,29 @@ export class APIService {
     }
   }
 
-  public async polishTranscription(rawText: string): Promise<APIResponse<string>> {
+  private async _executePrompt(prompt: string, operationNameForLogging: string): Promise<APIResponse<string>> {
+    if (!this.genAI) {
+      ErrorHandler.logError(ERROR_MESSAGES.API.API_KEY_MISSING, operationNameForLogging);
+      return { success: false, error: ERROR_MESSAGES.API.API_KEY_MISSING };
+    }
     try {
-      if (!this.genAI) {
-        throw new Error(ERROR_MESSAGES.API.API_KEY_MISSING);
-      }
+      const model = (this.genAI as any).getGenerativeModel({ model: API_CONFIG.GEMINI.DEFAULT_MODEL_NAME }); // Use constant
+      const result = await model.generateContent(prompt);
+      const response = await result.response;
+      const textResponse = response.text();
+      return { success: true, data: textResponse };
+    } catch (error: any) {
+      ErrorHandler.logError(`${operationNameForLogging} failed during AI interaction`, error);
+      return {
+        success: false,
+        error: `AI interaction failed for ${operationNameForLogging}: ${error?.message || 'Unknown AI error'}`,
+      };
+    }
+  }
 
-      const model = (this.genAI as any).getGenerativeModel({ model: MODEL_NAME });
-      const prompt = `Please improve the following transcription by:
+  public async polishTranscription(rawText: string): Promise<APIResponse<string>> {
+    const operationName = 'Transcription polishing';
+    const prompt = `Please improve the following transcription by:
 1. Correcting grammar and spelling
 2. Adding proper punctuation
 3. Making it more readable while maintaining the original meaning
@@ -91,33 +106,15 @@ Transcription: "${rawText}"
 
 Please provide only the improved text without any additional comments or explanations.`;
 
-      const result = await model.generateContent(prompt);
-      const response = await result.response;
-      const polishedText = response.text();
-
-      return {
-        success: true,
-        data: polishedText
-      };
-    } catch (error: any) {
-      ErrorHandler.logError('Transcription polishing failed', error);
-      return {
-        success: false,
-        error: `Failed to polish transcription: ${error?.message || 'Unknown error'}`
-      };
-    }
+    // The _executePrompt method already handles the try/catch and API key check.
+    // It returns an APIResponse<string> which matches this method's signature.
+    return this._executePrompt(prompt, operationName);
   }
 
   // Updated to reflect that chartType 'all' returns AllAIChartData, others return AIChartDataPayload
   public async generateChartData(transcription: string, chartType: string): Promise<APIResponse<AllAIChartData | AIChartDataPayload>> {
-    try {
-      if (!this.genAI) {
-        throw new Error(ERROR_MESSAGES.API.API_KEY_MISSING);
-      }
-
-      const model = (this.genAI as any).getGenerativeModel({ model: MODEL_NAME });
-      
-      let prompt = '';
+    const operationName = `Chart data generation for ${chartType}`;
+    let prompt = '';
       // If chartType is 'all', we might need a different prompt or multiple calls.
       // For now, this example assumes specific chart type prompts.
       // The 'all' case in AudioTranscriptionApp will need to iterate or API needs to support it.
@@ -126,41 +123,37 @@ Please provide only the improved text without any additional comments or explana
       // For simplicity, this example will assume chartType is specific for now.
       // If chartType === 'all', the prompt and parsing logic would be more complex.
       switch (chartType) {
-        case 'topics':
+        case CHART_TYPES.TOPICS: // Use constant
           prompt = this.getTopicsPrompt(transcription);
           break;
-        case 'sentiment':
+        case CHART_TYPES.SENTIMENT: // Use constant
           prompt = this.getSentimentPrompt(transcription);
           break;
-        case 'wordFrequency':
+        case CHART_TYPES.WORD_FREQUENCY: // Use constant
           prompt = this.getWordFrequencyPrompt(transcription);
           break;
-        // Removed 'default' throw to allow for an 'all' type if the prompt/API supports it.
-        // If 'all' is passed, a generic prompt or multi-prompt strategy would be needed.
-        // For now, assume specific types or an 'all' prompt that returns AllAIChartData.
-        default: // Assuming 'all' or other combined types might fall here or have their own prompt
-          if (chartType !== 'all') { // if it's not 'all', then it's unknown
-            throw new Error(`Unsupported chart type for direct generation: ${chartType}. Use 'all' for combined data.`);
+        default:
+          if (chartType !== CHART_TYPES.ALL) { // Use constant
+            ErrorHandler.logError(`Unsupported chart type: ${chartType}`, operationName);
+            return { success: false, error: `Unsupported chart type: ${chartType}`};
           }
-          // Placeholder for 'all' prompt - this would need to be designed
-          // For this example, we'll assume an 'all' type prompt returns data matching AllAIChartData structure.
           prompt = `Analyze the following transcription and provide data for topics, sentiment, and word frequency charts. Transcription: "${transcription}". Respond in JSON format with keys "topics", "sentiment", "wordFrequency", each containing respective data.`;
           break;
       }
 
-      const result = await model.generateContent(prompt);
-      const response = await result.response;
-      // Type assertion based on chartType
-      const parsedData = JSON.parse(response.text());
-      const chartData = (chartType === 'all' ? parsedData : parsedData) as AllAIChartData | AIChartDataPayload;
+    const aiResponse = await this._executePrompt(prompt, operationName);
 
+    if (!aiResponse.success || !aiResponse.data) {
+      return { success: false, error: aiResponse.error || 'Failed to get data from AI for charts.' };
+    }
 
-      return {
-        success: true,
-        data: chartData
-      };
-    } catch (error: any) {
-      ErrorHandler.logError(`Chart data generation failed for type: ${chartType}`, error);
+    try {
+      const parsedData = JSON.parse(aiResponse.data);
+      // Type assertion can be tricky here. Assuming 'all' returns AllAIChartData, and specific types return AIChartDataPayload.
+      const chartData = (chartType === CHART_TYPES.ALL ? parsedData : parsedData) as AllAIChartData | AIChartDataPayload; // Use constant
+      return { success: true, data: chartData };
+    } catch (parseError: any) {
+      ErrorHandler.logError(`Failed to parse JSON response for ${operationName}`, parseError);
       return {
         success: false,
         error: `Failed to generate chart data: ${error?.message || 'Unknown error'}`
@@ -234,7 +227,7 @@ Transcription: "${transcription}"`;
     
     try {
       this.apiKey = apiKey.trim();
-      localStorage.setItem('geminiApiKey', this.apiKey);
+      localStorage.setItem(STORAGE_KEYS.API_KEY, this.apiKey); // Use constant
       this.genAI = new GoogleGenAI(this.apiKey as any);
       console.log('🔑 API key set and service initialized successfully');
     } catch (error: any) {

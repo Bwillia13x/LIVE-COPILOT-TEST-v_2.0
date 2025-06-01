@@ -139,7 +139,63 @@ export const API_CONFIG = {
     POLISH: '/api/polish',
     CHARTS: '/api/charts',
     ANALYSIS: '/api/analysis',
-  }
+  },
+  // Default model for Gemini
+  DEFAULT_MODEL_NAME: 'gemini-2.5-flash-preview-04-17',
+} as const;
+
+// Storage Keys
+export const STORAGE_KEYS = {
+  API_KEY: 'geminiApiKey',
+  THEME: 'voice-notes-theme',
+  NOTES_DATA: 'voiceNotesData', // For DataProcessor
+} as const;
+
+// UI Identifiers and Selectors (add more as needed)
+export const UI_IDS = {
+  // Tabs & Content Panes
+  TAB_RAW: 'raw',
+  TAB_NOTE: 'note', // Corresponds to 'polishedNote' content
+  CONTENT_PANE_RAW: 'rawTranscription',
+  CONTENT_PANE_POLISHED: 'polishedNote',
+  // Charting
+  CHART_DISPLAY_AREA: 'aiChartDisplayArea',
+  // Other common element IDs can be added if necessary
+  SETTINGS_MODAL: 'settingsModal',
+  API_KEY_INPUT: 'apiKeyInput',
+  // Add other frequently used DOM IDs
+} as const;
+
+// Audio Recorder Settings
+export const AUDIO_RECORDER_CONFIG = {
+  LANG: 'en-US',
+  MIME_TYPE: 'audio/webm;codecs=opus',
+  TIMESLICE_INTERVAL: 1000, // Interval for mediaRecorder.ondataavailable
+  RECOGNITION_RESTART_DELAY: 100, // ms, delay before restarting speech recognition onend
+  DURATION_UPDATE_INTERVAL: 100, // ms, interval for updating recording duration display
+} as const;
+
+// ChartManager Specific Values (can be merged with APP_CONFIG.CHART or kept separate for clarity)
+export const CHART_DEFAULTS = {
+  SENTIMENT_CHART_COLORS: ['#4CAF50', '#FFC107', '#F44336'],
+  SENTIMENT_CHART_BORDER_COLORS: ['#388E3C', '#F57C00', '#D32F2F'], // Example, consider if COLORS.chartBorders is sufficient
+  SENTIMENT_CHART_CUTOUT: '50%',
+  DEFAULT_FONT_SIZE: 16,
+  DEFAULT_FONT_STYLE: 'bold', // Assuming 'bold' is common, could be more granular
+} as const;
+
+// Utility-specific constants
+export const UTIL_CONFIG = {
+  LOGGER_MAX_HISTORY: 1000, // Max log entries for LoggerService history
+  NETWORK_ERROR_PATTERNS: ['network', 'timeout', 'fetch', 'connection', 'cors', 'offline'],
+} as const;
+
+// Chart related constants
+export const CHART_TYPES = {
+  TOPICS: 'topics',
+  SENTIMENT: 'sentiment',
+  WORD_FREQUENCY: 'wordFrequency',
+  ALL: 'all', // Represents a request for all chart types
 } as const;
 
 // Error messages

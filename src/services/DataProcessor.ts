@@ -5,9 +5,10 @@
 
 import { Note, StoredNote } from '../types/index.js';
 import { ErrorHandler } from '../utils.js';
+import { STORAGE_KEYS } from '../constants.js'; // Import STORAGE_KEYS
 
 export class DataProcessor {
-  private static readonly STORAGE_KEY = 'voiceNotesData';
+  // private static readonly STORAGE_KEY = 'voiceNotesData'; // Replaced by constant
 
   public static saveNote(note: Note): void {
     try {
@@ -26,7 +27,7 @@ export class DataProcessor {
         notes.push(storedNote);
       }
 
-      localStorage.setItem(this.STORAGE_KEY, JSON.stringify(notes));
+      localStorage.setItem(STORAGE_KEYS.NOTES_DATA, JSON.stringify(notes)); // Use constant
     } catch (error) {
       ErrorHandler.logError('Failed to save note', error);
     }
@@ -34,7 +35,7 @@ export class DataProcessor {
 
   public static getAllNotes(): StoredNote[] {
     try {
-      const stored = localStorage.getItem(this.STORAGE_KEY);
+      const stored = localStorage.getItem(STORAGE_KEYS.NOTES_DATA); // Use constant
       return stored ? JSON.parse(stored) : [];
     } catch (error) {
       ErrorHandler.logError('Failed to load notes', error);
@@ -48,7 +49,7 @@ export class DataProcessor {
       const filteredNotes = notes.filter(note => note.id !== noteId);
       
       if (filteredNotes.length !== notes.length) {
-        localStorage.setItem(this.STORAGE_KEY, JSON.stringify(filteredNotes));
+        localStorage.setItem(STORAGE_KEYS.NOTES_DATA, JSON.stringify(filteredNotes)); // Use constant
         return true;
       }
       
@@ -61,7 +62,7 @@ export class DataProcessor {
 
   public static clearAllNotes(): void {
     try {
-      localStorage.removeItem(this.STORAGE_KEY);
+      localStorage.removeItem(STORAGE_KEYS.NOTES_DATA); // Use constant
     } catch (error) {
       ErrorHandler.logError('Failed to clear notes', error);
     }

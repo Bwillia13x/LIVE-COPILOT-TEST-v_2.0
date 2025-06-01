@@ -3,8 +3,8 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import { APP_CONFIG, LOG_LEVELS, ENV, type LogLevel } from './constants.js';
-import { ToastOptions } from '../types/index.js'; // Import ToastOptions
+import { APP_CONFIG, LOG_LEVELS, ENV, type LogLevel, UTIL_CONFIG } from './constants.js'; // Import UTIL_CONFIG
+import { ToastOptions } from '../types/index.js';
 
 /**
  * Centralized logging service with different levels and environment-aware output
@@ -13,7 +13,7 @@ export class LoggerService {
   private static instance: LoggerService;
   private currentLevel: LogLevel = ENV.IS_DEVELOPMENT ? LOG_LEVELS.DEBUG : LOG_LEVELS.WARN;
   private logHistory: Array<{timestamp: number, level: LogLevel, message: string, data?: any}> = [];
-  private readonly maxHistorySize = 1000;
+  private readonly maxHistorySize = UTIL_CONFIG.LOGGER_MAX_HISTORY; // Use constant
 
   private constructor() {}
 
@@ -310,17 +310,9 @@ export class ErrorHandler {
   }
 
   public isNetworkError(error: Error): boolean {
-    const networkErrorPatterns = [
-      'network',
-      'timeout',
-      'fetch',
-      'connection',
-      'cors',
-      'offline'
-    ];
-    
+    // Use constant for network error patterns
     const message = error.message.toLowerCase();
-    return networkErrorPatterns.some(pattern => message.includes(pattern));
+    return UTIL_CONFIG.NETWORK_ERROR_PATTERNS.some(pattern => message.includes(pattern));
   }
 
   public getRetryCount(operationName: string): number {
@@ -424,5 +416,5 @@ export function showToast(options: ToastOptions): void {
 
   setTimeout(() => {
     toast.remove();
-  }, options.duration || 5000);
+  }, options.duration || APP_CONFIG.TIMING.TOAST_DURATION); // Verify/ensure using constant
 }

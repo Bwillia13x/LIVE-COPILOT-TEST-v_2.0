@@ -95,9 +95,6 @@ export class APIService {
       if (this.initializationError) {
         throw new Error(this.initializationError);
       }
-      if (this.initializationError) {
-        throw new Error(this.initializationError);
-      }
       if (!this.genAI) {
         throw new Error(ERROR_MESSAGES.API.API_KEY_MISSING);
       }
@@ -155,7 +152,9 @@ Please provide only the improved text without any additional comments or explana
 
       const result = await model.generateContent(prompt);
       const response = await result.response;
-      const chartData = JSON.parse(response.text());
+      const responseText = response.text();
+      const cleanedResponseText = responseText.replace(/^```json\s*|```\s*$/g, '').trim();
+      const chartData = JSON.parse(cleanedResponseText);
 
       return {
         success: true,

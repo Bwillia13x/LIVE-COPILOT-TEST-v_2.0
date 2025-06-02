@@ -635,6 +635,9 @@ export class AudioTranscriptionApp {
 
     } else {
       if (!isFinalRun) this.showToast({ type: 'error', title: 'Live Polishing Failed', message: polishResponse.error || 'Could not polish segment.' });
+      this.state.isProcessingPeriodic = false;
+      if (!isFinalRun) this.updateUI(); // Reset UI if not final run, as final run will be handled by overall isProcessing
+      return; // Exit if polishing failed
     }
     
     this.lastProcessedBufferLength = currentBuffer.length;

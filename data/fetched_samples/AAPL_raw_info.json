@@ -1,0 +1,14 @@
+{
+    "symbol": "AAPL",
+    "currentPrice": 150.00,
+    "beta": 1.25,
+    "sharesOutstanding": 16000000000,
+    "marketCap": 2400000000000,
+    "fiftyTwoWeekHigh": 200.0,
+    "fiftyTwoWeekLow": 100.0,
+    "currency": "USD",
+    "longName": "Template Inc.",
+    "sector": "Technology",
+    "regularMarketPrice": 150.00,
+    "previousClose": 148.00
+} 

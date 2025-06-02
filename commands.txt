@@ -1,0 +1,93 @@
+python generate_sample_data.py
+
+Naming:
+AAPL IS.csv | AAPL_raw_is.csv |
+| AAPL BS.csv | AAPL_raw_bs.csv |
+| AAPL CF.csv | AAPL_raw_cf.csv |
+| AAPL RAW INFO.json | AAPL_raw_info.json |
+
+([TICKER]_raw_is.csv)
+
+Here’s a refined, step-by-step guide for running the Bruce Greenwald EPV Valuation Model on any sample data in the future:
+
+---
+
+## 1. Prepare Your Sample Data
+
+Place your sample files in the following directory:
+```
+data/fetched_samples/
+```
+You need these four files for each ticker (replace `TICKER` with your symbol, e.g., `AAPL`):
+- `TICKER_raw_is.csv`    # Income Statement
+- `TICKER_raw_bs.csv`    # Balance Sheet
+- `TICKER_raw_cf.csv`    # Cash Flow Statement
+- `TICKER_raw_info.json`  # Company Info
+
+---
+
+## 2. Open a Terminal and Navigate to the Project Root
+
+```sh
+cd "/Users/benjaminwilliams/Bruce Greenwald EPV Valuation Model"
+```
+
+---
+
+## 3. Run the Model Using Your Sample Data
+
+Use the following command, replacing `TICKER` with your desired symbol (e.g., `AAPL`):
+
+```sh
+python3 -m epv_valuation_model.main --use-sample-data TICKER
+```
+
+**Example for AAPL:**
+```sh
+python3 -m epv_valuation_model.main --use-sample-data AAPL
+```
+
+---
+
+## 4. (Optional) View Help/Usage
+
+To see all available command-line options:
+
+```sh
+python3 -m epv_valuation_model.main --help
+```
+
+---
+
+## 5. Interpreting Output
+
+- The script will print a detailed valuation summary, including:
+  - Normalized EBIT
+  - Maintenance Capex
+  - NOPAT
+  - WACC
+  - EPV (Operations & Equity)
+  - Asset Value (Equity Proxy)
+  - Margin of Safety
+  - Recommendation (Buy/Hold/Sell)
+- All calculations are based on your sample data files.
+
+---
+
+## 6. Troubleshooting
+
+- **ImportError: attempted relative import with no known parent package**  
+  Always use the `-m` flag as shown above to run the script as a module.
+- **File Not Found**  
+  Ensure your sample files are named and placed exactly as described in step 1.
+
+---
+
+## 7. Updating or Adding New Tickers
+
+- Simply add new sets of files (e.g., `MSFT_raw_is.csv`, etc.) to `data/fetched_samples/`.
+- Run the model with the new ticker symbol as shown in step 3.
+
+---
+
+Let me know if you want a script to automate any of these steps or if you need help with data formatting!

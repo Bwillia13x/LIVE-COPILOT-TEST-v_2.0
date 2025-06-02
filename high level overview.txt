@@ -1,0 +1,164 @@
+Okay, this is an exciting project! Building a Bruce Greenwald EPV (Earnings Power Value) valuation model that automates data fetching, incorporates live pricing, and includes risk analysis is a sophisticated endeavor. Here's a high-level scaffolded blueprint that a Cursor agent can use to understand the project scope and structure.
+
+## Project: Automated Bruce Greenwald EPV Valuation Model
+
+**Project Goal:** To develop an automated valuation model based on Bruce Greenwald's Earnings Power Value (EPV) methodology. The model will take a stock ticker as input, pull historical financial data, incorporate live market prices, generate buy/sell/hold recommendations, produce graphical outputs for analysis, and include risk assessment tools like sensitivity and Monte Carlo analyses.
+
+**Core EPV Philosophy:** The EPV approach values a company based on its current sustainable earnings power, assuming no growth. It distinguishes this from the value of its assets and any potential (and often uncertain) growth.
+
+---
+
+**I. Blueprint & Core Modules**
+
+1.  **Input Module:**
+    * **Functionality:** Accept a stock ticker symbol (e.g., "AAPL", "MSFT") as user input.
+    * **Considerations:** Validate ticker symbol.
+
+2.  **Data Acquisition Module:**
+    * **Functionality:** Automatically fetch required financial data.
+        * **Historical Financial Data:**
+            * Income Statements (past 7-10 years for normalization): Revenue, EBIT (Operating Income), Depreciation & Amortization, Interest Expense, Taxes, Non-recurring items.
+            * Balance Sheets (past 7-10 years): Gross Property, Plant & Equipment (PPE), Total Assets, Cash & Cash Equivalents, Marketable Securities, Total Debt (short-term and long-term), Preferred Stock, Minority Interest.
+            * Cash Flow Statements (past 7-10 years): Capital Expenditures (Capex).
+        * **Live Market Data:**
+            * Current stock price.
+            * Number of outstanding shares (for market cap).
+            * Beta (for WACC calculation).
+        * **Other Data:**
+            * Risk-free rate (e.g., 10-year Treasury yield).
+            * Equity market risk premium.
+    * **Potential Data Sources/APIs (examples):**
+        * Yahoo Finance (yfinance library)
+        * Alpha Vantage API
+        * IEX Cloud API
+        * Polygon.io API
+        * SEC EDGAR database (for direct filings, more complex to parse)
+        * Financial Modeling Prep API
+    * **Considerations:** API key management, data cleaning and standardization, handling missing data, rate limits.
+
+3.  **Data Processing & Normalization Module:**
+    * **Functionality:** Process raw data for EPV calculations.
+        * **Average Key Metrics:** Calculate multi-year averages (e.g., 5-7 or 7-10 years) for EBIT margins, tax rates, PPE/Sales ratio.
+        * **Identify & Adjust for Non-Recurring Items:** Crucial for normalizing earnings. This might require some heuristic rules or flagging for manual review.
+        * **Sustainable Revenue:** Typically current year's revenue, but consider if adjustments are needed.
+
+4.  **EPV Calculation Engine:**
+    * **A. Asset Value (Reproduction Cost) Calculation:**
+        * **Adjusted Book Value of Assets:** Modify book values of assets to better reflect their reproduction cost. This is complex; Greenwald suggests detailed adjustments (e.g., for inventory, PP&E).
+        * **Net Asset Value (NAV) / Reproduction Cost (RC) of Equity:** Adjusted Assets - Adjusted Liabilities (focus on debt, preferreds).
+    * **B. Earnings Power Value (EPV) Calculation:**
+        * **1. Normalized EBIT:**
+            * Calculate average operating margin (EBIT/Sales) over a business cycle (e.g., 7-10 years).
+            * Normalized EBIT = Average Operating Margin * Current Sustainable Sales.
+            * Adjust for any non-recurring items that weren't smoothed out by averaging.
+            * Greenwald also discusses adjusting for expenses that are for growth (e.g., a portion of SG&A or R&D) to get a true "no-growth" EBIT. This is a nuanced step.
+        * **2. Normalized Tax Rate:**
+            * Average effective tax rate over several years, or use a statutory/country-specific rate if more appropriate.
+        * **3. Normalized NOPAT (Net Operating Profit After Tax):**
+            * NOPAT = Normalized EBIT * (1 - Normalized Tax Rate).
+        * **4. Maintenance Capital Expenditures (Maintenance Capex):**
+            * **Greenwald's Method:**
+                * i. Calculate average Gross PPE / Sales ratio over 5-7 years.
+                * ii. Growth Capex = (Average Gross PPE / Sales) * (Increase in Sales in the current year).
+                * iii. Maintenance Capex = Total Capex (from Cash Flow Statement) - Growth Capex.
+                * *Note:* If sales decreased, Growth Capex can be zero or negative, implying all Capex was for maintenance or even divestment. Average Maintenance Capex over a few years if results are volatile.
+            * **Alternative/Check:** Depreciation can be a rough proxy, but Greenwald's method is preferred for EPV.
+        * **5. Distributable Earnings / Owner Earnings (Proxy for EPV):**
+            * Greenwald often simplifies EPV by directly capitalizing normalized NOPAT, assuming that over the long term, maintenance capex will approximate true economic depreciation.
+            * Adjusted Earnings for EPV = Normalized NOPAT (as maintenance of capital is implicitly assumed to be covered by D&A in a steady state, or NOPAT is before deducting any capex but after D&A). The formula `EPV = NOPAT / WACC` is common.
+        * **6. Weighted Average Cost of Capital (WACC):**
+            * Cost of Equity (Ke): CAPM model (Ke = Risk-Free Rate + Beta * Equity Market Risk Premium).
+            * Cost of Debt (Kd): Interest Expense / Total Debt (after tax: Kd * (1-Tax Rate)).
+            * WACC = (E / (E+D)) * Ke + (D / (E+D)) * Kd * (1-Tax Rate)
+                * Where E = Market Value of Equity, D = Market Value of Debt (or Book Value if market not available).
+        * **7. EPV of Operations:**
+            * EPV (Operations) = Normalized NOPAT / WACC
+        * **8. EPV of Equity:**
+            * EPV (Equity) = EPV (Operations) + Cash & Marketable Securities (Excess Cash not needed for operations) - Market Value of Total Debt - Value of Preferred Stock - Value of Minority Interest.
+
+5.  **Valuation Summary & Recommendation Module:**
+    * **Functionality:** Compare calculated values and generate insights.
+        * **Compare EPV (Equity) to Current Market Capitalization.**
+        * **Compare EPV (Operations) to Asset Value (Reproduction Cost of Operations).**
+            * If EPV > Asset Value: Suggests a potential competitive advantage (moat).
+            * If EPV < Asset Value: Suggests earnings don't even cover the reproduction cost of assets; potential value trap or eroding business unless assets can be redeployed.
+        * **Margin of Safety:** Calculate based on discount of market price to EPV.
+        * **Buy/Sell/Hold Recommendation Logic:**
+            * **Buy:** Market Cap significantly below EPV (Equity) (e.g., >30-50% discount), and ideally EPV > Asset Value.
+            * **Sell:** Market Cap significantly above EPV (Equity).
+            * **Hold:** Market Cap near EPV (Equity) or other mixed signals.
+            * *Consideration:* Define thresholds for "significant."
+
+6.  **Graphical Output Module:**
+    * **Functionality:** Visualize key data and results.
+        * Historical trends: Revenue, EBIT, NOPAT, Margins.
+        * Maintenance Capex vs. Total Capex vs. D&A.
+        * EPV (Equity) vs. Market Cap over time (if historical EPV calculations are stored).
+        * Bar chart: Asset Value vs. EPV (Operations) vs. Market Value of Operations.
+        * Sensitivity analysis charts (see below).
+    * **Libraries:** Matplotlib, Seaborn, Plotly (for interactive charts).
+
+7.  **Risk Analysis Module:**
+    * **A. Sensitivity Analysis:**
+        * **Functionality:** Analyze how EPV changes based on changes in key assumptions.
+        * **Key Variables to Test:** WACC, Normalized Operating Margin, Sustainable Sales Growth (even though EPV is no-growth, can test sensitivity of inputs to NOPAT), Tax Rate, Maintenance Capex assumptions.
+        * **Output:** Tornado diagrams, sensitivity tables.
+    * **B. Monte Carlo Simulation:**
+        * **Functionality:** Assign probability distributions to key uncertain inputs (e.g., operating margin, WACC components like beta or market risk premium). Run thousands of simulations to generate a distribution of EPV outcomes.
+        * **Output:** Histogram of EPV outcomes, probability of EPV being above/below market price, percentile values (e.g., 10th, 50th, 90th percentile EPV).
+    * **C. Scenario Analysis:**
+        * **Functionality:** Define specific scenarios (e.g., "Recession," "Strong Economy," "Increased Competition") with corresponding adjustments to key inputs. Calculate EPV under each scenario.
+
+**II. Technology Stack (Suggestions for Cursor IDE & Python)**
+
+* **Programming Language:** Python
+* **Core Data Manipulation:** Pandas, NumPy
+* **Financial Data APIs:** `yfinance`, `alpha_vantage`, `requests` (for custom API calls)
+* **Statistical Analysis & Monte Carlo:** SciPy, NumPy (for random number generation), `statsmodels`
+* **Plotting/Visualization:** Matplotlib, Seaborn, Plotly
+* **Potential Framework/Orchestration (if it grows complex):** Could remain as scripts, or use a simple task runner.
+
+**III. Development Phases (High-Level)**
+
+1.  **Phase 1: Core EPV Calculation (Single Stock, Manual/Semi-Auto Data):**
+    * Focus on implementing the core EPV logic (Normalized Earnings, Maintenance Capex, WACC, EPV of Operations, EPV of Equity) using data manually inputted or from CSVs for one test company.
+    * Build out the `EPV Calculation Engine`.
+
+2.  **Phase 2: Automated Data Acquisition & Processing:**
+    * Integrate APIs to fetch historical financial data and live market data.
+    * Develop the `Data Acquisition Module` and `Data Processing & Normalization Module`.
+    * Handle data cleaning and edge cases.
+
+3.  **Phase 3: Valuation Summary & Basic Recommendation Logic:**
+    * Implement the comparison of EPV to market price and asset value.
+    * Develop initial buy/sell/hold logic within the `Valuation Summary & Recommendation Module`.
+
+4.  **Phase 4: Graphical Outputs:**
+    * Add functions to generate key charts and visualizations using the `Graphical Output Module`.
+
+5.  **Phase 5: Risk Analysis Implementation:**
+    * Build the `Risk Analysis Module`, incorporating Sensitivity Analysis first, then Monte Carlo simulation and Scenario Analysis.
+
+6.  **Phase 6: Refinement, Testing & UI Considerations:**
+    * Thoroughly test with multiple diverse companies.
+    * Refine assumptions, recommendation logic, and outputs.
+    * Consider how the user will interact (command-line interface initially, potential for a simple web UI later if desired).
+    * Implement robust error handling and logging.
+
+**IV. Key Greenwald Nuances to Emphasize:**
+
+* **Focus on Earnings Power, Not Growth:** The model's primary output is the value if current earnings are sustainable indefinitely with no growth.
+* **Asset Value as a Floor/Reference:** The reproduction cost of assets is a critical second valuation. A healthy company should have EPV > Asset Value.
+* **Maintenance Capex:** The specific Greenwald method for calculation is key.
+* **Normalization:** Averaging over a full business cycle is crucial.
+* **Conservatism:** Value investing principles often favor conservative assumptions.
+
+**V. For Cursor Agent Review:**
+
+* **Clarity of Modules:** Are the distinct functional blocks well-defined?
+* **Data Flow:** Is the flow of data from acquisition to final valuation clear?
+* **EPV Logic:** Does the blueprint accurately capture the key steps of Greenwald's EPV?
+* **Completeness:** Are all requested features (graphics, risk analysis) covered at a high level?
+* **Feasibility:** Does the proposed approach seem achievable with the suggested tools?
+
+This blueprint should provide a solid foundation for developing the Greenwald EPV model. Each module and sub-point will require detailed implementation, but this outlines the overall architecture and key considerations. Good luck!

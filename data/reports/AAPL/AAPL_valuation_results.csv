@@ -1,0 +1,2 @@
+ticker,epv_equity,market_cap,current_price,margin_of_safety_epv,wacc,nopat,epv_operations,asset_value_equity,ai_company_summary,currency,normalized_ebit,avg_op_margin,maint_capex,risk_free_rate,equity_risk_premium
+AAPL,789290259049.3394,2400000000000,150.0,-2.040706473294983,0.10712514298195584,83481580425.10588,779290259049.3394,80000000000,[AI Error: No business summary provided.],USD,105539494002.7293,0.27773551053349815,5563382516.74939,0.04,0.055

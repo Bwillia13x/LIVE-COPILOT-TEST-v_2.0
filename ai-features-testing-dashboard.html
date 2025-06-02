@@ -229,16 +229,20 @@
                 <div class="test-header">
                     <div class="test-icon">🔗</div>
                     <div class="test-title">
-                        <h3>API Connectivity</h3>
-                        <p>Test Gemini AI API connection and authentication</p>
+                        <h3>Gemini API Status & App Health</h3>
+                        <p>Test Gemini API key status, connection, and general app health.</p>
+                        <p style="font-size: 0.8em; margin-top: 5px;">
+                            <strong>Instructions:</strong> Ensure the main Voice Notes Pro application is loaded.
+                            Manually test by: 1. Having no API key in app settings. 2. Using an invalid/incorrect API key. 3. Using a valid key.
+                        </p>
                     </div>
                 </div>
                 <div class="test-controls">
-                    <button class="btn btn-primary" onclick="testAPIConnectivity()">Test Connection</button>
-                    <button class="btn btn-secondary" onclick="testAPIKey()">Validate API Key</button>
+                    <button class="btn btn-primary" onclick="testAppHealth()">Test App Health Endpoint</button>
+                    <button class="btn btn-secondary" onclick="checkGeminiAPIStatus()">Check Gemini API Status</button>
                 </div>
                 <div class="test-results" id="apiConnectivityResults">
-                    <span class="status-indicator status-info"></span>Ready to test API connectivity...
+                    <span class="status-indicator status-info"></span>Ready to test API status...
                 </div>
             </div>
 
@@ -403,33 +407,71 @@
             }
         }
 
-        // API Connectivity Tests
-        async function testAPIConnectivity() {
-            log('Testing API connectivity...');
+        // API Connectivity / App Health / Gemini Status Tests
+        async function testAppHealth() {
+            log('Testing App Health Endpoint...');
+            updateTestResult('apiConnectivity', null, '🔄 Testing App Health Endpoint...');
             try {
-                // Test main app API connection
-                const response = await fetch('https://voice-notes-pro-v2.netlify.app/api/health');
+                const response = await fetch('https://voice-notes-pro-v2.netlify.app/api/health'); // Assuming this is the correct health endpoint
+                if (!response.ok) {
+                    throw new Error(`Health check failed with status: ${response.status}`);
+                }
                 const healthData = await response.json();
                 
                 if (healthData.status === 'healthy') {
                     updateTestResult('apiConnectivity', true, 
-                        `✅ API Health: ${healthData.status} | Version: ${healthData.version} | Memory: ${healthData.memory.used}`);
+                        `✅ App Health OK: ${healthData.status} | Version: ${healthData.version}`);
                 } else {
-                    updateTestResult('apiConnectivity', false, '❌ API health check failed');
+                    updateTestResult('apiConnectivity', false, `⚠️ App Health Warning: ${healthData.status || 'Unknown status'}`);
                 }
             } catch (error) {
-                updateTestResult('apiConnectivity', false, `❌ API connection failed: ${error.message}`);
+                updateTestResult('apiConnectivity', false, `❌ App Health Check Error: ${error.message}`);
             }
         }
 
-        async function testAPIKey() {
-            log('Testing API key validation...');
+        async function checkGeminiAPIStatus() {
+            log('Checking Gemini API Status via app.apiService...');
+            updateTestResult('apiConnectivity', null, '🔄 Checking Gemini API Status...');
+
+            if (typeof window.audioApp === 'undefined' || typeof window.audioApp.apiService === 'undefined') {
+                const msg = '❌ Main app (window.audioApp.apiService) not found. Ensure it is loaded in the same context.';
+                updateTestResult('apiConnectivity', false, msg);
+                log(msg, 'error');
+                return;
+            }
+
             try {
-                // This would need to be implemented in the main app
-                // For now, we'll check if the API key environment is set up
-                updateTestResult('apiConnectivity', true, '✅ API key configuration appears valid (production environment)');
+                const apiService = window.audioApp.apiService;
+                const result = await apiService.testConnection();
+
+                if (result.success) {
+                    updateTestResult('apiConnectivity', true, '✅ Gemini API Key is VALID and Connection Successful.');
+                } else {
+                    let specificMessage = '❌ Gemini API Connection Failed.';
+                    if (apiService.initializationError) {
+                        // Prioritize initializationError for more specific feedback
+                        specificMessage = `❌ API Initialization Error: ${apiService.initializationError}`;
+                        if (apiService.initializationError.toLowerCase().includes("missing")) {
+                             specificMessage = `⚠️ Gemini API Key is MISSING. Configure it in app settings. Error: ${apiService.initializationError}`;
+                        } else if (apiService.initializationError.toLowerCase().includes("invalid api key")) {
+                            specificMessage = `❌ Gemini API Key is INVALID. Error: ${apiService.initializationError}`;
+                        }
+                    } else if (result.error) {
+                        // Fallback to testConnection error if no specific initializationError
+                        if (result.error.toLowerCase().includes("missing")) {
+                            specificMessage = `⚠️ Gemini API Key is MISSING. Error: ${result.error}`;
+                        } else if (result.error.toLowerCase().includes("invalid api key") || result.error.toLowerCase().includes("failed to initialize ai service")) {
+                            specificMessage = `❌ Gemini API Key is INVALID or Service Initialization Failed. Error: ${result.error}`;
+                        } else {
+                            specificMessage = `❌ Gemini API Connection Failed for other reasons: ${result.error}`;
+                        }
+                    }
+                    updateTestResult('apiConnectivity', false, specificMessage);
+                }
             } catch (error) {
-                updateTestResult('apiConnectivity', false, `❌ API key validation failed: ${error.message}`);
+                const errorMsg = `❌ Error checking Gemini API status: ${error.message || String(error)}. Is the main app running correctly?`;
+                updateTestResult('apiConnectivity', false, errorMsg);
+                log(errorMsg, 'error');
             }
         }
 

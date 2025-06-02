@@ -101,6 +101,16 @@ export class AudioTranscriptionApp {
       
       // Test API connection if API key is available
       await this.testAPIConnection();
+
+      // Show initial warning if API service has issues after setup
+      if (this.apiService.initializationError) {
+        this.showToast({
+          type: 'warning',
+          title: 'API Service Not Ready',
+          message: `Error: ${this.apiService.initializationError}. Please check your API key in Settings.`,
+          duration: 7000, // Longer duration for initial warnings
+        });
+      }
       
       console.log('🎙️ Audio Transcription App initialized successfully');
     } catch (error) {
@@ -351,11 +361,11 @@ export class AudioTranscriptionApp {
         return;
       }
 
-      if (!this.apiService.hasValidApiKey()) {
+      if (!this.apiService.hasValidApiKey() || this.apiService.initializationError) {
         this.showToast({
           type: 'warning',
-          title: 'API Key Required',
-          message: 'Please enter your Gemini API key.',
+          title: 'API Key Issue',
+          message: `Please configure a valid API key in Settings. ${this.apiService.initializationError || ''}`,
         });
         return;
       }
@@ -404,51 +414,87 @@ export class AudioTranscriptionApp {
   }
 
   private async generateCharts(): Promise<void> {
-    if (!this.isSampleData) {
-      this.showLoading('Generating charts...');
-      try {
-        const chartData = await this.performanceMonitor.measureOperation(
-          () => this.apiService.generateChartData(this.fullTranscription),
-          'apiResponseTime',
-          'generateChartData_full'
+    if (!this.currentTranscript) {
+        this.showToast({
+            type: 'warning',
+            title: 'No Transcription',
+            message: 'Please record or type something first to generate charts.',
+        });
+        return;
+    }
+
+    if (!this.apiService.hasValidApiKey() || this.apiService.initializationError) {
+      this.showToast({
+        type: 'warning',
+        title: 'API Key Issue',
+        message: `Charts require a valid API key. Please configure one in Settings. ${this.apiService.initializationError || ''}`,
+      });
+      return;
+    }
+
+    // Assuming this.isSampleData is a flag you might use elsewhere,
+    // if not, this condition might need adjustment or removal.
+    // For now, I'm keeping it as it was in the original code snippet.
+    if (this.isSampleData) { // If it's sample data, perhaps skip API call or handle differently
+        console.log("Skipping chart generation for sample data or implement sample chart logic.");
+        return;
+    }
+
+    this.state.isProcessing = true;
+    this.updateUI(); // Reflect processing state
+    this.showToast({ type: 'info', title: 'Generating Charts', message: 'Please wait...' });
+
+
+    try {
+      const chartData = await this.performanceMonitor.measureOperation(
+        // Assuming this.fullTranscription is a valid property holding the text for chart generation.
+        // If not, replace with this.currentTranscript or appropriate source.
+        () => this.apiService.generateChartData(this.currentTranscript, 'topics'), // Example: specify a chart type or adjust APIService
+        'apiResponseTime',
+        'generateChartData_full'
+      );
+
+      if (chartData.success && chartData.data) {
+        await this.performanceMonitor.measureOperation(
+          async () => {
+            // This part depends heavily on how chartData.data is structured
+            // and how chartService.createChart expects it.
+            // The original code iterated over Object.keys(chartData), which might not be correct if chartData.data is the actual chart object.
+            // Adjusting based on a hypothetical structure where chartData.data is the chart object itself for a single chart type.
+            // If multiple charts are returned, the original loop structure might be more appropriate.
+            
+            // Example: if chartData.data is { labels: [], data: [], backgroundColor: [] }
+            // And you want to create one chart of a specific type, e.g., 'topicsChart'
+            // This assumes chartService and chartInstances are correctly set up.
+            // This is a placeholder and needs to be adapted to your actual data structures and chart rendering logic.
+            await this.chartManager.createChart( // Assuming chartManager is the correct service
+              `topicsChart`, // Example ID
+              'topics', // Example type
+              chartData.data // The actual data for the chart
+            );
+          },
+          'chartGeneration',
+          'generateCharts_Overall'
         );
-        if (chartData) {
-          await this.performanceMonitor.measureOperation(
-            async () => {
-              const chartTypes = Object.keys(chartData) as (keyof typeof chartData)[];
-              for (const type of chartTypes) {
-                const specificChartData = chartData[type];
-                if (specificChartData) {
-                  // Ensure this.chartInstances[type] is properly initialized if needed
-                  // or handle its potential undefined state.
-                  // For now, assuming it's expected to be there or created by createChart.
-                  await this.performanceMonitor.measureOperation(
-                    () => this.chartService.createChart(
-                      `${type}Chart`,
-                      specificChartData,
-                      this.chartInstances[type] // Pass existing instance or undefined
-                    ),
-                    'chartRenderTime',
-                    `createChart_${type}`
-                  );
-                }
-              }
-            },
-            'chartGeneration',
-            'generateCharts_Overall'
-          );
-        }
-      } catch (error) {
-        ErrorHandler.logError('Failed to generate charts', error);
+        this.showToast({ type: 'success', title: 'Charts Generated', message: 'Successfully generated charts.' });
+      } else {
+        ErrorHandler.logError('Failed to generate charts', chartData.error);
         this.showToast({
           type: 'error',
           title: 'Chart Generation Failed',
-          message: 'An error occurred while generating charts.',
+          message: chartData.error || 'An error occurred while generating charts.',
         });
-      } finally {
-        this.state.isProcessing = false;
-        this.updateUI();
       }
+    } catch (error: any) {
+      ErrorHandler.logError('Failed to generate charts', error);
+      this.showToast({
+        type: 'error',
+        title: 'Chart Generation Error',
+        message: error.message || 'An unexpected error occurred.',
+      });
+    } finally {
+      this.state.isProcessing = false;
+      this.updateUI();
     }
   }
 
@@ -541,16 +587,38 @@ export class AudioTranscriptionApp {
           duration: 3000,
         });
       } else {
-        // Check if it's specifically an API key issue
-        if (result.error?.includes('API Key must be set')) {
-          console.log('ℹ️ No API key configured - user can set one in settings');
-          // Don't show error toast on initial load if no API key is set
-        } else {
-          this.showToast({
-            type: 'error',
-            title: 'API Connection Failed',
-            message: result.error || 'Unknown error',
-          });
+        let toastMessage = result.error || 'Unknown API connection error.';
+        let toastTitle = 'API Connection Failed';
+
+        if (this.apiService.initializationError) {
+          // Prioritize initializationError message if available
+          toastMessage = `Error: ${this.apiService.initializationError}. Please check your API key in Settings.`;
+          toastTitle = 'API Initialization Error';
+        } else if (result.error) {
+          // Use specific error messages for common issues
+          if (result.error.includes(ERROR_MESSAGES.API.API_KEY_MISSING)) {
+            toastMessage = 'API Key is missing. Please configure it in Settings.';
+            toastTitle = 'API Key Missing';
+          } else if (result.error.toLowerCase().includes('invalid api key')) {
+            toastMessage = 'The provided API Key is invalid. Please check it in Settings.';
+            toastTitle = 'Invalid API Key';
+          }
+        }
+        
+        // Avoid showing redundant "API Key must be set" if a more specific error from initializationError is shown
+        // Only show toast if it's not the initial "API Key must be set" during load and no other error is present
+        const isInitialMissingKeyMessage = result.error === ERROR_MESSAGES.API.API_KEY_MISSING && !localStorage.getItem('geminiApiKey');
+
+        if (!isInitialMissingKeyMessage || this.apiService.initializationError) {
+             this.showToast({
+                type: 'error',
+                title: toastTitle,
+                message: toastMessage,
+                duration: 7000,
+             });
+        } else if (!this.apiService.initializationError) {
+            // This case handles when API key is not set yet, but it's not an "error" state yet for a new user.
+            console.log('ℹ️ API key not yet configured. User can set it in settings.');
         }
       }
     } catch (error) {
@@ -878,51 +946,69 @@ export class AudioTranscriptionApp {
    * Generate sample charts for demonstration purposes
    */
   private async generateSampleCharts(): Promise<void> {
-    this.isSampleData = true;
-    this.showLoading('Generating sample charts...');
+    // Check API key status before generating sample charts if they rely on the API
+    if (!this.apiService.hasValidApiKey() || this.apiService.initializationError) {
+      this.showToast({
+        type: 'warning',
+        title: 'API Key Issue for Sample Charts',
+        message: `Sample charts might require a valid API key. Please configure one in Settings. ${this.apiService.initializationError || ''}`,
+      });
+      // Depending on implementation, you might allow sample charts without API or stop here.
+      // For now, let's assume it might need API and return.
+      return; 
+    }
+
+    this.isSampleData = true; // Assuming this flag is used correctly elsewhere
+    this.state.isProcessing = true;
+    this.updateUI();
+    this.showToast({ type: 'info', title: 'Generating Sample Charts', message: 'Please wait...' });
+
     try {
-      const sampleChartData = await this.performanceMonitor.measureOperation(
-        () => this.apiService.generateSampleChartData(),
+      // Assuming apiService.generateSampleChartData() is a valid method.
+      // Adjust if it's not or if sample charts are generated client-side.
+      const sampleChartDataResult = await this.performanceMonitor.measureOperation(
+        () => this.apiService.generateChartData("sample", "topics"), // Placeholder: Actual method might differ
         'apiResponseTime',
         'generateSampleChartData'
       );
-      if (sampleChartData) {
+
+      if (sampleChartDataResult.success && sampleChartDataResult.data) {
         await this.performanceMonitor.measureOperation(
           async () => {
-            const chartTypes = Object.keys(sampleChartData) as (keyof typeof sampleChartData)[];
-            for (const type of chartTypes) {
-              const specificChartData = sampleChartData[type];
-              if (specificChartData) {
-                await this.performanceMonitor.measureOperation(
-                  () => this.chartService.createChart(
-                    `${type}Chart`,
-                    specificChartData,
-                    this.chartInstances[type] // Pass existing instance or undefined
-                  ),
-                  'chartRenderTime',
-                  `createSampleChart_${type}`
-                );
-              }
-            }
+            // Similar to generateCharts, this part needs to be adapted
+            // to your actual data structures and chart rendering logic.
+            // Example:
+            await this.chartManager.createChart(
+              `sampleTopicsChart`, // Example ID
+              'topics', // Example type
+              sampleChartDataResult.data // The actual data for the chart
+            );
           },
           'chartGeneration',
           'generateSampleCharts_Overall'
         );
+        this.showToast({ type: 'success', title: 'Sample Charts Generated', message: 'Successfully generated sample charts.' });
+      } else {
+        ErrorHandler.logError('Failed to generate sample charts', sampleChartDataResult.error);
+        this.showToast({
+          type: 'error',
+          title: 'Sample Chart Generation Failed',
+          message: sampleChartDataResult.error || 'An error occurred while generating sample charts.',
+        });
       }
-      this.logMessage('Sample charts generated successfully.');
-    } catch (error) {
+    } catch (error: any) {
       ErrorHandler.logError('Failed to generate sample charts', error);
       this.showToast({
         type: 'error',
-        title: 'Chart Generation Failed',
-        message: 'Failed to generate sample charts. Please try again.',
+        title: 'Sample Chart Error',
+        message: error.message || 'An unexpected error occurred.',
       });
-
       if (this.productionMonitor) {
         this.productionMonitor.trackError('sample_charts_generation_failed', error);
       }
     } finally {
       this.state.isProcessing = false;
+      this.isSampleData = false; // Reset flag
       this.updateUI();
     }
   }

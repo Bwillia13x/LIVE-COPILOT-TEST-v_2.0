@@ -44,11 +44,24 @@ function checkFixesImplemented() {
     
     // Check .env file
     const envExists = fs.existsSync('.env');
-    const envContent = envExists ? fs.readFileSync('.env', 'utf8') : '';
-    const hasApiKey = envContent.includes('VITE_GEMINI_API_KEY=AIzaSyBVTWFzaIlgfb68O8SHfzGP_xcAX5Ll5Yo');
+    let apiKeyExists = false;
+    let apiKeyFormatValid = false;
+
+    if (envExists) {
+        const envContent = fs.readFileSync('.env', 'utf8');
+        const apiKeyMatch = envContent.match(/^VITE_GEMINI_API_KEY=(.*)$/m);
+        if (apiKeyMatch && apiKeyMatch[1]) {
+            apiKeyExists = true;
+            const apiKey = apiKeyMatch[1];
+            if (apiKey.startsWith('AIzaSy') && apiKey.length > 'AIzaSy'.length) {
+                apiKeyFormatValid = true;
+            }
+        }
+    }
     
     console.log(`✅ .env file exists: ${envExists}`);
-    console.log(`✅ API key configured: ${hasApiKey}`);
+    console.log(`✅ VITE_GEMINI_API_KEY exists in .env: ${apiKeyExists}`);
+    console.log(`✅ API key format is valid: ${apiKeyFormatValid}`);
     
     // Check if PerformanceMonitor.ts has getRecentOperations
     const perfMonitorPath = './src/services/PerformanceMonitor.ts';
@@ -80,7 +93,7 @@ function checkFixesImplemented() {
     console.log(`✅ measureOperation calls corrected: ${hasCorrectedCalls}`);
     
     return {
-        envFile: envExists && hasApiKey,
+        envFile: envExists && apiKeyExists && apiKeyFormatValid,
         performanceMonitor: perfMonitorExists && hasGetRecentOperations,
         audioApp: appExists && hasCorrectedCalls
     };

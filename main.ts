@@ -3,8 +3,22 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+import { initializeEnvironment } from './src/config/environment.js';
 import { AudioTranscriptionApp } from './src/components/AudioTranscriptionApp.js';
 import { ErrorHandler } from './src/utils.js';
+
+// Attempt to initialize environment variables first
+try {
+  initializeEnvironment();
+  console.log('🌍 Environment initialized successfully.');
+} catch (error) {
+  ErrorHandler.logError('Critical: Failed to initialize environment', error as Error);
+  // Optionally, display a user-facing message if the app cannot run without environment setup
+  // For now, we just log it. The app initialization later might fail more gracefully or show a message.
+  console.error('Critical: Environment initialization failed. Application may not function correctly.', error);
+  // You might want to prevent further app execution here if the error is catastrophic
+  // For example, by throwing a new error or setting a global failure flag.
+}
 
 // Global app instance for external access
 let app: AudioTranscriptionApp;

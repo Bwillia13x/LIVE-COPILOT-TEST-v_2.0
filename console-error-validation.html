@@ -83,7 +83,7 @@
     <div class="container">
         <h1>🔍 Console Error Validation</h1>
         <p style="text-align: center; margin-bottom: 30px;">
-            Testing if the "An API Key must be set when running in a browser" error has been fixed
+            Validating API Key error handling. This page tests if the application correctly reports issues related to missing, invalid, or uninitialized API keys, and ensures old generic errors are replaced by more specific messages.
         </p>
 
         <div class="test-section">
@@ -136,41 +136,46 @@
             
             // Monitor for errors
             setTimeout(() => {
+                const apiKeyErrorPattern = /(API Key|Invalid API Key|Failed to initialize AI Service|API Service Not Ready|API Initialization Error|gemini)/i;
                 const recentErrors = consoleErrors.filter(error => 
                     Date.parse(error.timestamp) > startTime && 
-                    error.message.includes('API Key must be set')
+                    apiKeyErrorPattern.test(error.message)
                 );
                 
                 if (recentErrors.length === 0) {
-                    log('productionResults', '✅ SUCCESS: No "API Key must be set" errors detected!', 'success');
+                    log('productionResults', '✅ SUCCESS: No specific API key related errors detected!', 'success');
                 } else {
-                    log('productionResults', `❌ FAILED: Found ${recentErrors.length} API key errors`, 'error');
+                    log('productionResults', `❌ FAILED: Found ${recentErrors.length} potential API key or initialization errors.`, 'error');
                     recentErrors.forEach(error => {
-                        log('productionResults', `  - ${error.message}`, 'error');
+                        log('productionResults', `  - DETECTED: ${error.message}`, 'error');
                     });
                 }
-            }, 5000);
+            }, 5000); // Increased timeout for app to load and potentially show errors
         }
 
         function startErrorMonitoring() {
-            log('errorResults', '🎯 Starting console error monitoring...', 'info');
+            log('errorResults', '🎯 Starting console error monitoring for API key issues...', 'info');
             consoleErrors = []; // Clear previous errors
             startTime = Date.now();
+            const apiKeyErrorPattern = /(API Key|Invalid API Key|Failed to initialize AI Service|API Service Not Ready|API Initialization Error|gemini)/i;
             
             errorMonitorInterval = setInterval(() => {
-                const recentErrors = consoleErrors.filter(error => 
-                    Date.parse(error.timestamp) > startTime
-                );
+                const newErrors = consoleErrors.filter(error => Date.parse(error.timestamp) > startTime);
                 
-                if (recentErrors.length > 0) {
-                    recentErrors.forEach(error => {
-                        if (error.message.includes('API Key must be set')) {
-                            log('errorResults', `❌ API KEY ERROR: ${error.message}`, 'error');
+                if (newErrors.length > 0) {
+                    newErrors.forEach(error => {
+                        if (apiKeyErrorPattern.test(error.message)) {
+                            log('errorResults', `❌ API RELATED ERROR: ${error.message}`, 'error');
                         } else {
-                            log('errorResults', `⚠️ OTHER ERROR: ${error.message}`, 'warning');
+                            log('errorResults', `⚠️ OTHER CONSOLE ERROR: ${error.message}`, 'warning');
                         }
                     });
-                    consoleErrors = []; // Clear processed errors
+                    // Clear only processed errors by advancing startTime or by more complex filtering if needed
+                    // For simplicity here, we'll re-filter next time from original consoleErrors or clear them after processing.
+                    // Let's assume consoleErrors can grow and we filter new ones each time.
+                    // To avoid reprocessing, remove them or mark as processed.
+                    // Simplest for now: clear consoleErrors after processing them here.
+                    consoleErrors = consoleErrors.filter(err => !newErrors.includes(err));
                 }
             }, 1000);
         }
@@ -194,42 +199,50 @@
             document.body.appendChild(iframe);
             
             let hasApiError = false;
-            const originalError = console.error;
-            console.error = function(...args) {
-                const message = args.join(' ');
-                if (message.includes('API Key must be set')) {
+            const originalError = console.error; // Save original console.error
+            const apiKeyErrorPattern = /(API Key|Invalid API Key|Failed to initialize AI Service|API Service Not Ready|API Initialization Error|gemini)/i;
+            let detectedApiErrors = [];
+
+            console.error = function(...args) { // Override console.error
+                const message = args.map(arg => typeof arg === 'string' ? arg : JSON.stringify(arg)).join(' ');
+                if (apiKeyErrorPattern.test(message)) {
+                    if (!hasApiError) { // Log general failure only once
+                        log('finalResults', '❌ FAILED: Detected API key related error during app load!', 'error');
+                    }
                     hasApiError = true;
-                    log('finalResults', '❌ FAILED: API Key error still present!', 'error');
+                    detectedApiErrors.push(message);
+                    log('finalResults', `  - Specific Error: ${message}`, 'error');
                 }
-                originalError.apply(console, args);
+                originalError.apply(console, args); // Call original console.error
             };
             
             setTimeout(() => {
-                console.error = originalError;
+                console.error = originalError; // Restore original console.error
                 document.body.removeChild(iframe);
                 
                 if (!hasApiError) {
-                    log('finalResults', '✅ SUCCESS: No API Key initialization errors!', 'success');
-                    log('finalResults', '🎉 FIX CONFIRMED: Console error has been resolved!', 'success');
+                    log('finalResults', '✅ SUCCESS: No specific API Key/Initialization errors detected during load!', 'success');
+                    log('finalResults', '🎉 VALIDATION: API error handling seems improved.', 'success');
                     
                     // Test 2: Verify app still works
-                    log('finalResults', '2️⃣ Verifying app functionality...', 'info');
-                    fetch('https://voice-notes-pro-v2.netlify.app')
+                    log('finalResults', '2️⃣ Verifying app basic accessibility...', 'info');
+                    // This fetch test only checks if the page itself loads, not full functionality.
+                    fetch('https://voice-notes-pro-v2.netlify.app') 
                         .then(response => {
                             if (response.ok) {
-                                log('finalResults', '✅ App is accessible and responding', 'success');
-                                log('finalResults', '🏆 VALIDATION COMPLETE: All tests passed!', 'success');
+                                log('finalResults', '✅ App is accessible (HTTP 200).', 'success');
+                                log('finalResults', '🏆 VALIDATION LIKELY PASSED (for error messages)! Further manual testing advised for functionality.', 'success');
                             } else {
-                                log('finalResults', '⚠️ App accessible but with issues', 'warning');
+                                log('finalResults', `⚠️ App accessible but with HTTP status: ${response.status}`, 'warning');
                             }
                         })
-                        .catch(error => {
-                            log('finalResults', '❌ App accessibility test failed', 'error');
+                        .catch(err => {
+                            log('finalResults', `❌ App accessibility test failed: ${err.message}`, 'error');
                         });
                 } else {
-                    log('finalResults', '❌ VALIDATION FAILED: Error still exists', 'error');
+                    log('finalResults', `❌ VALIDATION FAILED: ${detectedApiErrors.length} specific API related error(s) found. Check logs above.`, 'error');
                 }
-            }, 3000);
+            }, 7000); // Increased timeout for iframe to load and errors to be caught
         }
 
         // Auto-start monitoring on page load

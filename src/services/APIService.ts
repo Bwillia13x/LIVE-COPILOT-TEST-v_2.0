@@ -13,6 +13,7 @@ const MODEL_NAME = 'gemini-2.5-flash-preview-04-17';
 export class APIService {
   private genAI: GoogleGenAI | null = null;
   private apiKey: string | null = null;
+  public initializationError: string | null = null;
 
   constructor() {
     this.initializeAPI();
@@ -26,37 +27,54 @@ export class APIService {
       
       // Only use the key if it's not null, undefined, or empty
       this.apiKey = (storedKey && storedKey.trim()) || (envKey && envKey.trim()) || null;
-      
+      this.initializationError = null; // Reset error state
+
       if (this.apiKey && this.apiKey.length > 10) { // Basic validation for API key format
         try {
           this.genAI = new GoogleGenAI(this.apiKey as any);
           console.log('🔑 API service initialized with API key');
+          this.initializationError = null;
         } catch (genAIError: any) {
           console.log('❌ Failed to initialize GoogleGenAI:', genAIError?.message || 'Unknown error');
           this.genAI = null;
-          this.apiKey = null;
+          // Do not nullify apiKey here, so user can see what key caused the error
+          this.initializationError = "Failed to initialize AI Service: Invalid API Key. Please check your API key.";
         }
       } else {
         console.log('ℹ️ No valid API key available - API service ready for key configuration');
         this.genAI = null;
-        this.apiKey = null;
+        // Do not nullify apiKey here, allow setApiKey to be called.
+        if (!this.apiKey || this.apiKey.trim() === '') {
+            this.initializationError = ERROR_MESSAGES.API.API_KEY_MISSING;
+        } else {
+            // This case might occur if the key is too short but not empty
+            this.initializationError = "API Key is present but appears invalid (e.g., too short).";
+        }
       }
     } catch (error: any) {
       console.log('❌ API initialization failed:', error?.message || 'Unknown error');
       this.genAI = null;
-      this.apiKey = null;
+      this.initializationError = `API initialization failed: ${error?.message || 'Unknown error'}`;
     }
   }
 
   public async testConnection(): Promise<APIResponse<boolean>> {
-    try {
-      if (!this.genAI) {
-        return {
-          success: false,
-          error: ERROR_MESSAGES.API.API_KEY_MISSING
-        };
-      }
+    if (this.initializationError) {
+      return {
+        success: false,
+        error: this.initializationError,
+      };
+    }
 
+    if (!this.genAI) {
+      // This case should ideally be caught by initializationError, but as a fallback:
+      return {
+        success: false,
+        error: ERROR_MESSAGES.API.API_KEY_MISSING,
+      };
+    }
+
+    try {
       const model = (this.genAI as any).getGenerativeModel({ model: MODEL_NAME });
       const result = await model.generateContent('Test connection');
       
@@ -74,6 +92,12 @@ export class APIService {
 
   public async polishTranscription(rawText: string): Promise<APIResponse<string>> {
     try {
+      if (this.initializationError) {
+        throw new Error(this.initializationError);
+      }
+      if (this.initializationError) {
+        throw new Error(this.initializationError);
+      }
       if (!this.genAI) {
         throw new Error(ERROR_MESSAGES.API.API_KEY_MISSING);
       }
@@ -180,24 +204,34 @@ Transcription: "${transcription}"`;
   }
 
   public setApiKey(apiKey: string): void {
-    if (!apiKey || !apiKey.trim() || apiKey.trim().length < 10) {
-      console.log('❌ Invalid API key provided');
+    if (!apiKey || !apiKey.trim()) {
+      console.log('❌ Invalid API key provided: key is empty or whitespace.');
+      this.initializationError = ERROR_MESSAGES.API.API_KEY_MISSING; // Or a more specific message
+      // Do not clear this.apiKey or this.genAI here, allow re-initialization attempt or display issue
       return;
+    }
+    if (apiKey.trim().length < 10) { // Example: Basic length check
+        console.log('❌ Invalid API key provided: key is too short.');
+        this.initializationError = "API Key is too short. Please provide a valid key.";
+        // Do not clear this.apiKey or this.genAI here
+        return;
     }
     
     try {
       this.apiKey = apiKey.trim();
       localStorage.setItem('geminiApiKey', this.apiKey);
-      this.genAI = new GoogleGenAI(this.apiKey as any);
+      this.genAI = new GoogleGenAI(this.apiKey as any); // Attempt to initialize with the new key
+      this.initializationError = null; // Clear any previous initialization errors
       console.log('🔑 API key set and service initialized successfully');
     } catch (error: any) {
-      console.log('❌ Failed to set API key:', error?.message || 'Unknown error');
-      this.apiKey = null;
-      this.genAI = null;
+      console.log('❌ Failed to set API key and initialize GoogleGenAI:', error?.message || 'Unknown error');
+      this.genAI = null; // Nullify genAI as initialization failed
+      // Keep this.apiKey to show the problematic key if needed, or clear it based on security policy
+      this.initializationError = "Failed to initialize AI Service with the new API Key: Invalid API Key.";
     }
   }
 
   public hasValidApiKey(): boolean {
-    return !!this.apiKey && !!this.genAI;
+    return !!this.apiKey && !!this.genAI && this.initializationError === null;
   }
 }

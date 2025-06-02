@@ -11,7 +11,7 @@ import os # For caching
 import json # For caching stock info
 from datetime import datetime, timedelta # For cache expiry
 from typing import Optional, Dict, Any
-from . import config
+from .config_manager import get_config # Changed import
 from .utils import ensure_directory_exists # For creating cache directory
 import numpy as np # For np.nan if needed in mock data
 
@@ -176,11 +176,12 @@ def fetch_financials_with_gemini(ticker: str, statement_type: str) -> pd.DataFra
     Uses Gemini to fetch financial statement data for a given ticker and statement type.
     Returns a DataFrame if successful, or empty DataFrame if not.
     """
-    if not config.GEMINI_API_KEY:
+    app_config = get_config()
+    if not app_config.data_source.gemini_api_key:
         print("[Gemini Fallback] No Gemini API key configured.")
         return pd.DataFrame()
 
-    genai.configure(api_key=config.GEMINI_API_KEY) # Configure once per call, or globally if appropriate
+    genai.configure(api_key=app_config.data_source.gemini_api_key) # Configure once per call, or globally if appropriate
     model_name = "gemini-1.5-flash-latest" # As suggested
 
     prompt_map = {
@@ -195,7 +196,7 @@ def fetch_financials_with_gemini(ticker: str, statement_type: str) -> pd.DataFra
         "Use standard US GAAP line items. Do not include any explanation, only the table."
     )
 
-    print(f"[Gemini Debug] API Key Used: {config.GEMINI_API_KEY[:5] if config.GEMINI_API_KEY else 'None'}...") # Debug print for API key
+    print(f"[Gemini Debug] API Key Used: {app_config.data_source.gemini_api_key[:5] if app_config.data_source.gemini_api_key else 'None'}...") # Debug print for API key
 
     try:
         model_obj = genai.GenerativeModel(model_name)
@@ -245,16 +246,17 @@ def get_historical_financials(ticker_obj, statement_type: str) -> pd.DataFrame:
         # Fallback to original non-caching attempt which then might try Gemini
         return _fetch_historical_financials_live(ticker_obj, statement_type)
 
+    app_config = get_config()
     cache_file_path = None
-    if config.ENABLE_YFINANCE_CACHING:
+    if app_config.data_source.cache_enabled: # Updated from config.ENABLE_YFINANCE_CACHING
         try:
-            ensure_directory_exists(config.YFINANCE_CACHE_DIR)
+            ensure_directory_exists(app_config.data_source.yfinance_cache_dir) # Updated
             cache_file_name = f"{ticker_symbol}_{statement_type}.csv"
-            cache_file_path = os.path.join(config.YFINANCE_CACHE_DIR, cache_file_name)
+            cache_file_path = os.path.join(app_config.data_source.yfinance_cache_dir, cache_file_name) # Updated
 
             if os.path.exists(cache_file_path):
                 file_mod_time = datetime.fromtimestamp(os.path.getmtime(cache_file_path))
-                if datetime.now() - file_mod_time < timedelta(hours=config.YFINANCE_CACHE_EXPIRY_HOURS):
+                if datetime.now() - file_mod_time < timedelta(hours=app_config.data_source.yfinance_cache_expiry_hours): # Updated
                     print(f"[Data Fetcher Cache] Loading '{statement_type}' for {ticker_symbol} from cache.")
                     df = pd.read_csv(cache_file_path, index_col=0)
                     # Ensure columns are integers if they represent years
@@ -268,7 +270,7 @@ def get_historical_financials(ticker_obj, statement_type: str) -> pd.DataFrame:
     # If cache not enabled, not found, expired, or error during read, fetch live
     df = _fetch_historical_financials_live(ticker_obj, statement_type)
 
-    if config.ENABLE_YFINANCE_CACHING and not df.empty and cache_file_path:
+    if app_config.data_source.cache_enabled and not df.empty and cache_file_path: # Updated
         try:
             print(f"[Data Fetcher Cache] Saving '{statement_type}' for {ticker_symbol} to cache: {cache_file_path}")
             df.to_csv(cache_file_path)
@@ -311,11 +313,12 @@ def fetch_stock_info_with_gemini(ticker: str) -> Dict[str, Any]:
     Uses Gemini to fetch basic stock info for a given ticker. Returns a dict with key fields.
     If no markdown table is found, prints the raw response and returns it for debugging.
     """
-    if not config.GEMINI_API_KEY:
+    app_config = get_config()
+    if not app_config.data_source.gemini_api_key:
         print("[Gemini Fallback] No Gemini API key configured for stock info.")
         return {}
 
-    genai.configure(api_key=config.GEMINI_API_KEY)
+    genai.configure(api_key=app_config.data_source.gemini_api_key)
     model_name = "gemini-1.5-flash-latest"
 
     prompt = (
@@ -323,7 +326,7 @@ def fetch_stock_info_with_gemini(ticker: str) -> Dict[str, Any]:
         "Company Name, Sector, Current Price, Market Cap, Beta, Shares Outstanding. "
         "Do not include any explanation, only the table."
     )
-    print(f"[Gemini Debug Stock Info] API Key Used: {config.GEMINI_API_KEY[:5] if config.GEMINI_API_KEY else 'None'}...") # Debug print for API key
+    print(f"[Gemini Debug Stock Info] API Key Used: {app_config.data_source.gemini_api_key[:5] if app_config.data_source.gemini_api_key else 'None'}...") # Debug print for API key
 
     try:
         model_obj = genai.GenerativeModel(model_name)
@@ -362,16 +365,17 @@ def get_stock_info(ticker_obj) -> Dict[str, Any]:
         print("[Data Fetcher Cache] Could not determine ticker symbol for stock_info caching.")
         return _fetch_stock_info_live(ticker_obj) # Fallback to live fetch
 
+    app_config = get_config()
     cache_file_path = None
-    if config.ENABLE_YFINANCE_CACHING:
+    if app_config.data_source.cache_enabled: # Updated
         try:
-            ensure_directory_exists(config.YFINANCE_CACHE_DIR)
+            ensure_directory_exists(app_config.data_source.yfinance_cache_dir) # Updated
             cache_file_name = f"{ticker_symbol}_stock_info.json"
-            cache_file_path = os.path.join(config.YFINANCE_CACHE_DIR, cache_file_name)
+            cache_file_path = os.path.join(app_config.data_source.yfinance_cache_dir, cache_file_name) # Updated
 
             if os.path.exists(cache_file_path):
                 file_mod_time = datetime.fromtimestamp(os.path.getmtime(cache_file_path))
-                if datetime.now() - file_mod_time < timedelta(hours=config.YFINANCE_CACHE_EXPIRY_HOURS):
+                if datetime.now() - file_mod_time < timedelta(hours=app_config.data_source.yfinance_cache_expiry_hours): # Updated
                     print(f"[Data Fetcher Cache] Loading 'stock_info' for {ticker_symbol} from cache.")
                     with open(cache_file_path, 'r') as f:
                         info = json.load(f)
@@ -388,7 +392,7 @@ def get_stock_info(ticker_obj) -> Dict[str, Any]:
     # If cache not enabled, not found, expired, or error, fetch live
     info = _fetch_stock_info_live(ticker_obj)
 
-    if config.ENABLE_YFINANCE_CACHING and info and isinstance(info, dict) and cache_file_path:
+    if app_config.data_source.cache_enabled and info and isinstance(info, dict) and cache_file_path: # Updated
         # Ensure 'raw_response' is not cached if it was from Gemini fallback error.
         # Only cache if we have meaningful data, e.g., 'symbol' or 'longName' is present.
         if 'symbol' in info or 'longName' in info :
@@ -475,9 +479,10 @@ def get_risk_free_rate_proxy(treasury_ticker: str = "^TNX") -> Optional[float]:
     # A more robust way would be to check a global config or environment variable for "MOCK_MODE".
     # However, to avoid modifying main.py or config.py for this quick test:
     global _current_mock_run_ticker # Kludge to signal mock mode
+    app_config = get_config()
     if '_current_mock_run_ticker' in globals() and _current_mock_run_ticker == "MOCK":
-        print(f"Using MOCK risk-free rate: {config.DEFAULT_RISK_FREE_RATE}")
-        return config.DEFAULT_RISK_FREE_RATE
+        print(f"Using MOCK risk-free rate: {app_config.calculation.default_risk_free_rate}") # Updated
+        return app_config.calculation.default_risk_free_rate # Updated
 
     try:
         tnx_ticker = yf.Ticker(treasury_ticker)

@@ -7,81 +7,82 @@ import pandas as pd
 import numpy as np
 from typing import Dict, Any, Optional, List
 
-# Import configurations from config.py
-# If running from project root (e.g. python -m epv_valuation_model.main):
-from . import config
-# If running this file directly for testing and config.py is in the same directory:
-# import config
+# Import configurations from config_manager.py
+from .config_manager import get_config
 
+app_config = get_config()
 
 # --- Mappings for Standardizing Financial Item Names ---
 # Keys are common yfinance names (lowercase, no spaces/slashes for matching).
-# Values are our standard names imported from config.py.
+# Values are our standard names imported from app_config.financial_item_names.
 # This list will likely need to be expanded based on observations.
 INCOME_STATEMENT_MAPPING = {
-    # Common variations of income statement items and their standardized names from config.py
+    # Common variations of income statement items and their standardized names from app_config
     # Revenue
-    "totalrevenue": config.S_REVENUE,
-    "revenue": config.S_REVENUE,
-    "totalrevenues": config.S_REVENUE,
-    "sales": config.S_REVENUE,
-    "operatingrevenues": config.S_REVENUE, # From yfinance
+    "totalrevenue": app_config.financial_item_names.s_revenue,
+    "revenue": app_config.financial_item_names.s_revenue,
+    "totalrevenues": app_config.financial_item_names.s_revenue,
+    "sales": app_config.financial_item_names.s_revenue,
+    "operatingrevenues": app_config.financial_item_names.s_revenue, # From yfinance
 
     # Cost of Revenue / COGS
-    "costofrevenue": config.S_COST_OF_REVENUE,
-    "costofgoodssold": config.S_COST_OF_REVENUE,
-    "cogs": config.S_COST_OF_REVENUE,
+    "costofrevenue": app_config.financial_item_names.s_cost_of_revenue,
+    "costofgoodssold": app_config.financial_item_names.s_cost_of_revenue,
+    "cogs": app_config.financial_item_names.s_cost_of_revenue,
 
     # Gross Profit (Can be calculated if not present, but map if source has it)
-    "grossprofit": "Gross Profit", # Assuming "Gross Profit" is not in config or is generic
-    "operatingincome": config.S_OPERATING_INCOME,
-    "ebit": config.S_EBIT, # Could also map to S_OPERATING_INCOME if they are treated synonymously
-    "interestexpense": config.S_INTEREST_EXPENSE,
-    "pretaxincome": config.S_PRETAX_INCOME, # yfinance often uses "IncomeBeforeTax"
-    "incomebeforetax": config.S_PRETAX_INCOME,
-    "incometaxexpense": config.S_TAX_PROVISION, # yfinance name
-    "taxprovision": config.S_TAX_PROVISION,
-    "netincome": config.S_NET_INCOME,
-    "netincomefromcontinuingops": config.S_NET_INCOME, # Map to Net Income if no separate item
-    # "netincomecontinuingoperations": config.S_NET_INCOME_CONTINUING_OPS, # If specific
-    "researchdevelopment": config.S_RESEARCH_DEVELOPMENT,
-    "sellinggeneraladministrative": config.S_SELLING_GENERAL_ADMIN,
-    "sellinggeneralandadministration": config.S_SELLING_GENERAL_ADMIN, # Common variation
-    "depreciationandamortization": config.S_DEPRECIATION_AMORTIZATION_IS,
-    "depreciation": config.S_DEPRECIATION_AMORTIZATION_IS, # Map to same if only one D&A item in config
+    "grossprofit": "Gross Profit", # Assuming "Gross Profit" is not in app_config or is generic
+    "operatingincome": app_config.financial_item_names.s_operating_income,
+    "ebit": app_config.financial_item_names.s_ebit, # Could also map to s_operating_income if they are treated synonymously
+    "interestexpense": app_config.financial_item_names.s_interest_expense,
+    "pretaxincome": app_config.financial_item_names.s_pretax_income, # yfinance often uses "IncomeBeforeTax"
+    "incomebeforetax": app_config.financial_item_names.s_pretax_income,
+    "incometaxexpense": app_config.financial_item_names.s_tax_provision, # yfinance name
+    "taxprovision": app_config.financial_item_names.s_tax_provision,
+    "netincome": app_config.financial_item_names.s_net_income,
+    "netincomefromcontinuingops": app_config.financial_item_names.s_net_income, # Map to Net Income if no separate item
+    # "netincomecontinuingoperations": app_config.financial_item_names.s_net_income_continuing_ops, # If specific
+    "researchdevelopment": app_config.financial_item_names.s_research_development,
+    "sellinggeneraladministrative": app_config.financial_item_names.s_selling_general_admin,
+    "sellinggeneralandadministration": app_config.financial_item_names.s_selling_general_admin, # Common variation
+    "depreciationandamortization": app_config.financial_item_names.s_depreciation_amortization_is,
+    "depreciation": app_config.financial_item_names.s_depreciation_amortization_is, # Map to same if only one D&A item in app_config
 }
 
 BALANCE_SHEET_MAPPING = {
-    "totalassets": config.S_TOTAL_ASSETS,
-    "totalliabilities": config.S_TOTAL_LIABILITIES, # yfinance often "Total Liab"
-    "totalliab": config.S_TOTAL_LIABILITIES,
-    "totalstockholderequity": config.S_TOTAL_STOCKHOLDER_EQUITY,
-    "cashandcashequivalents": config.S_CASH_EQUIVALENTS,
-    "cash": config.S_CASH_EQUIVALENTS,
-    "shortterminvestments": config.S_SHORT_TERM_INVESTMENTS,
-    "propertyplantandequipmentgross": config.S_GROSS_PPE,
-    "grosspropertyplantandequipment": config.S_GROSS_PPE, # Common variation
-    "propertyplantandequipmentnet": config.S_NET_PPE,
-    "netpropertyplantandequipment": config.S_NET_PPE, # Common variation
-    "accumulateddepreciation": config.S_ACCUMULATED_DEPRECIATION,
-    "nettangibleassets": config.S_NET_TANGIBLE_ASSETS,
-    "totaldebt": config.S_TOTAL_DEBT, # This is often a calculated field, map if yf provides it
-    "shortlongtermdebt": config.S_SHORT_LONG_TERM_DEBT,
-    "shortandlongtermdebt": config.S_SHORT_LONG_TERM_DEBT, # Common variation
-    "longtermdebt": config.S_LONG_TERM_DEBT,
-    "preferredstock": config.S_PREFERRED_STOCK_VALUE,
-    "minorityinterest": config.S_NONCONTROLLING_INTEREST, # yfinance name
-    "noncontrollinginterest": config.S_NONCONTROLLING_INTEREST,
+    "totalassets": app_config.financial_item_names.s_total_assets,
+    "totalliabilities": app_config.financial_item_names.s_total_liabilities, # yfinance often "Total Liab"
+    "totalliab": app_config.financial_item_names.s_total_liabilities,
+    "totalstockholderequity": app_config.financial_item_names.s_total_stockholder_equity,
+    "cashandcashequivalents": app_config.financial_item_names.s_cash_equivalents,
+    "cash": app_config.financial_item_names.s_cash_equivalents,
+    "shortterminvestments": app_config.financial_item_names.s_short_term_investments,
+    "propertyplantandequipmentgross": app_config.financial_item_names.s_gross_ppe,
+    "grosspropertyplantandequipment": app_config.financial_item_names.s_gross_ppe, # Common variation
+    "propertyplantandequipmentnet": app_config.financial_item_names.s_net_ppe,
+    "netpropertyplantandequipment": app_config.financial_item_names.s_net_ppe, # Common variation
+    "accumulateddepreciation": app_config.financial_item_names.s_accumulated_depreciation,
+    "nettangibleassets": app_config.financial_item_names.s_net_tangible_assets,
+    "totaldebt": app_config.financial_item_names.s_total_debt, # This is often a calculated field, map if yf provides it
+    "shortlongtermdebt": app_config.financial_item_names.s_short_long_term_debt,
+    "shortandlongtermdebt": app_config.financial_item_names.s_short_long_term_debt, # Common variation
+    "currentandlongtermdebt": app_config.financial_item_names.s_short_long_term_debt, # Added variation
+    "longtermdebt": app_config.financial_item_names.s_long_term_debt,
+    "preferredstock": app_config.financial_item_names.s_preferred_stock_value,
+    "stockholdersequity": app_config.financial_item_names.s_total_stockholder_equity, # Added variation
+    "minorityinterest": app_config.financial_item_names.s_noncontrolling_interest, # yfinance name
+    "noncontrollinginterest": app_config.financial_item_names.s_noncontrolling_interest,
 }
 
 CASH_FLOW_MAPPING = {
-    "capitalexpenditures": config.S_CAPEX,
-    "depreciation": config.S_DEPRECIATION_CF, # yfinance often uses this on CF statement
-    "depreciationandamortization": config.S_DEPRECIATION_CF, # Map to same if only one D&A item in config for CF
-    "changetocashandcashequivalents": config.S_CHANGE_IN_CASH,
-    "changeincashandcashequivalents": config.S_CHANGE_IN_CASH, # Common variation
-    "changeincash": config.S_CHANGE_IN_CASH,
-    "netincome": config.S_NET_INCOME, # Often starts CF statement
+    "capitalexpenditures": app_config.financial_item_names.s_capex,
+    "investmentsinpropertyplantandequipment": app_config.financial_item_names.s_capex, # Added yfinance variation
+    "depreciation": app_config.financial_item_names.s_depreciation_cf, # yfinance often uses this on CF statement
+    "depreciationandamortization": app_config.financial_item_names.s_depreciation_cf, # Map to same if only one D&A item in app_config for CF
+    "changetocashandcashequivalents": app_config.financial_item_names.s_change_in_cash,
+    "changeincashandcashequivalents": app_config.financial_item_names.s_change_in_cash, # Common variation
+    "changeincash": app_config.financial_item_names.s_change_in_cash,
+    "netincome": app_config.financial_item_names.s_net_income, # Often starts CF statement
 }
 
 def _standardize_df_index(df: pd.DataFrame, mapping: Dict[str, str]) -> pd.DataFrame:
@@ -227,7 +228,7 @@ def process_financial_data(
             "market_cap": stock_info.get("marketCap"),
             "fifty_two_week_high": stock_info.get("fiftyTwoWeekHigh"),
             "fifty_two_week_low": stock_info.get("fiftyTwoWeekLow"),
-            "currency": stock_info.get("currency", config.DEFAULT_CURRENCY_SYMBOL) # Use from config
+            "currency": stock_info.get("currency", app_config.output.default_currency_symbol) # Use from app_config
         }
         print("Stock Details processing complete.")
     else:
@@ -241,17 +242,13 @@ def process_financial_data(
 if __name__ == "__main__":
     print("--- Testing Data Processor (Refactored to use Config) ---")
     # Ensure sys is imported for sys.modules check if not already at top level
-    import sys 
+    import sys
     
     try:
-        # If running this file directly, ensure config.py can be imported
-        # When run with `python -m epv_valuation_model.data_processor`, `.` is the project root.
-        # `epv_valuation_model.config` would be the way to access it.
-        # However, for direct script execution `python data_processor.py` (if cwd is epv_valuation_model), relative works.
-        from . import config as cfg # Use relative import for config
-        from .data_fetcher import get_ticker_object, get_historical_financials, get_stock_info # Use relative import
+        # app_config is already defined at the top of the module
+        from .data_fetcher import get_ticker_object, get_historical_financials, get_stock_info
 
-        sample_ticker = cfg.DEFAULT_TICKER # Using default from config
+        sample_ticker = app_config.data_source.default_ticker # Using default from app_config
         ticker_obj = get_ticker_object(sample_ticker)
 
         if ticker_obj:
@@ -273,7 +270,8 @@ if __name__ == "__main__":
 
                 # Check if key standardized items exist in processed statements
                 print("\nChecking for key standardized items in processed Income Statement:")
-                for std_name in [cfg.S_REVENUE, cfg.S_OPERATING_INCOME, cfg.S_NET_INCOME, cfg.S_INTEREST_EXPENSE, cfg.S_TAX_PROVISION]:
+                for std_name_key in ["s_revenue", "s_operating_income", "s_net_income", "s_interest_expense", "s_tax_provision"]:
+                    std_name = getattr(app_config.financial_item_names, std_name_key)
                     if std_name in processed_bundle["income_statement"].index:
                         print(f"  Found: {std_name}")
                     else:
@@ -283,7 +281,8 @@ if __name__ == "__main__":
 
 
                 print("\nChecking for key standardized items in processed Balance Sheet:")
-                for std_name in [cfg.S_TOTAL_ASSETS, cfg.S_TOTAL_LIABILITIES, cfg.S_TOTAL_STOCKHOLDER_EQUITY, cfg.S_GROSS_PPE, cfg.S_CASH_EQUIVALENTS, cfg.S_TOTAL_DEBT, cfg.S_SHORT_LONG_TERM_DEBT]:
+                for std_name_key in ["s_total_assets", "s_total_liabilities", "s_total_stockholder_equity", "s_gross_ppe", "s_cash_equivalents", "s_total_debt", "s_short_long_term_debt"]:
+                    std_name = getattr(app_config.financial_item_names, std_name_key)
                     if std_name in processed_bundle["balance_sheet"].index:
                         print(f"  Found: {std_name}")
                     else:
@@ -293,7 +292,8 @@ if __name__ == "__main__":
 
 
                 print("\nChecking for key standardized items in processed Cash Flow Statement:")
-                for std_name in [cfg.S_CAPEX, cfg.S_DEPRECIATION_CF, cfg.S_NET_INCOME]: # S_NET_INCOME often on CF
+                for std_name_key in ["s_capex", "s_depreciation_cf", "s_net_income"]: # s_net_income often on CF
+                    std_name = getattr(app_config.financial_item_names, std_name_key)
                     if std_name in processed_bundle["cash_flow"].index:
                         print(f"  Found: {std_name}")
                     else:

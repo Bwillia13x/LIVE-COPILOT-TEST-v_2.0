@@ -7,11 +7,12 @@ import os
 import numpy as np
 from typing import Dict, Any, Optional, List
 
-# Import configurations from config.py
-from . import config # Assuming it's in the same package
+# Import configurations from config_manager.py
+from .config_manager import get_config # Changed import
 from . import utils
 
 def generate_text_summary(valuation_results: Dict[str, Any]) -> str:
+    app_config = get_config()
     """
     Generates a formatted textual summary of the EPV valuation results.
 
@@ -39,7 +40,7 @@ def generate_text_summary(valuation_results: Dict[str, Any]) -> str:
         summary.append(ai_summary)
         summary.append("-" * 60)
 
-    currency = valuation_results.get('currency', config.DEFAULT_CURRENCY_SYMBOL)
+    currency = valuation_results.get('currency', app_config.output.default_currency_symbol) # Updated
     cp = valuation_results.get('current_price', 'N/A')
     mc = valuation_results.get('market_cap', 0)
     ee = valuation_results.get('epv_equity', 0)
@@ -52,7 +53,7 @@ def generate_text_summary(valuation_results: Dict[str, Any]) -> str:
 
     summary.append("\n--- Core EPV Assumptions & Inputs ---")
     summary.append(f"Risk-Free Rate Used:        {valuation_results.get('risk_free_rate', 0):.3%}")
-    summary.append(f"Equity Risk Premium Used:   {valuation_results.get('equity_risk_premium', config.EQUITY_RISK_PREMIUM):.3%}")
+    summary.append(f"Equity Risk Premium Used:   {valuation_results.get('equity_risk_premium', app_config.calculation.equity_risk_premium):.3%}") # Updated
     summary.append(f"Calculated WACC:            {valuation_results.get('wacc', 0):.2%}")
     summary.append(f"Normalized Avg Op Margin:   {valuation_results.get('avg_op_margin', 0):.2%}")
     summary.append(f"Normalized EBIT:            {currency}{valuation_results.get('normalized_ebit', 0):,.0f}")
@@ -92,9 +93,12 @@ def plot_valuation_comparison(
     epv_equity: float,
     market_cap: float,
     asset_value_equity: Optional[float],
-    currency: str = config.DEFAULT_CURRENCY_SYMBOL,
+    currency: Optional[str] = None, # Updated
     save_path: Optional[str] = None
 ) -> None:
+    app_config = get_config()
+    if currency is None:
+        currency = app_config.output.default_currency_symbol # Updated
     """
     Generates and optionally saves a bar chart comparing EPV Equity, Market Cap, and Asset Value.
 
@@ -163,9 +167,12 @@ def plot_valuation_comparison(
 def plot_sensitivity_analysis(
     ticker: str,
     sensitivity_results: Dict[str, pd.DataFrame],
-    currency: str = config.DEFAULT_CURRENCY_SYMBOL,
+    currency: Optional[str] = None, # Updated
     save_dir: Optional[str] = None
 ) -> None:
+    app_config = get_config()
+    if currency is None:
+        currency = app_config.output.default_currency_symbol # Updated
     """
     Generates and optionally saves line plots for sensitivity analysis results.
 
@@ -250,9 +257,12 @@ def export_sensitivity_results_to_csv(sensitivity_results: Dict[str, pd.DataFram
 def plot_monte_carlo_histogram(
     ticker: str,
     mc_results_df: pd.DataFrame,
-    currency: str = config.DEFAULT_CURRENCY_SYMBOL,
+    currency: Optional[str] = None, # Updated
     save_path: Optional[str] = None
 ) -> None:
+    app_config = get_config()
+    if currency is None:
+        currency = app_config.output.default_currency_symbol # Updated
     """
     Plots and optionally saves a histogram of simulated EPV Equity values from Monte Carlo results.
     """
@@ -296,9 +306,12 @@ def export_monte_carlo_results_to_csv(mc_results_df: pd.DataFrame, save_path: st
 def plot_historical_trends(
     ticker: str,
     processed_data: Dict[str, Any],
-    currency: str = config.DEFAULT_CURRENCY_SYMBOL,
+    currency: Optional[str] = None, # Updated
     save_dir: Optional[str] = None
 ) -> None:
+    app_config = get_config()
+    if currency is None:
+        currency = app_config.output.default_currency_symbol # Updated
     """
     Plots and saves historical trends for key metrics from processed financial statements.
     """
@@ -307,9 +320,9 @@ def plot_historical_trends(
         print("No income statement data for historical plots.")
         return
     metrics = [
-        (config.S_REVENUE, 'Total Revenue'),
-        (config.S_OPERATING_INCOME, 'Operating Income'),
-        (config.S_NET_INCOME, 'Net Income'),
+        (app_config.financial_item_names.s_revenue, 'Total Revenue'), # Updated
+        (app_config.financial_item_names.s_operating_income, 'Operating Income'), # Updated
+        (app_config.financial_item_names.s_net_income, 'Net Income'), # Updated
     ]
     # Plot each metric
     for metric_key, metric_label in metrics:
@@ -334,8 +347,9 @@ def plot_historical_trends(
                 plt.show()
                 plt.close()
     # Operating Margin
-    if config.S_REVENUE in is_proc.index and config.S_OPERATING_INCOME in is_proc.index:
-        op_margin = is_proc.loc[config.S_OPERATING_INCOME] / is_proc.loc[config.S_REVENUE]
+    if app_config.financial_item_names.s_revenue in is_proc.index and \
+       app_config.financial_item_names.s_operating_income in is_proc.index: # Updated
+        op_margin = is_proc.loc[app_config.financial_item_names.s_operating_income] / is_proc.loc[app_config.financial_item_names.s_revenue] # Updated
         plt.figure(figsize=(10, 6))
         plt.plot(is_proc.columns, op_margin, marker='o', linestyle='-')
         plt.title(f'Operating Margin Trend for {ticker}')
@@ -359,9 +373,12 @@ def plot_historical_trends(
 def plot_tornado_sensitivity(
     ticker: str,
     sensitivity_results: Dict[str, pd.DataFrame],
-    currency: str = config.DEFAULT_CURRENCY_SYMBOL,
+    currency: Optional[str] = None, # Updated
     save_path: Optional[str] = None
 ) -> None:
+    app_config = get_config()
+    if currency is None:
+        currency = app_config.output.default_currency_symbol # Updated
     """
     Plots and saves a tornado chart showing the range of EPV Equity for each sensitivity variable.
     For each variable, a horizontal bar is drawn from min to max EPV Equity, with the base value marked.

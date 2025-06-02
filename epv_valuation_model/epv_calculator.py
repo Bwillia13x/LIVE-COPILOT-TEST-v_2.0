@@ -6,17 +6,17 @@ import pandas as pd
 import numpy as np
 from typing import Dict, Any, Optional, Tuple
 
-# Import configurations from config.py
-# If running from project root (e.g. python -m epv_valuation_model.main):
-from . import config
-# If running this file directly for testing and config.py is in the same directory:
-# import config
-
+# Import configurations from config_manager.py
+from .config_manager import get_config
+# Removed old config imports
 
 def calculate_normalized_ebit(
     income_statement: pd.DataFrame,
-    num_years: int = config.DEFAULT_NORMALIZATION_YEARS # Using config
+    num_years: Optional[int] = None
 ) -> Optional[Tuple[float, float]]:
+    app_config = get_config()
+    if num_years is None:
+        num_years = app_config.calculation.normalization_years
     """
     Calculates Normalized EBIT (Operating Income).
     Uses average operating margin over `num_years` applied to the latest year's revenue.
@@ -34,10 +34,10 @@ def calculate_normalized_ebit(
     print("Income Statement Index:\n", income_statement.index.tolist())
     print("Income Statement Columns:\n", income_statement.columns.tolist())
     print("Income Statement dtypes:\n", income_statement.dtypes)
-    # Using standardized names from config
-    if config.S_REVENUE not in income_statement.index or \
-       config.S_OPERATING_INCOME not in income_statement.index:
-        print(f"Error: '{config.S_REVENUE}' or '{config.S_OPERATING_INCOME}' not found in processed income statement.")
+    # Using standardized names from app_config
+    if app_config.financial_item_names.s_revenue not in income_statement.index or \
+       app_config.financial_item_names.s_operating_income not in income_statement.index:
+        print(f"Error: '{app_config.financial_item_names.s_revenue}' or '{app_config.financial_item_names.s_operating_income}' not found in processed income statement.")
         return None
     if income_statement.empty or len(income_statement.columns) == 0:
         print("Error: Income statement is empty or has no data columns.")
@@ -49,19 +49,19 @@ def calculate_normalized_ebit(
         print("Debug: relevant_years_df Index:", relevant_years_df.index.tolist())
         print("Debug: relevant_years_df Columns:", relevant_years_df.columns.tolist())
 
-        op_income = relevant_years_df.loc[config.S_OPERATING_INCOME]
-        revenue = relevant_years_df.loc[config.S_REVENUE]
+        op_income = relevant_years_df.loc[app_config.financial_item_names.s_operating_income]
+        revenue = relevant_years_df.loc[app_config.financial_item_names.s_revenue]
         # If duplicate index, .loc returns DataFrame; select first row
         if isinstance(op_income, pd.DataFrame):
-            print("Warning: Duplicate index for S_OPERATING_INCOME, selecting first row.")
+            print(f"Warning: Duplicate index for {app_config.financial_item_names.s_operating_income}, selecting first row.")
             op_income = op_income.iloc[0]
         if isinstance(revenue, pd.DataFrame):
-            print("Warning: Duplicate index for S_REVENUE, selecting first row.")
+            print(f"Warning: Duplicate index for {app_config.financial_item_names.s_revenue}, selecting first row.")
             revenue = revenue.iloc[0]
-        print("Debug: S_OPERATING_INCOME Series:\n", op_income)
-        print("Debug: S_REVENUE Series:\n", revenue)
-        print("Debug: Type of S_OPERATING_INCOME Series:", type(op_income))
-        print("Debug: Type of S_REVENUE Series:", type(revenue))
+        print(f"Debug: {app_config.financial_item_names.s_operating_income} Series:\n", op_income)
+        print(f"Debug: {app_config.financial_item_names.s_revenue} Series:\n", revenue)
+        print(f"Debug: Type of {app_config.financial_item_names.s_operating_income} Series:", type(op_income))
+        print(f"Debug: Type of {app_config.financial_item_names.s_revenue} Series:", type(revenue))
 
         operating_margins = op_income / revenue
         print("Debug: Calculated operating_margins Series:\n", operating_margins)
@@ -105,8 +105,11 @@ def calculate_maintenance_capex(
     income_statement: pd.DataFrame,
     balance_sheet: pd.DataFrame,
     cash_flow_statement: pd.DataFrame,
-    num_years: int = config.DEFAULT_NORMALIZATION_YEARS # Using config
+    num_years: Optional[int] = None
 ) -> Optional[float]:
+    app_config = get_config()
+    if num_years is None:
+        num_years = app_config.calculation.normalization_years
     """
     Calculates Maintenance Capital Expenditures using Greenwald's PPE/Sales method.
     Maintenance Capex = Average (Total Capex - Growth Capex)
@@ -121,19 +124,19 @@ def calculate_maintenance_capex(
     Returns:
         Optional[float]: Estimated maintenance capex, or None if calculation fails.
     """
-    required_is_items = [config.S_REVENUE]
-    required_bs_items = [config.S_GROSS_PPE] # Prefer Gross PPE
-    required_cf_items = [config.S_CAPEX]
+    required_is_items = [app_config.financial_item_names.s_revenue]
+    required_bs_items = [app_config.financial_item_names.s_gross_ppe] # Prefer Gross PPE
+    required_cf_items = [app_config.financial_item_names.s_capex]
 
     if not all(item in income_statement.index for item in required_is_items) or \
-       not any(item in balance_sheet.index for item in [config.S_GROSS_PPE, config.S_NET_PPE]) or \
+       not any(item in balance_sheet.index for item in [app_config.financial_item_names.s_gross_ppe, app_config.financial_item_names.s_net_ppe]) or \
        not all(item in cash_flow_statement.index for item in required_cf_items):
         print("Error: Required items for Maintenance Capex calculation are missing from financial statements.")
-        print(f"  Need: {config.S_REVENUE} (IS), {config.S_GROSS_PPE} or {config.S_NET_PPE} (BS), {config.S_CAPEX} (CF)")
+        print(f"  Need: {app_config.financial_item_names.s_revenue} (IS), {app_config.financial_item_names.s_gross_ppe} or {app_config.financial_item_names.s_net_ppe} (BS), {app_config.financial_item_names.s_capex} (CF)")
         return None
 
     try:
-        ppe_item_to_use = config.S_GROSS_PPE if config.S_GROSS_PPE in balance_sheet.index else config.S_NET_PPE
+        ppe_item_to_use = app_config.financial_item_names.s_gross_ppe if app_config.financial_item_names.s_gross_ppe in balance_sheet.index else app_config.financial_item_names.s_net_ppe
         print(f"Using '{ppe_item_to_use}' for Maintenance Capex calculation.")
 
         common_cols = income_statement.columns.intersection(balance_sheet.columns).intersection(cash_flow_statement.columns)
@@ -145,9 +148,9 @@ def calculate_maintenance_capex(
         bs_sorted = balance_sheet[common_cols].sort_index(axis=1, ascending=False)
         cf_sorted = cash_flow_statement[common_cols].sort_index(axis=1, ascending=False)
 
-        sales_history = is_sorted.loc[config.S_REVENUE].iloc[:num_years + 1]
+        sales_history = is_sorted.loc[app_config.financial_item_names.s_revenue].iloc[:num_years + 1]
         ppe_history = bs_sorted.loc[ppe_item_to_use].iloc[:num_years + 1]
-        total_capex_history = cf_sorted.loc[config.S_CAPEX].iloc[:num_years]
+        total_capex_history = cf_sorted.loc[app_config.financial_item_names.s_capex].iloc[:num_years]
 
         if len(sales_history) < 2 or len(ppe_history) < 1 or len(total_capex_history) < 1:
              print("Error: Not enough historical data points for Maintenance Capex after alignment.")
@@ -183,15 +186,15 @@ def calculate_maintenance_capex(
 
         if not maintenance_capex_values:
             print("Error: Could not calculate any Maintenance Capex values.")
-            if config.S_DEPRECIATION_CF in cf_sorted.index:
-                avg_depreciation = abs(cf_sorted.loc[config.S_DEPRECIATION_CF].iloc[:num_years].mean(skipna=True))
+            if app_config.financial_item_names.s_depreciation_cf in cf_sorted.index:
+                avg_depreciation = abs(cf_sorted.loc[app_config.financial_item_names.s_depreciation_cf].iloc[:num_years].mean(skipna=True))
                 if pd.notna(avg_depreciation):
                     print(f"Warning: Falling back to average D&A for Maintenance Capex: {avg_depreciation:,.0f}")
                     return avg_depreciation
             return None
 
         avg_maintenance_capex = np.mean(maintenance_capex_values)
-        avg_depreciation_cf_val = abs(cf_sorted.loc[config.S_DEPRECIATION_CF].iloc[:num_years].mean(skipna=True)) if config.S_DEPRECIATION_CF in cf_sorted.index else None
+        avg_depreciation_cf_val = abs(cf_sorted.loc[app_config.financial_item_names.s_depreciation_cf].iloc[:num_years].mean(skipna=True)) if app_config.financial_item_names.s_depreciation_cf in cf_sorted.index else None
         
         final_maint_capex = max(0, avg_maintenance_capex)
         if avg_depreciation_cf_val is not None and pd.notna(avg_depreciation_cf_val) and final_maint_capex < avg_depreciation_cf_val * 0.5:
@@ -206,39 +209,42 @@ def calculate_maintenance_capex(
 def calculate_nopat(
     normalized_ebit: float,
     income_statement: pd.DataFrame,
-    num_years: int = config.DEFAULT_NORMALIZATION_YEARS # Using config
+    num_years: Optional[int] = None
 ) -> Optional[float]:
+    app_config = get_config()
+    if num_years is None:
+        num_years = app_config.calculation.normalization_years
     """
     Calculates Net Operating Profit After Tax (NOPAT).
     NOPAT = Normalized EBIT * (1 - Effective Tax Rate)
     Effective Tax Rate is averaged over `num_years`.
     """
-    if config.S_TAX_PROVISION not in income_statement.index or \
-       config.S_PRETAX_INCOME not in income_statement.index:
-        print(f"Error: '{config.S_TAX_PROVISION}' or '{config.S_PRETAX_INCOME}' not found for NOPAT calc.")
+    if app_config.financial_item_names.s_tax_provision not in income_statement.index or \
+       app_config.financial_item_names.s_pretax_income not in income_statement.index:
+        print(f"Error: '{app_config.financial_item_names.s_tax_provision}' or '{app_config.financial_item_names.s_pretax_income}' not found for NOPAT calc.")
         return None
 
     try:
         relevant_years_df = income_statement.iloc[:, :num_years]
         tax_rates = []
         for col in relevant_years_df.columns:
-            tax_prov = relevant_years_df.loc[config.S_TAX_PROVISION, col]
-            pre_tax_inc = relevant_years_df.loc[config.S_PRETAX_INCOME, col]
+            tax_prov = relevant_years_df.loc[app_config.financial_item_names.s_tax_provision, col]
+            pre_tax_inc = relevant_years_df.loc[app_config.financial_item_names.s_pretax_income, col]
             if pd.notna(tax_prov) and pd.notna(pre_tax_inc) and pre_tax_inc > 0:
                 tax_rates.append(tax_prov / pre_tax_inc)
             elif pd.notna(tax_prov) and tax_prov == 0 and pd.notna(pre_tax_inc) and pre_tax_inc <=0 :
                  tax_rates.append(0)
 
         if not tax_rates:
-            print(f"Warning: Could not calculate historical tax rates. Using default: {config.DEFAULT_EFFECTIVE_TAX_RATE:.2%}.")
-            effective_tax_rate = config.DEFAULT_EFFECTIVE_TAX_RATE
+            print(f"Warning: Could not calculate historical tax rates. Using default: {app_config.calculation.default_effective_tax_rate:.2%}.")
+            effective_tax_rate = app_config.calculation.default_effective_tax_rate
         else:
             effective_tax_rate = np.mean(tax_rates)
-            effective_tax_rate = max(config.MIN_EFFECTIVE_TAX_RATE, min(effective_tax_rate, config.MAX_EFFECTIVE_TAX_RATE))
+            effective_tax_rate = max(app_config.calculation.min_effective_tax_rate, min(effective_tax_rate, app_config.calculation.max_effective_tax_rate))
 
         if pd.isna(effective_tax_rate): # Should be caught by previous block, but as a safeguard
-            print(f"Error: Effective tax rate is NaN. Using default: {config.DEFAULT_EFFECTIVE_TAX_RATE:.2%}.")
-            effective_tax_rate = config.DEFAULT_EFFECTIVE_TAX_RATE
+            print(f"Error: Effective tax rate is NaN. Using default: {app_config.calculation.default_effective_tax_rate:.2%}.")
+            effective_tax_rate = app_config.calculation.default_effective_tax_rate
 
         nopat = normalized_ebit * (1 - effective_tax_rate)
         print(f"NOPAT calculated: {nopat:,.0f} (Avg Tax Rate: {effective_tax_rate:.2%})")
@@ -252,17 +258,22 @@ def calculate_wacc(
     balance_sheet: pd.DataFrame,
     income_statement: pd.DataFrame,
     risk_free_rate: float,
-    equity_risk_premium: float = config.EQUITY_RISK_PREMIUM, # Using config
-    num_years_tax_rate: int = config.DEFAULT_WACC_NORMALIZATION_YEARS # Using config
+    equity_risk_premium: Optional[float] = None,
+    num_years_tax_rate: Optional[int] = None
 ) -> Optional[float]:
+    app_config = get_config()
+    if equity_risk_premium is None:
+        equity_risk_premium = app_config.calculation.equity_risk_premium
+    if num_years_tax_rate is None:
+        num_years_tax_rate = app_config.calculation.wacc_normalization_years
     """
     Calculates the Weighted Average Cost of Capital (WACC).
     """
     try:
         beta = stock_details.get("beta")
         if beta is None or pd.isna(beta):
-            print(f"Warning: Beta not available or NaN. Assuming beta = {config.DEFAULT_BETA} for WACC calculation.")
-            beta = config.DEFAULT_BETA
+            print(f"Warning: Beta not available or NaN. Assuming beta = {app_config.calculation.default_beta} for WACC calculation.")
+            beta = app_config.calculation.default_beta
         cost_of_equity = risk_free_rate + beta * equity_risk_premium
 
         market_cap = stock_details.get("market_cap")
@@ -274,41 +285,41 @@ def calculate_wacc(
         most_recent_year_bs = balance_sheet.iloc[:, 0]
         D = 0
         # Prioritize more comprehensive debt figures if available
-        if config.S_TOTAL_DEBT in most_recent_year_bs.index and pd.notna(most_recent_year_bs.loc[config.S_TOTAL_DEBT]):
-            D = most_recent_year_bs.loc[config.S_TOTAL_DEBT]
-        elif config.S_SHORT_LONG_TERM_DEBT in most_recent_year_bs.index and pd.notna(most_recent_year_bs.loc[config.S_SHORT_LONG_TERM_DEBT]):
-            D = most_recent_year_bs.loc[config.S_SHORT_LONG_TERM_DEBT]
-        elif config.S_LONG_TERM_DEBT in most_recent_year_bs.index and pd.notna(most_recent_year_bs.loc[config.S_LONG_TERM_DEBT]):
-             D = most_recent_year_bs.loc[config.S_LONG_TERM_DEBT]
+        if app_config.financial_item_names.s_total_debt in most_recent_year_bs.index and pd.notna(most_recent_year_bs.loc[app_config.financial_item_names.s_total_debt]):
+            D = most_recent_year_bs.loc[app_config.financial_item_names.s_total_debt]
+        elif app_config.financial_item_names.s_short_long_term_debt in most_recent_year_bs.index and pd.notna(most_recent_year_bs.loc[app_config.financial_item_names.s_short_long_term_debt]):
+            D = most_recent_year_bs.loc[app_config.financial_item_names.s_short_long_term_debt]
+        elif app_config.financial_item_names.s_long_term_debt in most_recent_year_bs.index and pd.notna(most_recent_year_bs.loc[app_config.financial_item_names.s_long_term_debt]):
+             D = most_recent_year_bs.loc[app_config.financial_item_names.s_long_term_debt]
 
         if D == 0:
             print("Warning: No debt found or debt is zero. WACC will equal Cost of Equity.")
             print(f"WACC calculated: {cost_of_equity:.2%} (Cost of Equity: {cost_of_equity:.2%}, No Debt)")
             return cost_of_equity
 
-        avg_tax_rate_for_debt = config.DEFAULT_EFFECTIVE_TAX_RATE
-        if config.S_TAX_PROVISION in income_statement.index and config.S_PRETAX_INCOME in income_statement.index:
+        avg_tax_rate_for_debt = app_config.calculation.default_effective_tax_rate
+        if app_config.financial_item_names.s_tax_provision in income_statement.index and app_config.financial_item_names.s_pretax_income in income_statement.index:
             tax_rates_debt_list = []
             for col in income_statement.iloc[:, :num_years_tax_rate].columns:
-                tax_prov = income_statement.loc[config.S_TAX_PROVISION, col]
-                pre_tax_inc = income_statement.loc[config.S_PRETAX_INCOME, col]
+                tax_prov = income_statement.loc[app_config.financial_item_names.s_tax_provision, col]
+                pre_tax_inc = income_statement.loc[app_config.financial_item_names.s_pretax_income, col]
                 if pd.notna(tax_prov) and pd.notna(pre_tax_inc) and pre_tax_inc > 0:
                     tax_rates_debt_list.append(tax_prov / pre_tax_inc)
             if tax_rates_debt_list:
-                avg_tax_rate_for_debt = max(config.MIN_EFFECTIVE_TAX_RATE, min(np.mean(tax_rates_debt_list), config.MAX_EFFECTIVE_TAX_RATE))
+                avg_tax_rate_for_debt = max(app_config.calculation.min_effective_tax_rate, min(np.mean(tax_rates_debt_list), app_config.calculation.max_effective_tax_rate))
         
         avg_interest_expense = 0
-        if config.S_INTEREST_EXPENSE in income_statement.index:
-             interest_expense_series = income_statement.loc[config.S_INTEREST_EXPENSE].iloc[:num_years_tax_rate]
+        if app_config.financial_item_names.s_interest_expense in income_statement.index:
+             interest_expense_series = income_statement.loc[app_config.financial_item_names.s_interest_expense].iloc[:num_years_tax_rate]
              avg_interest_expense = abs(interest_expense_series.mean(skipna=True))
 
 
         if pd.isna(avg_interest_expense) or D == 0 or avg_interest_expense == 0 : # Added check for avg_interest_expense == 0
-            print(f"Warning: Could not calculate cost of debt from financials. Using RFR + Debt Risk Premium ({config.DEBT_RISK_PREMIUM:.2%}).")
-            pre_tax_cost_of_debt = risk_free_rate + config.DEBT_RISK_PREMIUM
+            print(f"Warning: Could not calculate cost of debt from financials. Using RFR + Debt Risk Premium ({app_config.calculation.debt_risk_premium:.2%}).")
+            pre_tax_cost_of_debt = risk_free_rate + app_config.calculation.debt_risk_premium
         else:
             pre_tax_cost_of_debt = avg_interest_expense / D
-            pre_tax_cost_of_debt = max(config.MIN_PRETAX_COST_OF_DEBT, min(pre_tax_cost_of_debt, config.MAX_PRETAX_COST_OF_DEBT))
+            pre_tax_cost_of_debt = max(app_config.calculation.min_pretax_cost_of_debt, min(pre_tax_cost_of_debt, app_config.calculation.max_pretax_cost_of_debt))
 
         cost_of_debt_after_tax = pre_tax_cost_of_debt * (1 - avg_tax_rate_for_debt)
 
@@ -354,27 +365,28 @@ def calculate_epv_equity(
     Calculates EPV of Equity from EPV of Operations.
     EPV Equity = EPV Operations + Cash & ST Investments - Total Debt - Preferred Stock BV - Noncontrolling Interest BV.
     """
+    app_config = get_config()
     try:
         most_recent_bs = balance_sheet.iloc[:, 0]
 
-        cash_and_equivalents = most_recent_bs.get(config.S_CASH_EQUIVALENTS, 0)
-        short_term_investments = most_recent_bs.get(config.S_SHORT_TERM_INVESTMENTS, 0)
+        cash_and_equivalents = most_recent_bs.get(app_config.financial_item_names.s_cash_equivalents, 0)
+        short_term_investments = most_recent_bs.get(app_config.financial_item_names.s_short_term_investments, 0)
         # Ensure these are numeric, default to 0 if NaN
         excess_cash_equivalents = (cash_and_equivalents if pd.notna(cash_and_equivalents) else 0) + \
                                   (short_term_investments if pd.notna(short_term_investments) else 0)
 
         total_debt = 0
-        if config.S_TOTAL_DEBT in most_recent_bs.index and pd.notna(most_recent_bs.loc[config.S_TOTAL_DEBT]):
-            total_debt = most_recent_bs.loc[config.S_TOTAL_DEBT]
-        elif config.S_SHORT_LONG_TERM_DEBT in most_recent_bs.index and pd.notna(most_recent_bs.loc[config.S_SHORT_LONG_TERM_DEBT]):
-            total_debt = most_recent_bs.loc[config.S_SHORT_LONG_TERM_DEBT]
-        elif config.S_LONG_TERM_DEBT in most_recent_bs.index and pd.notna(most_recent_bs.loc[config.S_LONG_TERM_DEBT]):
-            total_debt = most_recent_bs.loc[config.S_LONG_TERM_DEBT]
+        if app_config.financial_item_names.s_total_debt in most_recent_bs.index and pd.notna(most_recent_bs.loc[app_config.financial_item_names.s_total_debt]):
+            total_debt = most_recent_bs.loc[app_config.financial_item_names.s_total_debt]
+        elif app_config.financial_item_names.s_short_long_term_debt in most_recent_bs.index and pd.notna(most_recent_bs.loc[app_config.financial_item_names.s_short_long_term_debt]):
+            total_debt = most_recent_bs.loc[app_config.financial_item_names.s_short_long_term_debt]
+        elif app_config.financial_item_names.s_long_term_debt in most_recent_bs.index and pd.notna(most_recent_bs.loc[app_config.financial_item_names.s_long_term_debt]):
+            total_debt = most_recent_bs.loc[app_config.financial_item_names.s_long_term_debt]
         
-        preferred_stock_bv = most_recent_bs.get(config.S_PREFERRED_STOCK_VALUE, 0)
+        preferred_stock_bv = most_recent_bs.get(app_config.financial_item_names.s_preferred_stock_value, 0)
         preferred_stock_bv = preferred_stock_bv if pd.notna(preferred_stock_bv) else 0
 
-        noncontrolling_interest_bv = most_recent_bs.get(config.S_NONCONTROLLING_INTEREST, 0)
+        noncontrolling_interest_bv = most_recent_bs.get(app_config.financial_item_names.s_noncontrolling_interest, 0)
         noncontrolling_interest_bv = noncontrolling_interest_bv if pd.notna(noncontrolling_interest_bv) else 0
 
         epv_equity = epv_operations + excess_cash_equivalents - total_debt - preferred_stock_bv - noncontrolling_interest_bv
@@ -392,6 +404,7 @@ def calculate_asset_value_equity(balance_sheet: pd.DataFrame) -> Optional[float]
     Calculates a simplified Asset Value (Reproduction Cost) of Equity.
     Uses Net Tangible Assets or Total Stockholder Equity as a proxy.
     """
+    app_config = get_config()
     if balance_sheet.empty:
         print("Error: Balance sheet is empty for Asset Value calculation.")
         return None
@@ -399,11 +412,11 @@ def calculate_asset_value_equity(balance_sheet: pd.DataFrame) -> Optional[float]
         most_recent_bs = balance_sheet.iloc[:, 0]
         asset_value_equity = None
 
-        if config.S_NET_TANGIBLE_ASSETS in most_recent_bs.index and pd.notna(most_recent_bs[config.S_NET_TANGIBLE_ASSETS]):
-            asset_value_equity = most_recent_bs[config.S_NET_TANGIBLE_ASSETS]
+        if app_config.financial_item_names.s_net_tangible_assets in most_recent_bs.index and pd.notna(most_recent_bs[app_config.financial_item_names.s_net_tangible_assets]):
+            asset_value_equity = most_recent_bs[app_config.financial_item_names.s_net_tangible_assets]
             print(f"Asset Value (Equity) based on Net Tangible Assets: {asset_value_equity:,.0f}")
-        elif config.S_TOTAL_STOCKHOLDER_EQUITY in most_recent_bs.index and pd.notna(most_recent_bs[config.S_TOTAL_STOCKHOLDER_EQUITY]):
-            asset_value_equity = most_recent_bs[config.S_TOTAL_STOCKHOLDER_EQUITY]
+        elif app_config.financial_item_names.s_total_stockholder_equity in most_recent_bs.index and pd.notna(most_recent_bs[app_config.financial_item_names.s_total_stockholder_equity]):
+            asset_value_equity = most_recent_bs[app_config.financial_item_names.s_total_stockholder_equity]
             print(f"Asset Value (Equity) based on Total Stockholder Equity (Book Value): {asset_value_equity:,.0f}")
         else:
             print("Warning: Could not determine Asset Value (Equity) from available balance sheet items.")
@@ -415,25 +428,21 @@ def calculate_asset_value_equity(balance_sheet: pd.DataFrame) -> Optional[float]
 
 # --- Main execution block for testing this module directly ---
 if __name__ == "__main__":
-    print("--- Testing EPV Calculator (Refactored to use Config) ---")
+    print("--- Testing EPV Calculator (Refactored to use Config Manager) ---")
     try:
-        # If running this file directly, ensure config.py can be imported
-        # (e.g., by being in the same directory or PYTHONPATH)
-        # For package structure, this direct run might need path adjustments
-        # or running as 'python -m epv_valuation_model.epv_calculator'
-        if 'config' not in sys.modules: # Simple check if config was imported by relative import
-             import config as cfg # Fallback for direct script run, use alias to avoid name clash
-        else:
-             cfg = config # Use the already imported config
+        # Import get_config at the top of the script if it's not already there for module use
+        # from .config_manager import get_config # This should be at the top level of the script
 
-        from data_fetcher import get_ticker_object, get_historical_financials, get_stock_info, get_risk_free_rate_proxy
-        from data_processor import process_financial_data
-        import sys # for the check above
+        app_config = get_config() # Get config for the main block
 
-        sample_ticker = cfg.DEFAULT_TICKER # Using default ticker from config
+        from .data_fetcher import get_ticker_object, get_historical_financials, get_stock_info, get_risk_free_rate_proxy
+        from .data_processor import process_financial_data
+        import sys # for the check if config was imported (no longer needed)
+
+        sample_ticker = app_config.data_source.default_ticker 
         print(f"\nFetching and processing data for {sample_ticker} using config settings...")
         ticker_obj = get_ticker_object(sample_ticker)
-        rfr = get_risk_free_rate_proxy(cfg.RISK_FREE_RATE_TICKER)
+        rfr = get_risk_free_rate_proxy(app_config.data_source.risk_free_rate_ticker)
 
         if ticker_obj and rfr is not None:
             raw_is = get_historical_financials(ticker_obj, "income_stmt")
@@ -449,28 +458,28 @@ if __name__ == "__main__":
                 details_proc = processed_data["stock_details"]
 
                 if not is_proc.empty and not bs_proc.empty and not cf_proc.empty and details_proc:
-                    print("\n--- Starting EPV Calculations (using config) ---")
+                    print("\n--- Starting EPV Calculations (using app_config) ---")
 
-                    norm_ebit_tuple = calculate_normalized_ebit(is_proc, cfg.DEFAULT_NORMALIZATION_YEARS)
+                    # Functions will now use app_config internally for default years
+                    norm_ebit_tuple = calculate_normalized_ebit(is_proc) 
                     if norm_ebit_tuple is None: raise ValueError("Normalized EBIT calculation failed.")
                     normalized_ebit, avg_op_margin = norm_ebit_tuple
 
-                    maint_capex = calculate_maintenance_capex(is_proc, bs_proc, cf_proc, cfg.DEFAULT_NORMALIZATION_YEARS)
+                    maint_capex = calculate_maintenance_capex(is_proc, bs_proc, cf_proc)
                     if maint_capex is None:
                         print("Warning: Maintenance Capex calculation failed. Using D&A as proxy if available.")
-                        if cfg.S_DEPRECIATION_CF in cf_proc.index:
-                             maint_capex = abs(cf_proc.loc[cfg.S_DEPRECIATION_CF].iloc[:cfg.DEFAULT_NORMALIZATION_YEARS].mean(skipna=True))
+                        if app_config.financial_item_names.s_depreciation_cf in cf_proc.index:
+                             maint_capex = abs(cf_proc.loc[app_config.financial_item_names.s_depreciation_cf].iloc[:app_config.calculation.normalization_years].mean(skipna=True))
                              if pd.isna(maint_capex): raise ValueError("Maint Capex and D&A fallback failed.")
                              print(f"Using Avg D&A as Maint Capex proxy: {maint_capex:,.0f}")
                         else:
                              raise ValueError("Maint Capex failed and no D&A fallback.")
 
-                    nopat = calculate_nopat(normalized_ebit, is_proc, cfg.DEFAULT_NORMALIZATION_YEARS)
+                    nopat = calculate_nopat(normalized_ebit, is_proc)
                     if nopat is None: raise ValueError("NOPAT calculation failed.")
 
-                    wacc = calculate_wacc(details_proc, bs_proc, is_proc, rfr,
-                                          equity_risk_premium=cfg.EQUITY_RISK_PREMIUM,
-                                          num_years_tax_rate=cfg.DEFAULT_WACC_NORMALIZATION_YEARS)
+                    # WACC will use app_config internally for defaults
+                    wacc = calculate_wacc(details_proc, bs_proc, is_proc, rfr) 
                     if wacc is None: raise ValueError("WACC calculation failed.")
 
                     epv_results = calculate_epv(nopat, wacc, maint_capex)
@@ -483,7 +492,7 @@ if __name__ == "__main__":
                     av_equity = calculate_asset_value_equity(bs_proc)
 
                     print("\n--- Final Valuation Summary (from EPV Calculator Test) ---")
-                    currency_symbol = cfg.DEFAULT_CURRENCY_SYMBOL
+                    currency_symbol = app_config.output.default_currency_symbol
                     print(f"Ticker: {details_proc.get('ticker')}")
                     print(f"Current Market Price: {currency_symbol}{details_proc.get('current_price', 'N/A'):,.2f}")
                     print(f"Market Cap: {currency_symbol}{details_proc.get('market_cap', 0):,.0f}")

@@ -43,41 +43,7 @@ MAX_PRETAX_COST_OF_DEBT = 0.20  # 20%
 DEFAULT_BETA = 1.0 # Default beta if not available from data source
 
 # --- Standardized Financial Item Names ---
-# These ensure consistency across modules when referring to financial statement line items.
-# Income Statement Items
-S_REVENUE = "Total Revenue"
-S_COST_OF_REVENUE = "Cost Of Revenue"
-S_OPERATING_INCOME = "Operating Income" # Standardized name for EBIT
-S_EBIT = "EBIT" # If a separate, more specific EBIT is available and standardized
-S_INTEREST_EXPENSE = "Interest Expense"
-S_PRETAX_INCOME = "Pretax Income"
-S_TAX_PROVISION = "Tax Provision"
-S_NET_INCOME = "Net Income"
-S_DEPRECIATION_AMORTIZATION_IS = "Depreciation And Amortization" # If on Income Stmt
-S_RESEARCH_DEVELOPMENT = "Research And Development"
-S_SELLING_GENERAL_ADMIN = "Selling General And Administration"
-
-# Balance Sheet Items
-S_GROSS_PPE = "Gross PPE"
-S_NET_PPE = "Net PPE" # Property, Plant, Equipment, Net
-S_ACCUMULATED_DEPRECIATION = "Accumulated Depreciation"
-S_TOTAL_ASSETS = "Total Assets"
-S_TOTAL_LIABILITIES = "Total Liabilities"
-S_CASH_EQUIVALENTS = "Cash And Cash Equivalents"
-S_SHORT_TERM_INVESTMENTS = "Short Term Investments"
-S_TOTAL_DEBT = "Total Debt" # This is often a calculated field or a specific yfinance item
-S_SHORT_LONG_TERM_DEBT = "Short Long Term Debt" # Current and Long-term debt combined
-S_LONG_TERM_DEBT = "Long Term Debt"
-S_PREFERRED_STOCK_VALUE = "Preferred Stock" # Market or Book Value
-S_NONCONTROLLING_INTEREST = "Noncontrolling Interest" # Also known as Minority Interest
-S_TOTAL_STOCKHOLDER_EQUITY = "Total Stockholder Equity"
-S_NET_TANGIBLE_ASSETS = "Net Tangible Assets"
-
-# Cash Flow Statement Items
-S_CAPEX = "Capital Expenditures"
-S_DEPRECIATION_CF = "Depreciation" # Typically Depreciation & Amortization on CF statement
-S_CHANGE_IN_CASH = "Change In Cash"
-
+# These are now defined in FinancialItemNamesConfig within config_manager.py
 
 # --- Reporting & Output Configuration ---
 # Example: Directory for saving reports or charts
@@ -112,7 +78,7 @@ if __name__ == "__main__":
     print(f"Equity Risk Premium: {EQUITY_RISK_PREMIUM:.3f}")
     print(f"Default Normalization Years: {DEFAULT_NORMALIZATION_YEARS}")
     print(f"Risk-Free Rate Ticker: {RISK_FREE_RATE_TICKER}")
-    print(f"Standard name for Revenue: {S_REVENUE}")
+    # print(f"Standard name for Revenue: {S_REVENUE}") # Removed, now in FinancialItemNamesConfig
     print(f"Reports Directory: {REPORTS_DIR}")
     # Create directories if they don't exist (example of a startup config task)
     # Note: os.makedirs can create parent directories if they don't exist.

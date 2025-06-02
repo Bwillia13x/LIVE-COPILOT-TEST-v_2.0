@@ -3,20 +3,24 @@
 
 import numpy as np
 import pandas as pd
-from typing import Dict, Any, List, Callable, Tuple
+from typing import Dict, Any, List, Callable, Tuple, Optional # Added Optional
 
 # Import configurations and other necessary modules
-# Assuming risk_analyzer.py is in the same package directory
-from . import config
+from .config_manager import get_config # Changed import
 from . import epv_calculator # We'll need to call calculation functions
 
 def run_sensitivity_analysis(
     base_inputs: Dict[str, Any],
     processed_data: Dict[str, Any],
     variables_to_sensitize: List[Dict[str, Any]],
-    sensitivity_range: float = config.SENSITIVITY_RANGE_PERCENT,
-    num_steps: int = config.SENSITIVITY_STEPS
+    sensitivity_range: Optional[float] = None, # Now optional, will use config if None
+    num_steps: Optional[int] = None # Now optional, will use config if None
 ) -> Dict[str, pd.DataFrame]:
+    app_config = get_config()
+    if sensitivity_range is None:
+        sensitivity_range = app_config.risk.sensitivity_range_percent
+    if num_steps is None:
+        num_steps = app_config.risk.sensitivity_steps
     """
     Performs a sensitivity analysis on EPV Equity based on variations in key input variables.
 
@@ -99,13 +103,13 @@ def run_sensitivity_analysis(
                 elif var_name == 'Avg Op Margin':
                     # If Avg Op Margin changes, Normalized EBIT and NOPAT change. WACC remains base.
                     # We need the latest revenue to recalculate EBIT with the new margin
-                    latest_revenue = is_proc.loc[config.S_REVENUE].iloc[0]
+                    latest_revenue = is_proc.loc[app_config.financial_item_names.s_revenue].iloc[0] # Updated
                     temp_normalized_ebit = latest_revenue * varied_value # varied_value is the new avg_op_margin
 
                     temp_nopat = epv_calculator.calculate_nopat(
                         temp_normalized_ebit,
                         is_proc,
-                        num_years=config.DEFAULT_NORMALIZATION_YEARS
+                        num_years=app_config.calculation.normalization_years # Updated
                     )
                     if temp_nopat is None:
                         results_for_var.append({'Variation': f"{multiplier-1:.0%}", var_name: varied_value, 'EPV Equity': np.nan})
@@ -145,8 +149,11 @@ def run_monte_carlo_simulation(
     base_inputs: Dict[str, Any],
     processed_data: Dict[str, Any],
     mc_configs: List[Dict[str, Any]], # e.g. [{'name': 'avg_op_margin', 'dist': 'normal', 'mean': 0.15, 'std': 0.02}, ...]
-    num_simulations: int = config.MONTE_CARLO_SIMULATIONS
+    num_simulations: Optional[int] = None # Now optional
 ) -> pd.DataFrame:
+    app_config = get_config()
+    if num_simulations is None:
+        num_simulations = app_config.risk.monte_carlo_iterations # Updated
     """
     Performs a Monte Carlo simulation on EPV Equity. (Placeholder)
     This is a more complex function to be developed.
@@ -170,8 +177,7 @@ def run_monte_carlo_simulation(
 
     for i in range(num_simulations):
         if (i + 1) % (num_simulations // 10) == 0: # Print progress
-            print(f"  Monte Carlo Simulation: {(i + 1) / num_simulations:.0%
-                  } complete ({i+1}/{num_simulations})")
+            print(f"  Monte Carlo Simulation: {(i + 1) / num_simulations:.0%} complete ({i+1}/{num_simulations})")
 
         # --- Sample inputs based on mc_configs ---
         current_params = {} # Store sampled parameters for this iteration
@@ -198,16 +204,16 @@ def run_monte_carlo_simulation(
                 sampled_beta = beta_config['mean']
             current_params['beta'] = sampled_beta
         else:
-            current_params['beta'] = details_proc.get('beta', config.DEFAULT_BETA)
+            current_params['beta'] = details_proc.get('beta', app_config.calculation.default_beta) # Updated
 
 
         # --- Recalculate based on sampled inputs ---
         try:
             # 1. Normalized EBIT & NOPAT (using sampled op_margin)
-            latest_revenue = is_proc.loc[config.S_REVENUE].iloc[0]
+            latest_revenue = is_proc.loc[app_config.financial_item_names.s_revenue].iloc[0] # Updated
             norm_ebit_sim = latest_revenue * current_params['avg_op_margin']
             nopat_sim = epv_calculator.calculate_nopat(
-                norm_ebit_sim, is_proc, num_years=config.DEFAULT_NORMALIZATION_YEARS
+                norm_ebit_sim, is_proc, num_years=app_config.calculation.normalization_years # Updated
             )
             if nopat_sim is None: continue # Skip iteration if NOPAT fails
 
@@ -216,8 +222,8 @@ def run_monte_carlo_simulation(
             temp_stock_details['beta'] = current_params['beta']
             wacc_sim = epv_calculator.calculate_wacc(
                 temp_stock_details, bs_proc, is_proc, risk_free_rate,
-                equity_risk_premium=config.EQUITY_RISK_PREMIUM,
-                num_years_tax_rate=config.DEFAULT_WACC_NORMALIZATION_YEARS
+                equity_risk_premium=app_config.calculation.equity_risk_premium, # Updated
+                num_years_tax_rate=app_config.calculation.wacc_normalization_years # Updated
             )
             if wacc_sim is None or wacc_sim <= 0: continue # Skip iteration if WACC fails or is invalid
 
@@ -253,17 +259,16 @@ if __name__ == "__main__":
     try:
         # This test requires processed_data and base_case calculation results
         # We'll simulate this by calling the necessary precursor functions
-        if 'config' not in sys.modules: import config as cfg # For direct run
-        else: cfg = config
-        from data_fetcher import get_ticker_object, get_historical_financials, get_stock_info, get_risk_free_rate_proxy
-        from data_processor import process_financial_data
+        app_config_main = get_config() # For main block
+        from .data_fetcher import get_ticker_object, get_historical_financials, get_stock_info, get_risk_free_rate_proxy
+        from .data_processor import process_financial_data
         # epv_calculator is already imported at the top of this file
         import sys
 
-        sample_ticker = cfg.DEFAULT_TICKER
+        sample_ticker = app_config_main.data_source.default_ticker # Updated
         print(f"\nPreparing base case data for {sample_ticker}...")
         ticker_obj = get_ticker_object(sample_ticker)
-        rfr = get_risk_free_rate_proxy(cfg.RISK_FREE_RATE_TICKER)
+        rfr = get_risk_free_rate_proxy(app_config_main.data_source.risk_free_rate_ticker) # Updated
 
         if ticker_obj and rfr is not None:
             raw_is = get_historical_financials(ticker_obj, "income_stmt")
@@ -280,17 +285,18 @@ if __name__ == "__main__":
 
                 if not is_p.empty and not bs_p.empty and not cf_p.empty and details_p:
                     print("Calculating base case EPV values...")
-                    norm_ebit_tuple_base = epv_calculator.calculate_normalized_ebit(is_p, cfg.DEFAULT_NORMALIZATION_YEARS)
-                    maint_capex_base = epv_calculator.calculate_maintenance_capex(is_p, bs_p, cf_p, cfg.DEFAULT_NORMALIZATION_YEARS)
+                    # Functions in epv_calculator now use app_config for default years internally
+                    norm_ebit_tuple_base = epv_calculator.calculate_normalized_ebit(is_p) # Uses app_config.calculation.normalization_years
+                    maint_capex_base = epv_calculator.calculate_maintenance_capex(is_p, bs_p, cf_p) # Uses app_config.calculation.normalization_years
                     # Fallback for maint_capex if needed for testing
-                    if maint_capex_base is None and cfg.S_DEPRECIATION_CF in cf_p.index:
-                        maint_capex_base = abs(cf_p.loc[cfg.S_DEPRECIATION_CF].iloc[:cfg.DEFAULT_NORMALIZATION_YEARS].mean(skipna=True))
+                    if maint_capex_base is None and app_config_main.financial_item_names.s_depreciation_cf in cf_p.index: # Updated
+                        maint_capex_base = abs(cf_p.loc[app_config_main.financial_item_names.s_depreciation_cf].iloc[:app_config_main.calculation.normalization_years].mean(skipna=True)) # Updated
 
 
                     if norm_ebit_tuple_base and maint_capex_base is not None:
                         norm_ebit_base, avg_op_margin_base = norm_ebit_tuple_base
-                        nopat_base = epv_calculator.calculate_nopat(norm_ebit_base, is_p, cfg.DEFAULT_NORMALIZATION_YEARS)
-                        wacc_base = epv_calculator.calculate_wacc(details_p, bs_p, is_p, rfr, cfg.EQUITY_RISK_PREMIUM, cfg.DEFAULT_WACC_NORMALIZATION_YEARS)
+                        nopat_base = epv_calculator.calculate_nopat(norm_ebit_base, is_p) # Uses app_config.calculation.normalization_years
+                        wacc_base = epv_calculator.calculate_wacc(details_p, bs_p, is_p, rfr) # Uses app_config for erp, wacc_norm_years
 
                         if nopat_base and wacc_base:
                             base_calc_inputs = {
@@ -315,10 +321,10 @@ if __name__ == "__main__":
                             # --- Test Monte Carlo ---
                             mc_variable_configs = [
                                 {'name': 'avg_op_margin', 'dist': 'normal', 'mean': avg_op_margin_base, 'std': 0.01}, # Example: 1% std dev for op margin
-                                {'name': 'beta', 'dist': 'normal', 'mean': details_p.get('beta', cfg.DEFAULT_BETA), 'std': 0.1} # Example: 0.1 std dev for beta
+                                {'name': 'beta', 'dist': 'normal', 'mean': details_p.get('beta', app_config_main.calculation.default_beta), 'std': 0.1} # Updated
                             ]
                             monte_carlo_results_df = run_monte_carlo_simulation(
-                                base_calc_inputs, processed_data_bundle, mc_variable_configs, num_simulations=1000 # Reduced for quick test
+                                base_calc_inputs, processed_data_bundle, mc_variable_configs, num_simulations=1000 # Reduced for quick test, uses app_config.risk.monte_carlo_iterations by default
                             )
                             if not monte_carlo_results_df.empty:
                                 print("\nMonte Carlo Simulation Test Output (Sample):")

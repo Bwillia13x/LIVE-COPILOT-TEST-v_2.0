@@ -7,34 +7,81 @@ import os
 import json
 import yaml
 from typing import Dict, Any, Optional, List
-from dataclasses import dataclass, asdict
+from dataclasses import dataclass, asdict, field
 from pathlib import Path
 import logging
 
 @dataclass
 class DataSourceConfig:
     """Data source configuration."""
+    default_ticker: str = "AAPL"  # Added default_ticker
     default_provider: str = "yfinance"
+    risk_free_rate_ticker: str = "^TNX" # Added risk_free_rate_ticker
     cache_enabled: bool = True
     cache_duration_days: int = 1
+    yfinance_cache_dir: str = "data/yfinance_cache/" # Added
+    yfinance_cache_expiry_hours: int = 24 # Added
     rate_limit_delay: float = 1.0
-    backup_providers: List[str] = None
-    
-    def __post_init__(self):
-        if self.backup_providers is None:
-            self.backup_providers = ["alpha_vantage", "polygon"]
+    backup_providers: List[str] = field(default_factory=lambda: ["alpha_vantage", "polygon"])
+    gemini_api_key: Optional[str] = None # Added
+    openai_api_key: Optional[str] = None # Added
+    alphavantage_api_key: Optional[str] = None # Added
+    financialmodelingprep_api_key: Optional[str] = None # Added
+
+
+@dataclass
+class FinancialItemNamesConfig:
+    """Standardized financial item names for consistency."""
+    # Income Statement Items
+    s_revenue: str = "Total Revenue"
+    s_cost_of_revenue: str = "Cost Of Revenue"
+    s_operating_income: str = "Operating Income"  # Standardized name for EBIT
+    s_ebit: str = "EBIT"  # If a separate, more specific EBIT is available
+    s_interest_expense: str = "Interest Expense"
+    s_pretax_income: str = "Pretax Income"
+    s_tax_provision: str = "Tax Provision"
+    s_net_income: str = "Net Income"
+    s_depreciation_amortization_is: str = "Depreciation And Amortization"  # If on Income Stmt
+    s_research_development: str = "Research And Development"
+    s_selling_general_admin: str = "Selling General And Administration"
+
+    # Balance Sheet Items
+    s_gross_ppe: str = "Gross PPE"
+    s_net_ppe: str = "Net PPE"  # Property, Plant, Equipment, Net
+    s_accumulated_depreciation: str = "Accumulated Depreciation"
+    s_total_assets: str = "Total Assets"
+    s_total_liabilities: str = "Total Liabilities"
+    s_cash_equivalents: str = "Cash And Cash Equivalents"
+    s_short_term_investments: str = "Short Term Investments"
+    s_total_debt: str = "Total Debt"
+    s_short_long_term_debt: str = "Short Long Term Debt"
+    s_long_term_debt: str = "Long Term Debt"
+    s_preferred_stock_value: str = "Preferred Stock"
+    s_noncontrolling_interest: str = "Noncontrolling Interest"
+    s_total_stockholder_equity: str = "Total Stockholder Equity"
+    s_net_tangible_assets: str = "Net Tangible Assets"
+
+    # Cash Flow Statement Items
+    s_capex: str = "Capital Expenditures"
+    s_depreciation_cf: str = "Depreciation"  # Typically Depreciation & Amortization on CF statement
+    s_change_in_cash: str = "Change In Cash"
 
 @dataclass
 class CalculationConfig:
     """Calculation methodology configuration."""
     normalization_years: int = 5
     min_years_required: int = 3
-    default_effective_tax_rate: float = 0.25
-    min_effective_tax_rate: float = 0.10
-    max_effective_tax_rate: float = 0.45
-    equity_risk_premium: float = 0.065
-    risk_free_rate_source: str = "fred"  # FRED, yahoo, manual
+    default_effective_tax_rate: float = 0.21 # From old config.py
+    min_effective_tax_rate: float = 0.05   # From old config.py
+    max_effective_tax_rate: float = 0.40   # From old config.py
+    equity_risk_premium: float = 0.055     # From old config.py
+    debt_risk_premium: float = 0.02        # Added from old config.py
+    risk_free_rate_source: str = "fred"
     default_risk_free_rate: float = 0.04
+    min_pretax_cost_of_debt: float = 0.005 # Added from old config.py
+    max_pretax_cost_of_debt: float = 0.20  # Added from old config.py
+    default_beta: float = 1.0              # Added from old config.py
+    wacc_normalization_years: int = 5      # From old DEFAULT_WACC_NORMALIZATION_YEARS
     
     # Advanced calculation settings
     outlier_detection_enabled: bool = True
@@ -47,25 +94,17 @@ class IndustryConfig:
     """Industry-specific configuration."""
     auto_detect_industry: bool = True
     industry_adjustments_enabled: bool = True
-    custom_industry_rules: Dict[str, Any] = None
-    
-    def __post_init__(self):
-        if self.custom_industry_rules is None:
-            self.custom_industry_rules = {}
+    custom_industry_rules: Dict[str, Any] = field(default_factory=dict)
 
 @dataclass
 class RiskConfig:
     """Risk analysis configuration."""
     monte_carlo_enabled: bool = True
-    monte_carlo_iterations: int = 10000
-    confidence_levels: List[float] = None
-    stress_test_scenarios: List[str] = None
-    
-    def __post_init__(self):
-        if self.confidence_levels is None:
-            self.confidence_levels = [0.80, 0.90, 0.95]
-        if self.stress_test_scenarios is None:
-            self.stress_test_scenarios = ["recession", "growth_slowdown", "margin_compression"]
+    monte_carlo_iterations: int = 10000 # Matches old MONTE_CARLO_SIMULATIONS
+    sensitivity_range_percent: float = 0.20 # Added from old config
+    sensitivity_steps: int = 5 # Added from old config
+    confidence_levels: List[float] = field(default_factory=lambda: [0.80, 0.90, 0.95])
+    stress_test_scenarios: List[str] = field(default_factory=lambda: ["recession", "growth_slowdown", "margin_compression"])
 
 @dataclass
 class OutputConfig:
@@ -73,12 +112,10 @@ class OutputConfig:
     default_output_format: str = "detailed"
     chart_generation_enabled: bool = True
     report_template: str = "comprehensive"
-    export_formats: List[str] = None
+    export_formats: List[str] = field(default_factory=lambda: ["pdf", "excel", "json"])
     decimal_precision: int = 2
-    
-    def __post_init__(self):
-        if self.export_formats is None:
-            self.export_formats = ["pdf", "excel", "json"]
+    default_currency_symbol: str = "$"    # Added from old config.py
+    reports_dir: str = "data/reports/"      # Added from old config.py
 
 @dataclass
 class PerformanceConfig:
@@ -108,6 +145,7 @@ class EPVConfig:
     output: OutputConfig
     performance: PerformanceConfig
     logging: LoggingConfig
+    financial_item_names: FinancialItemNamesConfig  # Added new field
     
     # Environment and metadata
     environment: str = "development"
@@ -173,6 +211,7 @@ class ConfigManager:
                 output=OutputConfig(**data.get('output', {})),
                 performance=PerformanceConfig(**data.get('performance', {})),
                 logging=LoggingConfig(**data.get('logging', {})),
+                financial_item_names=FinancialItemNamesConfig(**data.get('financial_item_names', {})), # Handle new field
                 environment=self.environment,
                 config_file_path=file_path
             )
@@ -196,6 +235,7 @@ class ConfigManager:
             output=OutputConfig(),
             performance=PerformanceConfig(),
             logging=LoggingConfig(),
+            financial_item_names=FinancialItemNamesConfig(), # Instantiate new field
             environment=self.environment
         )
     

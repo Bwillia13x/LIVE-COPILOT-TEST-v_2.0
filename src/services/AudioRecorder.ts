@@ -67,10 +67,17 @@ export class AudioRecorder {
           // Restart recognition if we're still recording
           if (this.state.isRecording && !this.state.isPaused) {
             setTimeout(() => {
-              if (this.recognition && this.state.isRecording) {
-                this.recognition.start();
+              try {
+                if (this.recognition && this.state.isRecording && !this.state.isPaused) { // Re-check state before starting
+                  this.recognition.start();
+                }
+              } catch (error) {
+                console.error('Speech recognition failed to restart:', error);
+                if (this.onError) {
+                  this.onError(error);
+                }
               }
-            }, 100);
+            }, 100); // Short delay before attempting restart
           }
         };
       }

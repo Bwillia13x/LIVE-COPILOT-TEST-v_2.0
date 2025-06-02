@@ -22,6 +22,7 @@ export class AudioRecorder {
   };
   private onDataAvailable?: (transcript: string) => void;
   private onStateChange?: (state: RecordingState) => void;
+  private onError?: (error: any) => void; // New callback property
   private recognition: any = null;
   private durationInterval: number | null = null;
 
@@ -57,6 +58,9 @@ export class AudioRecorder {
 
         this.recognition.onerror = (event: any) => {
           console.error('Speech recognition error:', event.error);
+          if (this.onError) {
+            this.onError(event.error); // Call the new callback
+          }
         };
 
         this.recognition.onend = () => {
@@ -237,6 +241,10 @@ export class AudioRecorder {
     this.onStateChange = callback;
   }
 
+  public onRecognitionError(callback: (error: any) => void): void {
+    this.onError = callback;
+  }
+
   public isSupported(): boolean {
     return !!(navigator.mediaDevices?.getUserMedia && 
              (window as any).MediaRecorder &&
@@ -261,5 +269,6 @@ export class AudioRecorder {
     this.stopRecording();
     this.onDataAvailable = undefined;
     this.onStateChange = undefined;
+    this.onError = undefined; // Clean up the new callback
   }
 }

@@ -28,7 +28,12 @@ export class AudioTranscriptionApp {
   private state: AppState;
   private currentTranscript: string = '';
   private transcriptBuffer: string = '';
-  // private isSampleData: boolean = false; // Removed as per subtask
+  // private isSampleData: boolean = false; // Already removed
+
+  // Live processing properties
+  private periodicAnalysisIntervalId: number | null = null;
+  private lastProcessedBufferLength: number = 0;
+  private livePolishedTranscript: string = '';
 
   // Performance tracking
   private autoSaveInterval: number | null = null;
@@ -61,6 +66,7 @@ export class AudioTranscriptionApp {
       currentNote: null,
       notes: [],
       isProcessing: false,
+      isProcessingPeriodic: false, // Initialize new state property
       errors: [],
     };
 
@@ -290,6 +296,20 @@ export class AudioTranscriptionApp {
     this.audioRecorder.onRecordingStateChange((recordingState) => {
       this.updateRecordingUI(recordingState);
     });
+
+    this.audioRecorder.onRecognitionError((error) => {
+      // Attempt to get a more specific error message if available
+      const errorMessage = error.message || error.error || (typeof error === 'string' ? error : 'Unknown speech recognition error');
+      this.showToast({
+        type: 'error',
+        title: 'Speech Recognition Error',
+        message: `An error occurred during speech recognition: ${errorMessage}. Recording might be affected or stop.`,
+        duration: 7000, // Longer duration for important errors
+      });
+      console.error('AudioRecognitionError from App:', error);
+      // Optionally, you could also try to stop recording or update UI state here if the error is critical
+      // For example: if (this.state.isRecording) this.toggleRecording();
+    });
   }
 
   private async toggleRecording(): Promise<void> {
@@ -304,31 +324,69 @@ export class AudioTranscriptionApp {
       }
 
       if (this.state.isRecording) {
+        // Stop Recording
         this.audioRecorder.stopRecording();
-        this.currentTranscript = this.transcriptBuffer.trim();
         this.state.isRecording = false;
-        
-        if (this.currentTranscript) {
-          this.showToast({
-            type: 'success',
-            title: 'Recording Complete',
-            message: 'Transcription ready for polishing.',
-          });
+        if (this.periodicAnalysisIntervalId) {
+          this.intervalManager.clearInterval(this.periodicAnalysisIntervalId);
+          this.periodicAnalysisIntervalId = null;
         }
+        this.currentTranscript = this.transcriptBuffer.trim(); // Full transcript is now in currentTranscript
+        
+        // Perform final processing on the complete transcript
+        if (this.currentTranscript) {
+            this.showToast({ type: 'info', title: 'Finalizing Note', message: 'Processing full transcript...' });
+            await this.processLiveTranscript(true); // Pass true for final run
+            // After final processing, livePolishedTranscript contains the final polished version
+            // Update the currentNote which will be saved if user decides to.
+             if (this.state.currentNote) {
+                this.state.currentNote.rawTranscription = this.currentTranscript;
+                this.state.currentNote.polishedNote = this.livePolishedTranscript;
+             } else { // Or create a new note structure if one wasn't active
+                this.state.currentNote = {
+                    id: Date.now().toString(),
+                    rawTranscription: this.currentTranscript,
+                    polishedNote: this.livePolishedTranscript,
+                    timestamp: Date.now(),
+                };
+             }
+             if (this.elements.polishedNoteArea) {
+                this.elements.polishedNoteArea.textContent = this.livePolishedTranscript;
+             }
+             this.showToast({ type: 'success', title: 'Recording Complete', message: 'Full transcript processed. Ready for review.'});
+        } else {
+            this.showToast({ type: 'info', title: 'Recording Stopped', message: 'No audio transcribed.' });
+        }
+
       } else {
+        // Start Recording
         const success = await this.audioRecorder.startRecording();
         if (success) {
           this.state.isRecording = true;
           this.transcriptBuffer = '';
-          this.showToast({
-            type: 'info',
-            title: 'Recording Started',
-            message: 'Speak now...',
-          });
+          this.lastProcessedBufferLength = 0;
+          this.livePolishedTranscript = '';
+          if (this.elements.polishedNoteArea) {
+            this.elements.polishedNoteArea.textContent = '';
+          }
+          // Clear old charts from display and manager
+          const chartArea = document.getElementById('aiChartDisplayArea');
+          if (chartArea) {
+            this.chartManager.destroyAllCharts();
+            chartArea.innerHTML = '';
+          }
+
+          if (this.periodicAnalysisIntervalId) {
+            this.intervalManager.clearInterval(this.periodicAnalysisIntervalId);
+          }
+          this.periodicAnalysisIntervalId = this.intervalManager.createRecurringTask(
+            'liveAnalysis',
+            30000, // 30 seconds
+            () => this.processLiveTranscript()
+          );
+          this.showToast({ type: 'info', title: 'Recording Started', message: 'Speak now...' });
         } else {
-          this.showToast({
-            type: 'error',
-            title: 'Recording Failed',
+          this.showToast({ type: 'error', title: 'Recording Failed',
             message: 'Could not start recording. Please check microphone permissions.',
           });
         }
@@ -408,139 +466,182 @@ export class AudioTranscriptionApp {
     }
   }
 
-  private async generateContextualCharts(): Promise<void> {
-    if (!this.currentTranscript) {
-      this.showToast({
-        type: 'warning',
-        title: 'No Transcription',
-        message: 'No transcription available to generate charts.',
-      });
-      return;
-    }
-
+  private async generateChartsForTranscript(transcript: string, isLiveUpdate: boolean = false): Promise<number> {
     if (!this.apiService.hasValidApiKey() || this.apiService.initializationError) {
-      this.showToast({
-        type: 'warning',
-        title: 'API Key Issue',
-        message: `API Key issue: ${this.apiService.initializationError || 'Please configure a valid API key in Settings.'}`,
-      });
-      return;
+      if (!isLiveUpdate) { // Only show toast if it's a manual click, not for live updates
+        this.showToast({
+          type: 'warning',
+          title: 'API Key Issue',
+          message: `API Key issue: ${this.apiService.initializationError || 'Please configure a valid API key in Settings.'}`,
+        });
+      }
+      return 0;
     }
 
-    this.state.isProcessing = true;
-    this.updateUI();
-    this.showToast({
-      type: 'info',
-      title: 'Generating Smart Charts',
-      message: 'Asking AI for relevant chart ideas...',
-    });
+    if (!isLiveUpdate) {
+        this.showToast({
+          type: 'info',
+          title: 'Generating Smart Charts',
+          message: 'Asking AI for relevant chart ideas...',
+        });
+    }
 
-    const suggestionsResponse = await this.apiService.getRelevantChartSuggestions(this.currentTranscript);
+    const suggestionsResponse = await this.apiService.getRelevantChartSuggestions(transcript);
 
     if (!suggestionsResponse.success || !suggestionsResponse.data || suggestionsResponse.data.length === 0) {
-      this.showToast({
-        type: 'warning',
-        title: 'No Chart Suggestions',
-        message: suggestionsResponse.error || 'AI could not suggest relevant charts for this text.',
-      });
-      this.state.isProcessing = false;
-      this.updateUI();
-      return;
+      if (!isLiveUpdate || suggestionsResponse.error) { // Show error for manual, or if live update had an API error
+        this.showToast({
+            type: 'warning',
+            title: 'No Chart Suggestions',
+            message: suggestionsResponse.error || 'AI could not suggest relevant charts for this text.',
+        });
+      }
+      return 0;
     }
 
     const chartArea = document.getElementById('aiChartDisplayArea');
     if (!chartArea) {
       ErrorHandler.logError('Chart display area (aiChartDisplayArea) not found in DOM.', new Error('MissingDOMElement'));
-      this.showToast({ type: 'error', title: 'UI Error', message: 'Chart display area not found.' });
-      this.state.isProcessing = false;
-      this.updateUI();
-      return;
+      if (!isLiveUpdate) this.showToast({ type: 'error', title: 'UI Error', message: 'Chart display area not found.' });
+      return 0;
     }
 
-    this.chartManager.destroyAllCharts(); // Clear existing charts from manager
-    chartArea.innerHTML = ''; // Clear the HTML content of the area
+    this.chartManager.destroyAllCharts();
+    chartArea.innerHTML = '';
 
-    this.showToast({
-      type: 'info',
-      title: 'Generating Charts',
-      message: `Received ${suggestionsResponse.data.length} suggestions. Now fetching chart data...`,
-    });
+    if (!isLiveUpdate) {
+        this.showToast({
+        type: 'info',
+        title: 'Generating Charts',
+        message: `Received ${suggestionsResponse.data.length} suggestions. Now fetching chart data...`,
+        });
+    }
 
     let chartsGeneratedSuccessfully = 0;
     for (const suggestion of suggestionsResponse.data) {
       const { chartType, chartTitle, reason } = suggestion;
-      // Ensure unique canvasId for each chart
       const canvasId = `chart-${chartType}-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`;
-
-      // Create container and get canvas element using ChartManager
       const canvasElement = this.chartManager.createChartContainer(chartArea, canvasId, chartTitle, reason);
 
       if (!canvasElement) {
         ErrorHandler.logError(`Failed to create chart container for ${chartTitle}`, new Error('ContainerCreationError'));
-        this.showToast({ type: 'error', title: 'UI Error', message: `Could not create container for chart: '${chartTitle}'.` });
-        continue; // Skip to next suggestion
+        if (!isLiveUpdate) this.showToast({ type: 'error', title: 'UI Error', message: `Could not create container for: '${chartTitle}'.` });
+        continue;
       }
 
-      const chartDataResponse = await this.apiService.generateChartData(this.currentTranscript, chartType);
+      const chartDataResponse = await this.apiService.generateChartData(transcript, chartType);
 
       if (chartDataResponse.success && chartDataResponse.data) {
         try {
           let chartCreated = false;
           switch (chartType) {
-            case 'topics':
-              chartCreated = !!this.chartManager.createTopicChart(canvasElement, chartDataResponse.data, chartTitle);
-              break;
-            case 'sentiment':
-              chartCreated = !!this.chartManager.createSentimentChart(canvasElement, chartDataResponse.data, chartTitle);
-              break;
-            case 'wordFrequency':
-              chartCreated = !!this.chartManager.createWordFrequencyChart(canvasElement, chartDataResponse.data, chartTitle);
-              break;
-            case 'line':
-              chartCreated = !!this.chartManager.createLineChart(canvasElement, chartDataResponse.data, chartTitle);
-              break;
+            case 'topics': chartCreated = !!this.chartManager.createTopicChart(canvasElement, chartDataResponse.data, chartTitle); break;
+            case 'sentiment': chartCreated = !!this.chartManager.createSentimentChart(canvasElement, chartDataResponse.data, chartTitle); break;
+            case 'wordFrequency': chartCreated = !!this.chartManager.createWordFrequencyChart(canvasElement, chartDataResponse.data, chartTitle); break;
+            case 'line': chartCreated = !!this.chartManager.createLineChart(canvasElement, chartDataResponse.data, chartTitle); break;
             default:
-              ErrorHandler.logError(`Unknown chart type suggested: ${chartType}`, new Error('UnknownChartType'));
-              this.showToast({ type: 'warning', title: 'Unknown Chart', message: `Cannot render unknown chart type: '${chartType}'.` });
-              canvasElement.parentElement?.remove(); // Clean up container for unknown type
-              continue; // Skip to next suggestion
+              ErrorHandler.logError(`Unknown chart type: ${chartType}`, new Error('UnknownChartType'));
+              if (!isLiveUpdate) this.showToast({ type: 'warning', title: 'Unknown Chart', message: `Cannot render: '${chartType}'.`});
+              canvasElement.parentElement?.remove();
+              continue;
           }
-
-          if (chartCreated) {
-            this.showToast({ type: 'success', title: 'Chart Ready', message: `'${chartTitle}' has been generated.` });
-            chartsGeneratedSuccessfully++;
-          } else {
-            // This case handles if create<Type>Chart returns null (e.g. context error)
-            throw new Error('ChartManager returned null for chart creation.');
-          }
+          if (chartCreated) chartsGeneratedSuccessfully++;
+          else throw new Error('ChartManager returned null.');
         } catch (renderError: any) {
-            ErrorHandler.logError(`Failed to render chart '${chartTitle}' with type ${chartType}`, renderError);
-            this.showToast({ type: 'error', title: 'Chart Render Error', message: `Could not render chart '${chartTitle}': ${renderError.message}`});
-            canvasElement.parentElement?.remove(); // Clean up container for render error
+          ErrorHandler.logError(`Chart render error for '${chartTitle}'`, renderError);
+          if (!isLiveUpdate) this.showToast({ type: 'error', title: 'Chart Render Error', message: `Could not render '${chartTitle}': ${renderError.message}`});
+          canvasElement.parentElement?.remove();
         }
       } else {
-        this.showToast({
-          type: 'error',
-          title: 'Chart Data Error',
-          message: `Could not fetch data for '${chartTitle}': ${chartDataResponse.error || 'Unknown error'}`,
-        });
-        canvasElement.parentElement?.remove(); // Clean up container if data fetching failed
+        if (!isLiveUpdate) this.showToast({ type: 'error', title: 'Chart Data Error', message: `Data error for '${chartTitle}': ${chartDataResponse.error}`});
+        canvasElement.parentElement?.remove();
       }
+    }
+    return chartsGeneratedSuccessfully;
+  }
+
+  private async generateContextualCharts(): Promise<void> {
+    if (!this.currentTranscript) {
+      this.showToast({ type: 'warning', title: 'No Transcription', message: 'No transcription available for charts.' });
+      return;
+    }
+    this.state.isProcessing = true;
+    this.updateUI();
+
+    const chartsGenerated = await this.generateChartsForTranscript(this.currentTranscript, false);
+
+    if (chartsGenerated > 0) {
+        this.showToast({ type: 'success', title: 'Smart Charts Complete', message: `Successfully generated ${chartsGenerated} chart(s).` });
+    } else {
+        // Specific error/warning for no charts generated would have been shown by generateChartsForTranscript
+        // or the initial API key/transcript checks.
+        // This is a fallback or general "finished but nothing new" message.
+        this.showToast({ type: 'info', title: 'Chart Generation Finished', message: 'Chart generation process completed.' });
     }
 
     this.state.isProcessing = false;
     this.updateUI();
-
-    if (chartsGeneratedSuccessfully === suggestionsResponse.data.length && chartsGeneratedSuccessfully > 0) {
-        this.showToast({ type: 'success', title: 'Smart Charts Complete', message: 'All suggested charts generated successfully.' });
-    } else if (chartsGeneratedSuccessfully > 0) {
-        this.showToast({ type: 'warning', title: 'Smart Charts Partially Complete', message: `Generated ${chartsGeneratedSuccessfully} out of ${suggestionsResponse.data.length} suggested charts.` });
-    } else if (suggestionsResponse.data.length > 0) { // Attempted but none succeeded
-        this.showToast({ type: 'error', title: 'Smart Charts Failed', message: 'Could not generate any of the suggested charts.' });
-    }
-    // If suggestionsResponse.data.length was 0, initial warning already shown.
   }
-  
+
+  private async processLiveTranscript(isFinalRun: boolean = false): Promise<void> {
+    if (!this.state.isRecording && !isFinalRun) { return; } // Only run if recording or it's the final call
+    if (this.state.isProcessingPeriodic && !isFinalRun) {
+      console.log('processLiveTranscript skipped: already processing periodic update.');
+      return;
+    }
+
+    this.state.isProcessingPeriodic = true;
+    if (!isFinalRun) this.updateUI(); // Avoid double UI update if isProcessing is also true
+
+    const currentBuffer = this.transcriptBuffer;
+
+    // Avoid processing if buffer hasn't changed much, unless it's the final run
+    if (!isFinalRun && (currentBuffer.length - this.lastProcessedBufferLength < 50)) { // Increased threshold
+      this.state.isProcessingPeriodic = false;
+      if (!isFinalRun) this.updateUI();
+      return;
+    }
+    
+    if (!this.apiService.hasValidApiKey() || this.apiService.initializationError) {
+        // Silently skip for live updates if API key is not okay, errors shown elsewhere
+        this.state.isProcessingPeriodic = false;
+        if (!isFinalRun) this.updateUI();
+        return;
+    }
+
+    if (!isFinalRun) this.showToast({ type: 'info', title: 'Live Analysis', message: 'Polishing transcript segment...' });
+    const polishResponse = await this.apiService.polishTranscription(currentBuffer);
+
+    if (polishResponse.success && polishResponse.data) {
+      this.livePolishedTranscript = polishResponse.data;
+      if (this.elements.polishedNoteArea) {
+        if (document.activeElement !== this.elements.polishedNoteArea) {
+          this.elements.polishedNoteArea.textContent = this.livePolishedTranscript;
+        } else {
+          console.log('Polished note area is focused, skipping direct UI update for live polishing.');
+        }
+      }
+      if (!isFinalRun) this.showToast({ type: 'success', title: 'Live Polishing', message: 'Transcript segment polished.' });
+      
+      // Update charts based on the live polished transcript (or currentBuffer if preferred)
+      // For live updates, we use the currentBuffer to get suggestions, as livePolishedTranscript might be slightly behind
+      // or we could use livePolishedTranscript if it's preferred for charts.
+      // Let's use currentBuffer for chart suggestions for now.
+      if (!isFinalRun) {
+        // this.showToast({ type: 'info', title: 'Live Analysis', message: 'Updating charts...' });
+        // For live updates, let's not show too many toasts for charts, make it more subtle.
+        await this.generateChartsForTranscript(currentBuffer, true); 
+      }
+
+    } else {
+      if (!isFinalRun) this.showToast({ type: 'error', title: 'Live Polishing Failed', message: polishResponse.error || 'Could not polish segment.' });
+    }
+    
+    this.lastProcessedBufferLength = currentBuffer.length;
+    this.state.isProcessingPeriodic = false;
+    if (!isFinalRun) this.updateUI();
+  }
+
   private saveCurrentNote(): void {
     try {
       if (!this.state.currentNote) {
@@ -574,8 +675,23 @@ export class AudioTranscriptionApp {
   private clearCurrentNote(): void {
     this.currentTranscript = '';
     this.transcriptBuffer = '';
+    this.livePolishedTranscript = '';
+    this.lastProcessedBufferLength = 0;
     this.state.currentNote = null;
+    this.state.isProcessingPeriodic = false; // Reset periodic processing state
+
+    if (this.periodicAnalysisIntervalId) {
+      this.intervalManager.clearInterval(this.periodicAnalysisIntervalId);
+      this.periodicAnalysisIntervalId = null;
+    }
+
     this.chartManager.destroyAllCharts();
+    const chartArea = document.getElementById('aiChartDisplayArea');
+    if (chartArea) chartArea.innerHTML = '';
+    
+    if (this.elements.polishedNoteArea) this.elements.polishedNoteArea.textContent = '';
+    if (this.elements.transcriptionArea) this.elements.transcriptionArea.textContent = '';
+
     this.updateUI();
 
     this.showToast({
@@ -738,14 +854,20 @@ export class AudioTranscriptionApp {
 
   private updateUI(): void {
     // Update button states
+    const globalProcessing = this.state.isProcessing || this.state.isProcessingPeriodic;
     if (this.elements.recordButton) {
-      this.elements.recordButton.disabled = this.state.isProcessing;
+      this.elements.recordButton.disabled = globalProcessing;
     }
+    const generateChartsButton = document.getElementById('generateContextualChartsButton') as HTMLButtonElement;
+    if (generateChartsButton) {
+        generateChartsButton.disabled = globalProcessing || this.state.isRecording; // Also disable if recording
+    }
+    // Disable other AI feature buttons if needed during globalProcessing
 
-    // Update processing indicators
+    // Update processing indicators (if you have a generic one)
     const processingElements = document.querySelectorAll('.processing-indicator');
     processingElements.forEach(el => {
-      el.style.display = this.state.isProcessing ? 'block' : 'none';
+      (el as HTMLElement).style.display = globalProcessing ? 'block' : 'none';
     });
   }
 
@@ -775,13 +897,17 @@ export class AudioTranscriptionApp {
     }
     
     if (this.uiUpdateInterval) {
-      clearInterval(this.uiUpdateInterval);
+      this.intervalManager.clearInterval(this.uiUpdateInterval); // Use IntervalManager
       this.uiUpdateInterval = null;
+    }
+    if (this.periodicAnalysisIntervalId) {
+        this.intervalManager.clearInterval(this.periodicAnalysisIntervalId);
+        this.periodicAnalysisIntervalId = null;
     }
     
     // Cleanup performance services
     this.performanceMonitor.cleanup();
-    this.intervalManager.cleanup();
+    this.intervalManager.cleanup(); // This will clear all tasks managed by it
     this.bundleOptimizer.cleanup();
     
     // Cleanup existing services

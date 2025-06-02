@@ -54,6 +54,7 @@ export interface AppState {
   currentNote: Note | null;
   notes: Note[];
   isProcessing: boolean;
+  isProcessingPeriodic: boolean; // Added for live processing state
   errors: ErrorContext[];
 }
 

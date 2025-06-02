@@ -28,6 +28,7 @@ export class AudioTranscriptionApp {
   private state: AppState;
   private currentTranscript: string = '';
   private transcriptBuffer: string = '';
+  // private isSampleData: boolean = false; // Removed as per subtask
 
   // Performance tracking
   private autoSaveInterval: number | null = null;
@@ -208,18 +209,6 @@ export class AudioTranscriptionApp {
       }
     });
 
-    // Test Chart button (replaces generateChartsButton)
-    const testChartButton = document.getElementById('testChartButton');
-    testChartButton?.addEventListener('click', () => {
-      this.generateCharts();
-    });
-
-    // Sample Charts button (additional chart generation)
-    const sampleChartsButton = document.getElementById('sampleChartsButton');
-    sampleChartsButton?.addEventListener('click', () => {
-      this.generateSampleCharts();
-    });
-
     // New/Clear button (replaces clearButton)
     const newButton = document.getElementById('newButton');
     newButton?.addEventListener('click', () => {
@@ -248,6 +237,12 @@ export class AudioTranscriptionApp {
     const themeToggleButton = document.getElementById('themeToggleButton');
     themeToggleButton?.addEventListener('click', () => {
       this.toggleTheme();
+    });
+
+    // New "Generate Smart Charts" button
+    const generateContextualChartsButton = document.getElementById('generateContextualChartsButton');
+    generateContextualChartsButton?.addEventListener('click', () => {
+      this.generateContextualCharts();
     });
 
     // Window events
@@ -413,91 +408,139 @@ export class AudioTranscriptionApp {
     }
   }
 
-  private async generateCharts(): Promise<void> {
+  private async generateContextualCharts(): Promise<void> {
     if (!this.currentTranscript) {
-        this.showToast({
-            type: 'warning',
-            title: 'No Transcription',
-            message: 'Please record or type something first to generate charts.',
-        });
-        return;
+      this.showToast({
+        type: 'warning',
+        title: 'No Transcription',
+        message: 'No transcription available to generate charts.',
+      });
+      return;
     }
 
     if (!this.apiService.hasValidApiKey() || this.apiService.initializationError) {
       this.showToast({
         type: 'warning',
         title: 'API Key Issue',
-        message: `Charts require a valid API key. Please configure one in Settings. ${this.apiService.initializationError || ''}`,
+        message: `API Key issue: ${this.apiService.initializationError || 'Please configure a valid API key in Settings.'}`,
       });
       return;
     }
 
-    // Assuming this.isSampleData is a flag you might use elsewhere,
-    // if not, this condition might need adjustment or removal.
-    // For now, I'm keeping it as it was in the original code snippet.
-    if (this.isSampleData) { // If it's sample data, perhaps skip API call or handle differently
-        console.log("Skipping chart generation for sample data or implement sample chart logic.");
-        return;
-    }
-
     this.state.isProcessing = true;
-    this.updateUI(); // Reflect processing state
-    this.showToast({ type: 'info', title: 'Generating Charts', message: 'Please wait...' });
+    this.updateUI();
+    this.showToast({
+      type: 'info',
+      title: 'Generating Smart Charts',
+      message: 'Asking AI for relevant chart ideas...',
+    });
 
+    const suggestionsResponse = await this.apiService.getRelevantChartSuggestions(this.currentTranscript);
 
-    try {
-      const chartData = await this.performanceMonitor.measureOperation(
-        // Assuming this.fullTranscription is a valid property holding the text for chart generation.
-        // If not, replace with this.currentTranscript or appropriate source.
-        () => this.apiService.generateChartData(this.currentTranscript, 'topics'), // Example: specify a chart type or adjust APIService
-        'apiResponseTime',
-        'generateChartData_full'
-      );
-
-      if (chartData.success && chartData.data) {
-        await this.performanceMonitor.measureOperation(
-          async () => {
-            // This part depends heavily on how chartData.data is structured
-            // and how chartService.createChart expects it.
-            // The original code iterated over Object.keys(chartData), which might not be correct if chartData.data is the actual chart object.
-            // Adjusting based on a hypothetical structure where chartData.data is the chart object itself for a single chart type.
-            // If multiple charts are returned, the original loop structure might be more appropriate.
-            
-            // Example: if chartData.data is { labels: [], data: [], backgroundColor: [] }
-            // And you want to create one chart of a specific type, e.g., 'topicsChart'
-            // This assumes chartService and chartInstances are correctly set up.
-            // This is a placeholder and needs to be adapted to your actual data structures and chart rendering logic.
-            await this.chartManager.createChart( // Assuming chartManager is the correct service
-              `topicsChart`, // Example ID
-              'topics', // Example type
-              chartData.data // The actual data for the chart
-            );
-          },
-          'chartGeneration',
-          'generateCharts_Overall'
-        );
-        this.showToast({ type: 'success', title: 'Charts Generated', message: 'Successfully generated charts.' });
-      } else {
-        ErrorHandler.logError('Failed to generate charts', chartData.error);
-        this.showToast({
-          type: 'error',
-          title: 'Chart Generation Failed',
-          message: chartData.error || 'An error occurred while generating charts.',
-        });
-      }
-    } catch (error: any) {
-      ErrorHandler.logError('Failed to generate charts', error);
+    if (!suggestionsResponse.success || !suggestionsResponse.data || suggestionsResponse.data.length === 0) {
       this.showToast({
-        type: 'error',
-        title: 'Chart Generation Error',
-        message: error.message || 'An unexpected error occurred.',
+        type: 'warning',
+        title: 'No Chart Suggestions',
+        message: suggestionsResponse.error || 'AI could not suggest relevant charts for this text.',
       });
-    } finally {
       this.state.isProcessing = false;
       this.updateUI();
+      return;
     }
-  }
 
+    const chartArea = document.getElementById('aiChartDisplayArea');
+    if (!chartArea) {
+      ErrorHandler.logError('Chart display area (aiChartDisplayArea) not found in DOM.', new Error('MissingDOMElement'));
+      this.showToast({ type: 'error', title: 'UI Error', message: 'Chart display area not found.' });
+      this.state.isProcessing = false;
+      this.updateUI();
+      return;
+    }
+
+    this.chartManager.destroyAllCharts(); // Clear existing charts from manager
+    chartArea.innerHTML = ''; // Clear the HTML content of the area
+
+    this.showToast({
+      type: 'info',
+      title: 'Generating Charts',
+      message: `Received ${suggestionsResponse.data.length} suggestions. Now fetching chart data...`,
+    });
+
+    let chartsGeneratedSuccessfully = 0;
+    for (const suggestion of suggestionsResponse.data) {
+      const { chartType, chartTitle, reason } = suggestion;
+      // Ensure unique canvasId for each chart
+      const canvasId = `chart-${chartType}-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`;
+
+      // Create container and get canvas element using ChartManager
+      const canvasElement = this.chartManager.createChartContainer(chartArea, canvasId, chartTitle, reason);
+
+      if (!canvasElement) {
+        ErrorHandler.logError(`Failed to create chart container for ${chartTitle}`, new Error('ContainerCreationError'));
+        this.showToast({ type: 'error', title: 'UI Error', message: `Could not create container for chart: '${chartTitle}'.` });
+        continue; // Skip to next suggestion
+      }
+
+      const chartDataResponse = await this.apiService.generateChartData(this.currentTranscript, chartType);
+
+      if (chartDataResponse.success && chartDataResponse.data) {
+        try {
+          let chartCreated = false;
+          switch (chartType) {
+            case 'topics':
+              chartCreated = !!this.chartManager.createTopicChart(canvasElement, chartDataResponse.data, chartTitle);
+              break;
+            case 'sentiment':
+              chartCreated = !!this.chartManager.createSentimentChart(canvasElement, chartDataResponse.data, chartTitle);
+              break;
+            case 'wordFrequency':
+              chartCreated = !!this.chartManager.createWordFrequencyChart(canvasElement, chartDataResponse.data, chartTitle);
+              break;
+            case 'line':
+              chartCreated = !!this.chartManager.createLineChart(canvasElement, chartDataResponse.data, chartTitle);
+              break;
+            default:
+              ErrorHandler.logError(`Unknown chart type suggested: ${chartType}`, new Error('UnknownChartType'));
+              this.showToast({ type: 'warning', title: 'Unknown Chart', message: `Cannot render unknown chart type: '${chartType}'.` });
+              canvasElement.parentElement?.remove(); // Clean up container for unknown type
+              continue; // Skip to next suggestion
+          }
+
+          if (chartCreated) {
+            this.showToast({ type: 'success', title: 'Chart Ready', message: `'${chartTitle}' has been generated.` });
+            chartsGeneratedSuccessfully++;
+          } else {
+            // This case handles if create<Type>Chart returns null (e.g. context error)
+            throw new Error('ChartManager returned null for chart creation.');
+          }
+        } catch (renderError: any) {
+            ErrorHandler.logError(`Failed to render chart '${chartTitle}' with type ${chartType}`, renderError);
+            this.showToast({ type: 'error', title: 'Chart Render Error', message: `Could not render chart '${chartTitle}': ${renderError.message}`});
+            canvasElement.parentElement?.remove(); // Clean up container for render error
+        }
+      } else {
+        this.showToast({
+          type: 'error',
+          title: 'Chart Data Error',
+          message: `Could not fetch data for '${chartTitle}': ${chartDataResponse.error || 'Unknown error'}`,
+        });
+        canvasElement.parentElement?.remove(); // Clean up container if data fetching failed
+      }
+    }
+
+    this.state.isProcessing = false;
+    this.updateUI();
+
+    if (chartsGeneratedSuccessfully === suggestionsResponse.data.length && chartsGeneratedSuccessfully > 0) {
+        this.showToast({ type: 'success', title: 'Smart Charts Complete', message: 'All suggested charts generated successfully.' });
+    } else if (chartsGeneratedSuccessfully > 0) {
+        this.showToast({ type: 'warning', title: 'Smart Charts Partially Complete', message: `Generated ${chartsGeneratedSuccessfully} out of ${suggestionsResponse.data.length} suggested charts.` });
+    } else if (suggestionsResponse.data.length > 0) { // Attempted but none succeeded
+        this.showToast({ type: 'error', title: 'Smart Charts Failed', message: 'Could not generate any of the suggested charts.' });
+    }
+    // If suggestionsResponse.data.length was 0, initial warning already shown.
+  }
+  
   private saveCurrentNote(): void {
     try {
       if (!this.state.currentNote) {
@@ -943,77 +986,6 @@ export class AudioTranscriptionApp {
   }
 
   /**
-   * Generate sample charts for demonstration purposes
-   */
-  private async generateSampleCharts(): Promise<void> {
-    // Check API key status before generating sample charts if they rely on the API
-    if (!this.apiService.hasValidApiKey() || this.apiService.initializationError) {
-      this.showToast({
-        type: 'warning',
-        title: 'API Key Issue for Sample Charts',
-        message: `Sample charts might require a valid API key. Please configure one in Settings. ${this.apiService.initializationError || ''}`,
-      });
-      // Depending on implementation, you might allow sample charts without API or stop here.
-      // For now, let's assume it might need API and return.
-      return; 
-    }
-
-    this.isSampleData = true; // Assuming this flag is used correctly elsewhere
-    this.state.isProcessing = true;
-    this.updateUI();
-    this.showToast({ type: 'info', title: 'Generating Sample Charts', message: 'Please wait...' });
-
-    try {
-      // Assuming apiService.generateSampleChartData() is a valid method.
-      // Adjust if it's not or if sample charts are generated client-side.
-      const sampleChartDataResult = await this.performanceMonitor.measureOperation(
-        () => this.apiService.generateChartData("sample", "topics"), // Placeholder: Actual method might differ
-        'apiResponseTime',
-        'generateSampleChartData'
-      );
-
-      if (sampleChartDataResult.success && sampleChartDataResult.data) {
-        await this.performanceMonitor.measureOperation(
-          async () => {
-            // Similar to generateCharts, this part needs to be adapted
-            // to your actual data structures and chart rendering logic.
-            // Example:
-            await this.chartManager.createChart(
-              `sampleTopicsChart`, // Example ID
-              'topics', // Example type
-              sampleChartDataResult.data // The actual data for the chart
-            );
-          },
-          'chartGeneration',
-          'generateSampleCharts_Overall'
-        );
-        this.showToast({ type: 'success', title: 'Sample Charts Generated', message: 'Successfully generated sample charts.' });
-      } else {
-        ErrorHandler.logError('Failed to generate sample charts', sampleChartDataResult.error);
-        this.showToast({
-          type: 'error',
-          title: 'Sample Chart Generation Failed',
-          message: sampleChartDataResult.error || 'An error occurred while generating sample charts.',
-        });
-      }
-    } catch (error: any) {
-      ErrorHandler.logError('Failed to generate sample charts', error);
-      this.showToast({
-        type: 'error',
-        title: 'Sample Chart Error',
-        message: error.message || 'An unexpected error occurred.',
-      });
-      if (this.productionMonitor) {
-        this.productionMonitor.trackError('sample_charts_generation_failed', error);
-      }
-    } finally {
-      this.state.isProcessing = false;
-      this.isSampleData = false; // Reset flag
-      this.updateUI();
-    }
-  }
-
-  /**
    * Switch to the polished tab view
    */
   private switchToPolishedTab(): void {
@@ -1174,50 +1146,5 @@ export class AudioTranscriptionApp {
     }
   }
 
-  // Helper methods for chart creation
-  private createChartContainer(canvasId: string, title: string, description: string): void {
-    const chartDisplayArea = document.getElementById('aiChartDisplayArea');
-    if (!chartDisplayArea) {
-      console.error('Chart display area not found');
-      return;
-    }
-
-    const chartContainer = document.createElement('div');
-    chartContainer.className = 'chart-container';
-    chartContainer.innerHTML = `
-      <div class="chart-header">
-        <h4>${title}</h4>
-        <p class="chart-description">${description}</p>
-      </div>
-      <canvas id="${canvasId}" width="400" height="200"></canvas>
-    `;
-
-    chartDisplayArea.appendChild(chartContainer);
-  }
-
-  private getChartTitle(chartType: string): string {
-    switch (chartType) {
-      case 'topics':
-        return 'Topic Distribution';
-      case 'sentiment':
-        return 'Sentiment Analysis';
-      case 'wordFrequency':
-        return 'Word Frequency';
-      default:
-        return 'Chart';
-    }
-  }
-
-  private getChartDescription(chartType: string): string {
-    switch (chartType) {
-      case 'topics':
-        return 'Main topics identified in your transcription';
-      case 'sentiment':
-        return 'Emotional tone breakdown of your content';
-      case 'wordFrequency':
-        return 'Most frequently used words in your transcription';
-      default:
-        return 'Data visualization';
-    }
-  }
+  // Helper methods for chart creation (now removed and moved to ChartManager)
 }

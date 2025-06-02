@@ -234,4 +234,75 @@ Transcription: "${transcription}"`;
   public hasValidApiKey(): boolean {
     return !!this.apiKey && !!this.genAI && this.initializationError === null;
   }
+
+  public async getRelevantChartSuggestions(
+    transcription: string
+  ): Promise<APIResponse<Array<{ chartType: string; chartTitle: string; reason: string }>>> {
+    if (this.initializationError) {
+      return {
+        success: false,
+        error: `API Service not initialized: ${this.initializationError}`,
+      };
+    }
+    if (!this.genAI) {
+      return {
+        success: false,
+        error: ERROR_MESSAGES.API.API_KEY_MISSING,
+      };
+    }
+
+    const prompt = `Analyze the following transcription and suggest a list of 2-3 chart types that would be most relevant and insightful.
+Valid chart types are: "topics", "sentiment", "wordFrequency", and "line" (only suggest "line" if a clear time-series or progression can be inferred from the text).
+For each suggestion, provide:
+- "chartType": (string) one of the valid chart types.
+- "chartTitle": (string) a concise, descriptive title for the chart (e.g., "Key Topics Discussed", "Overall Sentiment Trend").
+- "reason": (string) a brief explanation for why this chart type is relevant for this transcription.
+
+Output MUST be a valid JSON array of objects. For example:
+[
+  {"chartType": "sentiment", "chartTitle": "Emotional Tone of the Note", "reason": "This chart will show the overall emotional tone of the note, helping to understand the context."},
+  {"chartType": "topics", "chartTitle": "Main Themes Discussed", "reason": "This chart will identify the key subjects and themes present in the transcription."}
+]
+
+Transcription:
+"${transcription}"
+
+JSON Output:`;
+
+    try {
+      const model = this.genAI.getGenerativeModel({ model: MODEL_NAME });
+      const result = await model.generateContent(prompt);
+      const response = await result.response;
+      const responseText = response.text();
+      
+      // It's common for the LLM to wrap the JSON in ```json ... ```, so let's try to strip that.
+      const cleanedResponseText = responseText.replace(/^```json\s*|```\s*$/g, '').trim();
+
+      const suggestions = JSON.parse(cleanedResponseText);
+
+      // Basic validation of the parsed structure
+      if (
+        !Array.isArray(suggestions) ||
+        !suggestions.every(
+          (item) =>
+            typeof item.chartType === 'string' &&
+            typeof item.chartTitle === 'string' &&
+            typeof item.reason === 'string'
+        )
+      ) {
+        throw new Error('Invalid JSON structure for chart suggestions.');
+      }
+
+      return {
+        success: true,
+        data: suggestions,
+      };
+    } catch (error: any) {
+      ErrorHandler.logError('Failed to get relevant chart suggestions or parse response', error);
+      return {
+        success: false,
+        error: `Failed to get chart suggestions: ${error?.message || 'Unknown error during suggestion generation or parsing.'}`,
+      };
+    }
+  }
 }

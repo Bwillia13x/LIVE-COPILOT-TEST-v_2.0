@@ -52,9 +52,10 @@
               contenteditable="true"
               placeholder="Raw transcription will appear here..."
             >
-              <div id="aiChartDisplayArea" class="ai-chart-raw-display">
-                <!-- AI-generated charts based on raw transcription will appear here -->
-              </div>
+              <!-- Raw transcription content -->
+            </div>
+            <div id="aiChartDisplayArea">
+              <!-- AI-generated charts will appear here, now a sibling to rawTranscription and polishedNote -->
             </div>
           </div>
         </div>
@@ -326,12 +327,8 @@
               <i class="fas fa-file"></i>
             </button>
 
-            <button class="action-button" id="testChartButton" title="Test Chart Generation" style="background-color: #ff6b6b;">
-              <i class="fas fa-chart-bar"></i>
-            </button>
-            
-            <button class="action-button" id="sampleChartsButton" title="Generate Sample Charts" style="background-color: #28a745;">
-              <i class="fas fa-chart-pie"></i>
+            <button class="action-button" id="generateContextualChartsButton" title="Generate Smart Charts">
+              <i class="fas fa-magic"></i>
             </button>
           </div>
         </div>

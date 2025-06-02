@@ -53,19 +53,88 @@ export class ChartManager {
     },
   };
 
-  public createChart(canvasId: string, config: ChartConfig): Chart | null {
+  public createChartContainer(
+    chartDisplayArea: HTMLElement,
+    canvasId: string,
+    title: string,
+    description: string
+  ): HTMLCanvasElement | null {
     try {
-      // Destroy existing chart if it exists
-      this.destroyChart(canvasId);
+      const chartContainer = document.createElement('div');
+      chartContainer.className = 'chart-container'; // Add class for styling
 
-      const canvas = document.getElementById(canvasId) as HTMLCanvasElement;
-      if (!canvas) {
-        throw new Error(`Canvas element with id '${canvasId}' not found`);
+      const chartHeader = document.createElement('div');
+      chartHeader.className = 'chart-header';
+
+      const chartTitleElement = document.createElement('h4');
+      chartTitleElement.innerText = title;
+      chartHeader.appendChild(chartTitleElement);
+
+      if (description) {
+        const chartDescriptionElement = document.createElement('p');
+        chartDescriptionElement.className = 'chart-description';
+        chartDescriptionElement.innerText = description;
+        chartHeader.appendChild(chartDescriptionElement);
       }
+      
+      chartContainer.appendChild(chartHeader);
 
-      const ctx = canvas.getContext('2d');
+      const canvasElement = document.createElement('canvas');
+      canvasElement.id = canvasId;
+      canvasElement.width = 400; // Default width, can be overridden by CSS or options
+      canvasElement.height = 200; // Default height
+      chartContainer.appendChild(canvasElement);
+
+      chartDisplayArea.appendChild(chartContainer);
+      return canvasElement;
+    } catch (error) {
+      ErrorHandler.logError(`Failed to create chart container for canvasId: ${canvasId}`, error);
+      return null;
+    }
+  }
+
+  public static getChartTitle(chartType: string): string {
+    switch (chartType) {
+      case 'topics':
+        return 'Topic Distribution';
+      case 'sentiment':
+        return 'Sentiment Analysis';
+      case 'wordFrequency':
+        return 'Word Frequency';
+      case 'line':
+        return 'Trend Over Time'; // Example for line chart
+      default:
+        return 'Chart';
+    }
+  }
+
+  public static getChartDescription(chartType: string): string {
+    switch (chartType) {
+      case 'topics':
+        return 'Main topics identified in your transcription.';
+      case 'sentiment':
+        return 'Emotional tone breakdown of your content.';
+      case 'wordFrequency':
+        return 'Most frequently used words in your transcription.';
+      case 'line':
+        return 'Shows trends or progression of data points.'; // Example
+      default:
+        return 'Data visualization.';
+    }
+  }
+
+  public createChart(canvasElement: HTMLCanvasElement, config: ChartConfig): Chart | null {
+    if (!canvasElement) {
+      ErrorHandler.logError('Canvas element provided to createChart is null or undefined.', new Error('NullCanvasElement'));
+      return null;
+    }
+    try {
+      // Destroy existing chart if it exists for this canvas's ID
+      this.destroyChart(canvasElement.id);
+
+      const ctx = canvasElement.getContext('2d');
       if (!ctx) {
-        throw new Error(`Could not get 2D context for canvas '${canvasId}'`);
+        throw new Error(`Could not get 2D context for canvas '${canvasElement.id}'`);
       }
 
       const chartConfig = {
@@ -78,16 +147,16 @@ export class ChartManager {
       };
 
       const chart = new Chart(ctx, chartConfig);
-      this.charts.set(canvasId, chart);
+      this.charts.set(canvasElement.id, chart);
       
       return chart;
     } catch (error) {
-      ErrorHandler.logError(`Failed to create chart for canvas: ${canvasId}`, error);
+      ErrorHandler.logError(`Failed to create chart for canvas: ${canvasElement.id}`, error);
       return null;
     }
   }
 
-  public createTopicChart(canvasId: string, data: any, title: string = 'Topic Distribution'): Chart | null {
+  public createTopicChart(canvasElement: HTMLCanvasElement, data: any, title: string = 'Topic Distribution'): Chart | null {
     const config: ChartConfig = {
       type: 'pie',
       data: {
@@ -113,10 +182,10 @@ export class ChartManager {
       },
     };
 
-    return this.createChart(canvasId, config);
+    return this.createChart(canvasElement, config);
   }
 
-  public createSentimentChart(canvasId: string, data: any, title: string = 'Sentiment Analysis'): Chart | null {
+  public createSentimentChart(canvasElement: HTMLCanvasElement, data: any, title: string = 'Sentiment Analysis'): Chart | null {
     const config: ChartConfig = {
       type: 'doughnut',
       data: {
@@ -143,10 +212,10 @@ export class ChartManager {
       },
     };
 
-    return this.createChart(canvasId, config);
+    return this.createChart(canvasElement, config);
   }
 
-  public createWordFrequencyChart(canvasId: string, data: any, title: string = 'Word Frequency'): Chart | null {
+  public createWordFrequencyChart(canvasElement: HTMLCanvasElement, data: any, title: string = 'Word Frequency'): Chart | null {
     const config: ChartConfig = {
       type: 'bar',
       data: {
@@ -188,10 +257,10 @@ export class ChartManager {
       },
     };
 
-    return this.createChart(canvasId, config);
+    return this.createChart(canvasElement, config);
   }
 
-  public createLineChart(canvasId: string, data: any, title: string = 'Line Chart'): Chart | null {
+  public createLineChart(canvasElement: HTMLCanvasElement, data: any, title: string = 'Line Chart'): Chart | null {
     const config: ChartConfig = {
       type: 'line',
       data: {
@@ -221,10 +290,11 @@ export class ChartManager {
       },
     };
 
-    return this.createChart(canvasId, config);
+    return this.createChart(canvasElement, config);
   }
 
-  public destroyChart(canvasId: string): void {
+  public destroyChart(canvasIdOrElement: string | HTMLCanvasElement): void {
+    const canvasId = typeof canvasIdOrElement === 'string' ? canvasIdOrElement : canvasIdOrElement.id;
     const chart = this.charts.get(canvasId);
     if (chart) {
       chart.destroy();
@@ -233,7 +303,7 @@ export class ChartManager {
   }
 
   public destroyAllCharts(): void {
-    this.charts.forEach((chart, canvasId) => {
+    this.charts.forEach((chart) => { // Removed canvasId from params as it's not used
       chart.destroy();
     });
     this.charts.clear();

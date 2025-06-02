@@ -1512,6 +1512,26 @@ body.light-mode .record-button.recording .record-button-inner { color: white; }
   }
 }
 
+/* Onboarding Tour Styles */
+.tour-modal-content {
+  max-width: 450px; /* Or your preferred width */
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+}
+
+.tour-navigation {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.tour-highlight-element {
+  box-shadow: 0 0 0 3px var(--color-accent), 0 0 15px rgba(var(--color-accent-rgb), 0.5); /* Use your accent color */
+  border-radius: 4px; /* Optional: adds rounded corners to the highlight */
+  position: relative; /* Needed for pseudo-elements if used for more complex highlights */
+  z-index: 9999; /* Ensure it's on top */
+  transition: box-shadow 0.3s ease-in-out;
+}
+
 /* Smart Content Highlights */
 .smart-highlight {
   position: relative;
@@ -1539,6 +1559,76 @@ body.light-mode .record-button.recording .record-button-inner { color: white; }
 
 .smart-highlight:hover::after {
   width: 100%;
+}
+
+/* Placeholder text styling */
+.placeholder-text {
+  color: var(--color-text-tertiary);
+  font-style: italic;
+  font-size: 0.9em;
+  text-align: center;
+  padding: 10px;
+}
+
+.placeholder-value {
+  color: var(--color-text-tertiary);
+  font-style: italic;
+  font-size: 0.9em;
+}
+
+/* FAB positioning adjustment when recording interface is live */
+.main-content:has(> .recording-interface.is-live) .floating-button {
+  display: none !important; /* Hide FABs to prevent any overlap with live recording UI */
+}
+
+/* Placeholder text styling */
+.placeholder-text {
+  color: var(--color-text-tertiary);
+  font-style: italic;
+  font-size: 0.9em;
+  text-align: center;
+  padding: 10px;
+}
+
+.placeholder-value {
+  color: var(--color-text-tertiary);
+  font-style: italic;
+  font-size: 0.9em;
+}
+
+/* FAB positioning adjustment when recording interface is live */
+.main-content:has(> .recording-interface.is-live) .floating-button {
+  display: none !important; /* Hide FABs to prevent any overlap with live recording UI */
+}
+
+/* Placeholder text styling */
+.placeholder-text {
+  color: var(--color-text-tertiary);
+  font-style: italic;
+  font-size: 0.9em;
+  text-align: center;
+  padding: 10px;
+}
+
+.placeholder-value {
+  color: var(--color-text-tertiary);
+  font-style: italic;
+  font-size: 0.9em;
+}
+
+/* FAB positioning adjustment when recording interface is live */
+.main-content:has(> .recording-interface.is-live) .floating-button {
+  display: none; /* Hide FABs to prevent any overlap with live recording UI */
+}
+
+/* Highlight for Polished Note Update */
+@keyframes highlight-fade {
+  from { background-color: rgba(255, 255, 0, 0.5); } /* Yellow with some transparency */
+  to { background-color: transparent; }
+}
+
+.highlight-polished-note {
+  animation: highlight-fade 2s ease-out;
 }
 
 /* ====== PRIORITY 4 FEATURES: MULTI-MODAL INTEGRATION & ADVANCED WORKFLOWS ====== */

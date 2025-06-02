@@ -53,6 +53,12 @@
               placeholder="Raw transcription will appear here..."
             >
               <div id="aiChartDisplayArea" class="ai-chart-raw-display">
+                <div id="chartLoadingIndicator" style="display: none; text-align: center; padding: 20px; width: 100%;">
+                  Generating charts, please wait... <span class="spinner"></span>
+                </div>
+                <div id="chartEmptyState" style="display: none; text-align: center; padding: 20px; width: 100%;" class="placeholder-text">
+                  Your AI-generated charts will appear here. Try recording audio, then use the 'Test Chart' or 'Sample Charts' buttons!
+                </div>
                 <!-- AI-generated charts based on raw transcription will appear here -->
               </div>
             </div>
@@ -290,11 +296,11 @@
           </div>
 
           <div class="recording-controls">
-            <button class="action-button" id="analyticsButton" title="Show Analytics">
+            <button class="action-button" id="analyticsButton" title="Show/Hide Session Analytics (speech metrics, content analysis, etc.)">
               <i class="fas fa-chart-line"></i>
             </button>
 
-            <button class="action-button" id="performanceToggleButton" title="Toggle Performance Monitor">
+            <button class="action-button" id="performanceToggleButton" title="Show/Hide real-time performance metrics (memory, CPU, FPS)">
               <i class="fas fa-tachometer-alt"></i>
             </button>
 
@@ -326,11 +332,11 @@
               <i class="fas fa-file"></i>
             </button>
 
-            <button class="action-button" id="testChartButton" title="Test Chart Generation" style="background-color: #ff6b6b;">
+            <button class="action-button" id="testChartButton" title="Test AI chart generation with sample data (requires API key)" style="background-color: #ff6b6b;">
               <i class="fas fa-chart-bar"></i>
             </button>
             
-            <button class="action-button" id="sampleChartsButton" title="Generate Sample Charts" style="background-color: #28a745;">
+            <button class="action-button" id="sampleChartsButton" title="Generate various sample charts for demonstration (requires API key)" style="background-color: #28a745;">
               <i class="fas fa-chart-pie"></i>
             </button>
           </div>
@@ -349,19 +355,27 @@
       <div class="suggestions-content">
         <div class="suggestion-section">
           <h4>Next Actions</h4>
-          <div id="nextActions" class="suggestion-items"></div>
+          <div id="nextActions" class="suggestion-items">
+            <p class="placeholder-text">AI-powered next action suggestions will appear here soon!</p>
+          </div>
         </div>
         <div class="suggestion-section">
           <h4>Related Topics</h4>
-          <div id="relatedTopics" class="suggestion-items"></div>
+          <div id="relatedTopics" class="suggestion-items">
+            <p class="placeholder-text">Discover related topics based on your notes in a future update.</p>
+          </div>
         </div>
         <div class="suggestion-section">
           <h4>Improvement Tips</h4>
-          <div id="improvementTips" class="suggestion-items"></div>
+          <div id="improvementTips" class="suggestion-items">
+            <p class="placeholder-text">Get tips for improving your content structure and clarity.</p>
+          </div>
         </div>
         <div class="suggestion-section">
           <h4>Export Recommendations</h4>
-          <div id="exportRecommendations" class="suggestion-items"></div>
+          <div id="exportRecommendations" class="suggestion-items">
+            <p class="placeholder-text">Recommendations for the best export formats based on your content.</p>
+          </div>
         </div>
       </div>
     </div>
@@ -380,15 +394,15 @@
           <div id="contentAnalysisInsights" class="insight-data">
             <div class="insight-item">
               <span class="insight-label">Readability:</span>
-              <span id="readabilityScore" class="insight-value">--</span>
+              <span id="readabilityScore" class="insight-value"><span class="placeholder-value">Coming Soon</span></span>
             </div>
             <div class="insight-item">
               <span class="insight-label">Complexity:</span>
-              <span id="complexityLevel" class="insight-value">--</span>
+              <span id="complexityLevel" class="insight-value"><span class="placeholder-value">Coming Soon</span></span>
             </div>
             <div class="insight-item">
               <span class="insight-label">Key Themes:</span>
-              <div id="keyThemes" class="insight-tags"></div>
+              <div id="keyThemes" class="insight-tags"><span class="placeholder-value">Key themes will be shown here.</span></div>
             </div>
           </div>
         </div>
@@ -448,7 +462,7 @@
         <div id="filesList" class="files-list">
           <div class="files-empty-state">
             <i class="fas fa-folder-open"></i>
-            <p>No files uploaded yet</p>
+            <p class="placeholder-text">Your uploaded files and integrated content will appear here soon!</p>
             <button class="btn btn-primary" onclick="document.getElementById('fileInput').click()">
               <i class="fas fa-upload"></i> Upload First File
             </button>
@@ -477,7 +491,7 @@
         <div id="workflowsList" class="workflows-list">
           <div class="workflow-empty-state">
             <i class="fas fa-robot"></i>
-            <p>No workflows created yet</p>
+            <p class="placeholder-text">Create and manage automated workflows for your notes and content in a future update!</p>
             <button class="btn btn-primary" id="createFirstWorkflow">
               <i class="fas fa-magic"></i> Create First Workflow
             </button>
@@ -487,16 +501,16 @@
     </div>
 
     <!-- Priority 4: Action Buttons -->
-    <button class="action-button floating-button" id="contentLibraryButton" title="Content Library">
+    <button class="action-button floating-button" id="contentLibraryButton" title="Access your uploaded content and manage files">
       <i class="fas fa-folder-open"></i>
     </button>
 
-    <button class="action-button floating-button" id="workflowButton" title="Automation Workflows">
+    <button class="action-button floating-button" id="workflowButton" title="Manage and create automation workflows for your content">
       <i class="fas fa-cogs"></i>
     </button>
 
     <!-- Priority 3: Smart Suggestions Button -->
-    <button class="action-button floating-button" id="smartSuggestionsButton" title="Show Smart Suggestions">
+    <button class="action-button floating-button" id="smartSuggestionsButton" title="Show/Hide AI-powered smart suggestions for your notes">
       <i class="fas fa-lightbulb"></i>
     </button>
 
@@ -721,6 +735,26 @@
             <i class="fas fa-save"></i>
             Save Settings
           </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Onboarding Tour Modal -->
+    <div class="modal-overlay" id="tourModal" style="display: none;">
+      <div class="modal-container tour-modal-content">
+        <div class="modal-header">
+          <h3 id="tourTitle">Welcome to Voice Notes!</h3>
+          <button class="btn-close" id="skipTourButton">
+            <i class="fas fa-times"></i>
+          </button>
+        </div>
+        <div class="modal-content">
+          <p id="tourContent">Let's take a quick tour of the features.</p>
+        </div>
+        <div class="modal-footer tour-navigation">
+          <button class="btn btn-secondary" id="tourPreviousButton" style="display: none;">Previous</button>
+          <button class="btn btn-primary" id="tourNextButton">Next</button>
+          <button class="btn btn-success" id="tourFinishButton" style="display: none;">Finish</button>
         </div>
       </div>
     </div>

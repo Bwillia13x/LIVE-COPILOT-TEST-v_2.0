@@ -5,6 +5,7 @@
 
 import { AudioTranscriptionApp } from './src/components/AudioTranscriptionApp.js';
 import { ErrorHandler } from './src/utils.js';
+import { initializeTour, startOnboardingTourIfNeeded } from './src/onboarding.js';
 
 // Global app instance for external access
 let app: AudioTranscriptionApp;
@@ -19,6 +20,13 @@ document.addEventListener('DOMContentLoaded', () => {
     (window as any).audioApp = app; // Also expose as audioApp for validation scripts
     
     console.log('🎙️ Audio Transcription App loaded successfully');
+    
+    // Initialize the onboarding module (e.g., grab DOM elements, basic setup)
+    initializeTour(); 
+    // Attempt to start the tour if needed (checks localStorage)
+    // This will be moved to AudioTranscriptionApp.ts later for more specific triggers
+    // startOnboardingTourIfNeeded(); 
+
   } catch (error) {
     ErrorHandler.logError('Failed to initialize application', error);
     

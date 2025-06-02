@@ -331,31 +331,47 @@ export class AudioTranscriptionApp {
           this.intervalManager.clearInterval(this.periodicAnalysisIntervalId);
           this.periodicAnalysisIntervalId = null;
         }
-        this.currentTranscript = this.transcriptBuffer.trim(); // Full transcript is now in currentTranscript
-        
-        // Perform final processing on the complete transcript
-        if (this.currentTranscript) {
-            this.showToast({ type: 'info', title: 'Finalizing Note', message: 'Processing full transcript...' });
-            await this.processLiveTranscript(true); // Pass true for final run
-            // After final processing, livePolishedTranscript contains the final polished version
-            // Update the currentNote which will be saved if user decides to.
-             if (this.state.currentNote) {
-                this.state.currentNote.rawTranscription = this.currentTranscript;
-                this.state.currentNote.polishedNote = this.livePolishedTranscript;
-             } else { // Or create a new note structure if one wasn't active
-                this.state.currentNote = {
-                    id: Date.now().toString(),
-                    rawTranscription: this.currentTranscript,
-                    polishedNote: this.livePolishedTranscript,
-                    timestamp: Date.now(),
-                };
-             }
-             if (this.elements.polishedNoteArea) {
-                this.elements.polishedNoteArea.textContent = this.livePolishedTranscript;
-             }
-             this.showToast({ type: 'success', title: 'Recording Complete', message: 'Full transcript processed. Ready for review.'});
-        } else {
-            this.showToast({ type: 'info', title: 'Recording Stopped', message: 'No audio transcribed.' });
+
+        this.state.isProcessing = true;
+        this.updateUI(); 
+
+        try {
+          this.currentTranscript = this.transcriptBuffer.trim(); 
+          
+          if (this.currentTranscript) {
+              this.showToast({ type: 'info', title: 'Finalizing Note', message: 'Processing full transcript...' });
+              await this.processLiveTranscript(true); 
+              
+               if (this.state.currentNote) {
+                  this.state.currentNote.rawTranscription = this.currentTranscript;
+                  this.state.currentNote.polishedNote = this.livePolishedTranscript;
+               } else { 
+                  this.state.currentNote = {
+                      id: Date.now().toString(),
+                      rawTranscription: this.currentTranscript,
+                      polishedNote: this.livePolishedTranscript,
+                      timestamp: Date.now(),
+                  };
+               }
+               if (this.elements.polishedNoteArea) {
+                  this.elements.polishedNoteArea.textContent = this.livePolishedTranscript;
+               }
+               this.showToast({ type: 'success', title: 'Recording Complete', message: 'Full transcript processed. Ready for review.'});
+          } else {
+              this.showToast({ type: 'info', title: 'Recording Stopped', message: 'No audio transcribed.' });
+              // Clear states if no transcript
+              this.state.currentNote = null;
+              this.livePolishedTranscript = ''; 
+              if (this.elements.polishedNoteArea && this.elements.polishedNoteArea.textContent !== '') {
+                  this.elements.polishedNoteArea.textContent = '';
+              }
+          }
+        } catch (error) {
+          ErrorHandler.logError('Error during final processing of recording:', error as Error);
+          this.showToast({ type: 'error', title: 'Processing Error', message: 'An error occurred while finalizing the note.' });
+        } finally {
+          this.state.isProcessing = false;
+          // The main updateUI() at the end of toggleRecording will handle UI refresh
         }
 
       } else {

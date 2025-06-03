@@ -7,7 +7,12 @@ import logging
 import logging.handlers
 import os
 from typing import Optional
-from .config_manager import get_config
+
+try:
+    from .config_manager import get_config
+except ImportError:
+    # Handle case when module is run directly
+    from config_manager import get_config
 
 class EPVLogger:
     """Centralized logger for the EPV valuation model."""

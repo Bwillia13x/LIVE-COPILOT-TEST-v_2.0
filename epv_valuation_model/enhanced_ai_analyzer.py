@@ -7,8 +7,14 @@ import json
 import re
 from typing import Dict, List, Any, Optional, Union
 import google.generativeai as genai
-from .config_manager import get_config
-from .logging_config import get_ai_analyzer_logger
+
+try:
+    from .config_manager import get_config
+    from .logging_config import get_ai_analyzer_logger
+except ImportError:
+    # Handle case when module is run directly
+    from config_manager import get_config
+    from logging_config import get_ai_analyzer_logger
 
 class AIAnalyzer:
     """Enhanced AI analyzer with configurable prompts and structured output."""

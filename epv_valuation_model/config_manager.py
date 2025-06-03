@@ -371,6 +371,7 @@ class ConfigManager:
             output=OutputConfig(),
             performance=PerformanceConfig(),
             logging=LoggingConfig(),
+            financial_item_names=FinancialItemNamesConfig(),
             environment=environment
         )
         

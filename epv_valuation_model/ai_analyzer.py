@@ -1,5 +1,5 @@
 import google.generativeai as genai
-from . import config
+from .config_manager import get_config
 
 def get_company_summary_from_ai(long_business_summary: str, model: str = "gemini-pro") -> str:
     """
@@ -10,12 +10,13 @@ def get_company_summary_from_ai(long_business_summary: str, model: str = "gemini
     Returns:
         str: AI-generated concise summary, or error message.
     """
-    if not config.GEMINI_API_KEY:
+    config = get_config()
+    if not config.data_source.gemini_api_key:
         return "[AI Error: No Gemini API key configured.]"
     if not long_business_summary:
         return "[AI Error: No business summary provided.]"
     try:
-        genai.configure(api_key=config.GEMINI_API_KEY)
+        genai.configure(api_key=config.data_source.gemini_api_key)
         prompt = (
             "Summarize the following company description in 3-5 bullet points, "
             "focusing on what the company does, its main business lines, and any unique aspects. "

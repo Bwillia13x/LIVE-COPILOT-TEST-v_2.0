@@ -24,7 +24,7 @@ except ImportError:
     RICH_AVAILABLE = False
 
 from . import main as epv_main
-from . import config
+from .config_manager import get_config
 from .data_quality import run_data_quality_assessment
 from .enhanced_epv import calculate_industry_epv
 
@@ -83,10 +83,13 @@ Examples:
         
         # Advanced options
         advanced_group = parser.add_argument_group('Advanced Options')
+        # Get config for defaults
+        config = get_config()
+        
         advanced_group.add_argument(
             '--normalization-years',
             type=int,
-            default=config.DEFAULT_NORMALIZATION_YEARS,
+            default=config.calculation.normalization_years,
             help='Years to use for financial metric normalization'
         )
         advanced_group.add_argument(
@@ -97,7 +100,7 @@ Examples:
         advanced_group.add_argument(
             '--equity-risk-premium',
             type=float,
-            default=config.EQUITY_RISK_PREMIUM,
+            default=config.calculation.equity_risk_premium,
             help='Equity risk premium (as decimal)'
         )
         advanced_group.add_argument(

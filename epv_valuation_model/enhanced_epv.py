@@ -6,7 +6,7 @@ Provides advanced EPV calculations with industry adjustments and sophisticated n
 import pandas as pd
 import numpy as np
 from typing import Dict, List, Tuple, Any, Optional
-from . import config
+from .config_manager import get_config
 from . import epv_calculator
 
 # Industry-specific multipliers and adjustments
@@ -118,10 +118,11 @@ class EnhancedEPVCalculator:
     def _normalize_revenue_advanced(self, income_stmt: pd.DataFrame) -> float:
         """Advanced revenue normalization considering cyclicality and trends."""
         
-        if config.S_REVENUE not in income_stmt.index:
+        config = get_config()
+        if config.financial_item_names.s_revenue not in income_stmt.index:
             return None
             
-        revenue_series = income_stmt.loc[config.S_REVENUE]
+        revenue_series = income_stmt.loc[config.financial_item_names.s_revenue]
         
         # Method 1: Business Cycle Adjustment
         cycle_factor = self.adjustments.get('cyclical_factor', 1.0)
@@ -160,12 +161,13 @@ class EnhancedEPVCalculator:
                                normalized_revenue: float) -> Dict[str, Any]:
         """Calculate enhanced EBIT with industry-specific adjustments."""
         
-        if config.S_OPERATING_INCOME not in income_stmt.index:
+        config = get_config()
+        if config.financial_item_names.s_operating_income not in income_stmt.index:
             return None
             
         # Standard EBIT calculation
-        ebit_series = income_stmt.loc[config.S_OPERATING_INCOME]
-        revenue_series = income_stmt.loc[config.S_REVENUE]
+        ebit_series = income_stmt.loc[config.financial_item_names.s_operating_income]
+        revenue_series = income_stmt.loc[config.financial_item_names.s_revenue]
         
         # Calculate operating margins
         operating_margins = ebit_series / revenue_series
@@ -175,8 +177,8 @@ class EnhancedEPVCalculator:
         
         # Apply R&D adjustments for certain industries
         rd_adjusted_margin = enhanced_margins
-        if config.S_RESEARCH_DEVELOPMENT in income_stmt.index and 'rd_adjustment' in self.adjustments:
-            rd_expense = income_stmt.loc[config.S_RESEARCH_DEVELOPMENT]
+        if config.financial_item_names.s_research_development in income_stmt.index and 'rd_adjustment' in self.adjustments:
+            rd_expense = income_stmt.loc[config.financial_item_names.s_research_development]
             avg_rd_expense = rd_expense.mean()
             
             # Treat portion of R&D as growth investment

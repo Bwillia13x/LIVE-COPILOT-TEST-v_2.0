@@ -17,7 +17,7 @@ from typing import Optional
 from . import data_fetcher
 from . import data_processor
 from . import epv_calculator
-from . import config # Our new configuration file
+from .config_manager import get_config # Use new ConfigManager
 from . import ai_analyzer
 from .utils import ensure_directory_exists # Added for main
 from . import reporting  # Add this import at the top
@@ -33,6 +33,9 @@ def run_epv_valuation(ticker_symbol: str, use_sample_data_ticker: Optional[str] 
         use_sample_data_ticker (Optional[str]): If provided, load raw data for this
                                                 ticker from data/fetched_samples/ directory.
     """
+    # Get configuration
+    config = get_config()
+    
     effective_ticker = use_sample_data_ticker.upper() if use_sample_data_ticker else ticker_symbol.upper()
     print(f"\nStarting EPV Valuation for: {effective_ticker}")
     if use_sample_data_ticker:
@@ -68,10 +71,10 @@ def run_epv_valuation(ticker_symbol: str, use_sample_data_ticker: Optional[str] 
             sys.exit(1)
         
         # Risk-free rate still needs to be fetched or defaulted if not in samples
-        risk_free_rate = data_fetcher.get_risk_free_rate_proxy(config.RISK_FREE_RATE_TICKER)
+        risk_free_rate = data_fetcher.get_risk_free_rate_proxy(config.data_source.risk_free_rate_ticker)
         if risk_free_rate is None:
             print("Warning: Could not fetch risk-free rate (even with samples). Using default from config.")
-            risk_free_rate = getattr(config, 'DEFAULT_RISK_FREE_RATE', 0.04)
+            risk_free_rate = config.calculation.default_risk_free_rate
 
     else:
         # Original live data fetching logic
@@ -80,10 +83,10 @@ def run_epv_valuation(ticker_symbol: str, use_sample_data_ticker: Optional[str] 
             print(f"Warning: Could not retrieve ticker object for {ticker_symbol}. Proceeding with Gemini fallback mode.")
             ticker_obj = ticker_symbol  # Pass the string to trigger Gemini fallback
 
-        risk_free_rate = data_fetcher.get_risk_free_rate_proxy(config.RISK_FREE_RATE_TICKER)
+        risk_free_rate = data_fetcher.get_risk_free_rate_proxy(config.data_source.risk_free_rate_ticker)
         if risk_free_rate is None:
             print("Warning: Could not fetch risk-free rate. Using default from config.")
-            risk_free_rate = getattr(config, 'DEFAULT_RISK_FREE_RATE', 0.04)
+            risk_free_rate = config.calculation.default_risk_free_rate
 
         raw_income_stmt = data_fetcher.get_historical_financials(ticker_obj, "income_stmt")
         raw_balance_sheet = data_fetcher.get_historical_financials(ticker_obj, "balance_sheet")
@@ -133,7 +136,7 @@ def run_epv_valuation(ticker_symbol: str, use_sample_data_ticker: Optional[str] 
     # Normalized EBIT
     norm_ebit_tuple = epv_calculator.calculate_normalized_ebit(
         is_proc,
-        num_years=config.DEFAULT_NORMALIZATION_YEARS # Using config
+        num_years=config.calculation.normalization_years # Using config
     )
     if norm_ebit_tuple is None:
         print("Fatal Error: Normalized EBIT calculation failed. Exiting.")
@@ -143,12 +146,12 @@ def run_epv_valuation(ticker_symbol: str, use_sample_data_ticker: Optional[str] 
     # Maintenance Capex
     maint_capex = epv_calculator.calculate_maintenance_capex(
         is_proc, bs_proc, cf_proc,
-        num_years=config.DEFAULT_NORMALIZATION_YEARS # Using config
+        num_years=config.calculation.normalization_years # Using config
     )
     if maint_capex is None:
         print("Warning: Maintenance Capex calculation failed. Trying D&A fallback.")
-        if config.S_DEPRECIATION_CF in cf_proc.index:
-            maint_capex = abs(cf_proc.loc[config.S_DEPRECIATION_CF].iloc[:config.DEFAULT_NORMALIZATION_YEARS].mean(skipna=True))
+        if config.financial_item_names.s_depreciation_cf in cf_proc.index:
+            maint_capex = abs(cf_proc.loc[config.financial_item_names.s_depreciation_cf].iloc[:config.calculation.normalization_years].mean(skipna=True))
             if pd.isna(maint_capex):
                 print("Fatal Error: Maint Capex and D&A fallback failed. Exiting.")
                 return None
@@ -160,7 +163,7 @@ def run_epv_valuation(ticker_symbol: str, use_sample_data_ticker: Optional[str] 
     # NOPAT
     nopat = epv_calculator.calculate_nopat(
         normalized_ebit, is_proc,
-        num_years=config.DEFAULT_NORMALIZATION_YEARS # Using config
+        num_years=config.calculation.normalization_years # Using config
     )
     if nopat is None:
         print("Fatal Error: NOPAT calculation failed. Exiting.")
@@ -169,8 +172,8 @@ def run_epv_valuation(ticker_symbol: str, use_sample_data_ticker: Optional[str] 
     # WACC
     wacc = epv_calculator.calculate_wacc(
         details_proc, bs_proc, is_proc, risk_free_rate,
-        equity_risk_premium=config.EQUITY_RISK_PREMIUM, # Using config
-        num_years_tax_rate=config.DEFAULT_WACC_NORMALIZATION_YEARS # Using config
+        equity_risk_premium=config.calculation.equity_risk_premium, # Using config
+        num_years_tax_rate=config.calculation.wacc_normalization_years # Using config
     )
     if wacc is None:
         print("Fatal Error: WACC calculation failed. Exiting.")
@@ -198,14 +201,14 @@ def run_epv_valuation(ticker_symbol: str, use_sample_data_ticker: Optional[str] 
     report_ticker = details_proc.get('ticker', effective_ticker)
     print(f"EPV VALUATION SUMMARY FOR: {report_ticker}")
     print("="*40)
-    currency = details_proc.get('currency', config.DEFAULT_CURRENCY_SYMBOL)
+    currency = details_proc.get('currency', config.output.default_currency_symbol)
     current_price = details_proc.get('current_price', 'N/A')
     market_cap = details_proc.get('market_cap', 0)
 
     print(f"Current Market Price: {currency}{current_price:,.2f}" if isinstance(current_price, (int, float)) else f"Current Market Price: {current_price}")
     print(f"Market Cap: {currency}{market_cap:,.0f}" if market_cap else "Market Cap: N/A")
     print(f"Risk-Free Rate Used: {risk_free_rate:.3%}")
-    print(f"Equity Risk Premium Used: {config.EQUITY_RISK_PREMIUM:.3%}")
+    print(f"Equity Risk Premium Used: {config.calculation.equity_risk_premium:.3%}")
     print(f"--- Key Calculated Metrics ---")
     print(f"Normalized EBIT: {currency}{normalized_ebit:,.0f} (Avg Op Margin: {avg_op_margin:.2%})")
     print(f"Estimated Maintenance Capex: {currency}{maint_capex:,.0f}")
@@ -250,11 +253,11 @@ def run_epv_valuation(ticker_symbol: str, use_sample_data_ticker: Optional[str] 
         "avg_op_margin": avg_op_margin,
         "maint_capex": maint_capex,
         "risk_free_rate": risk_free_rate,
-        "equity_risk_premium": config.EQUITY_RISK_PREMIUM,
+        "equity_risk_premium": config.calculation.equity_risk_premium,
     }
 
     # Ensure the reports directory exists for this ticker
-    report_dir = os.path.join(config.REPORTS_DIR, report_ticker)
+    report_dir = os.path.join(config.output.reports_dir, report_ticker)
     ensure_directory_exists(report_dir)
 
     # Generate and print text summary
@@ -408,10 +411,13 @@ if __name__ == "__main__":
         parser.error("You must provide a ticker symbol or use the --use-sample-data SAMPLE_TICKER option.")
         sys.exit(1)
 
+    # Get configuration for directory setup
+    config = get_config()
+    
     # Ensure necessary directories exist (example, can be more robust)
-    ensure_directory_exists(config.REPORTS_DIR)
+    ensure_directory_exists(config.output.reports_dir)
     # Ensure log directory parent exists before trying to log to file, if file logging is set up
-    log_dir = os.path.dirname(config.LOG_FILE_PATH)
+    log_dir = os.path.dirname(config.logging.log_file_path)
     if log_dir: # Check if LOG_FILE_PATH includes a directory
         ensure_directory_exists(log_dir)
 

@@ -6,7 +6,7 @@ Provides comprehensive data quality checks and scoring for financial data.
 import pandas as pd
 import numpy as np
 from typing import Dict, List, Tuple, Any, Optional
-from . import config
+from .config_manager import get_config
 
 class DataQualityChecker:
     """Comprehensive data quality assessment for financial statements."""
@@ -82,11 +82,12 @@ class DataQualityChecker:
                            cash_flow: pd.DataFrame) -> float:
         """Assess data completeness for key financial metrics."""
         score = 100
+        config = get_config()
         
         # Key items that should be present
-        required_is_items = [config.S_REVENUE, config.S_OPERATING_INCOME]
-        required_bs_items = [config.S_TOTAL_ASSETS, config.S_CASH_EQUIVALENTS]
-        required_cf_items = [config.S_CAPEX]
+        required_is_items = [config.financial_item_names.s_revenue, config.financial_item_names.s_operating_income]
+        required_bs_items = [config.financial_item_names.s_total_assets, config.financial_item_names.s_cash_equivalents]
+        required_cf_items = [config.financial_item_names.s_capex]
         
         # Check income statement completeness
         missing_is = [item for item in required_is_items if item not in income_stmt.index]
@@ -124,9 +125,10 @@ class DataQualityChecker:
         score = 100
         
         try:
+            config = get_config()
             # Check if revenue is increasing over time (general expectation)
-            if config.S_REVENUE in income_stmt.index:
-                revenue = income_stmt.loc[config.S_REVENUE]
+            if config.financial_item_names.s_revenue in income_stmt.index:
+                revenue = income_stmt.loc[config.financial_item_names.s_revenue]
                 # Check for unrealistic revenue changes (>200% year-over-year)
                 revenue_changes = revenue.pct_change()
                 extreme_changes = abs(revenue_changes) > 2.0  # 200% change
@@ -135,17 +137,17 @@ class DataQualityChecker:
                     self.quality_warnings.append("Extreme revenue changes detected (>200% YoY)")
             
             # Check for negative values where they shouldn't be
-            if config.S_REVENUE in income_stmt.index:
-                negative_revenue = (income_stmt.loc[config.S_REVENUE] < 0).any()
+            if config.financial_item_names.s_revenue in income_stmt.index:
+                negative_revenue = (income_stmt.loc[config.financial_item_names.s_revenue] < 0).any()
                 if negative_revenue:
                     score -= 20
                     self.quality_issues.append("Negative revenue detected")
             
             # Check operating margin consistency
-            if (config.S_REVENUE in income_stmt.index and 
-                config.S_OPERATING_INCOME in income_stmt.index):
-                revenue = income_stmt.loc[config.S_REVENUE]
-                op_income = income_stmt.loc[config.S_OPERATING_INCOME]
+            if (config.financial_item_names.s_revenue in income_stmt.index and 
+                config.financial_item_names.s_operating_income in income_stmt.index):
+                revenue = income_stmt.loc[config.financial_item_names.s_revenue]
+                op_income = income_stmt.loc[config.financial_item_names.s_operating_income]
                 op_margins = op_income / revenue
                 
                 # Check for unrealistic operating margins (>100% or <-100%)
@@ -167,9 +169,10 @@ class DataQualityChecker:
         score = 100
         
         try:
+            config = get_config()
             # Check revenue for outliers using IQR method
-            if config.S_REVENUE in income_stmt.index:
-                revenue = income_stmt.loc[config.S_REVENUE]
+            if config.financial_item_names.s_revenue in income_stmt.index:
+                revenue = income_stmt.loc[config.financial_item_names.s_revenue]
                 q1, q3 = revenue.quantile([0.25, 0.75])
                 iqr = q3 - q1
                 lower_bound = q1 - 1.5 * iqr
@@ -181,8 +184,8 @@ class DataQualityChecker:
                     self.quality_warnings.append(f"Revenue outliers detected: {outliers} data points")
             
             # Similar check for operating income
-            if config.S_OPERATING_INCOME in income_stmt.index:
-                op_income = income_stmt.loc[config.S_OPERATING_INCOME]
+            if config.financial_item_names.s_operating_income in income_stmt.index:
+                op_income = income_stmt.loc[config.financial_item_names.s_operating_income]
                 # Check for years with operating losses when others are profitable
                 positive_years = (op_income > 0).sum()
                 negative_years = (op_income < 0).sum()

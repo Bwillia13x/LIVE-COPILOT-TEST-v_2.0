@@ -1,0 +1,227 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NVIDIA Evolution Timeline - Reformatted</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #0a1628 0%, #1a2a3a 100%);
+            color: white;
+            margin: 0;
+            padding: 20px;
+            min-height: 100vh;
+        }
+        
+        .chart-container {
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 15px;
+            padding: 30px;
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+        
+        .chart-title {
+            color: #4dd0e1;
+            font-size: 28px;
+            font-weight: 700;
+            text-align: center;
+            margin-bottom: 10px;
+            text-shadow: 0 0 20px rgba(77, 208, 225, 0.3);
+        }
+        
+        .chart-subtitle {
+            color: #b0bec5;
+            font-size: 16px;
+            text-align: center;
+            margin-bottom: 40px;
+        }
+        
+        .timeline-svg {
+            background: linear-gradient(135deg, rgba(255,255,255,0.02) 0%, rgba(77,208,225,0.05) 100%);
+            border-radius: 12px;
+            border: 1px solid rgba(77, 208, 225, 0.2);
+        }
+        
+        .milestone-box {
+            filter: drop-shadow(0 4px 8px rgba(0,0,0,0.3));
+        }
+        
+        .milestone-text {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+        }
+        
+        .legend-box {
+            background: rgba(255, 255, 255, 0.08);
+            border: 1px solid rgba(77, 208, 225, 0.3);
+            border-radius: 8px;
+        }
+    </style>
+</head>
+<body>
+    <div class="chart-container">
+        <div class="chart-title">NVIDIA Evolution: 32 Years From Graphics Pioneer to AI Dominance</div>
+        <div class="chart-subtitle">Revenue Growth: $0.7M → $60.9B (87,000x increase)</div>
+        
+        <svg class="timeline-svg" width="1340" height="600" viewBox="0 0 1340 600">
+            <defs>
+                <linearGradient id="timelineGrad" x1="0%" y1="0%" x2="100%" y2="0%">
+                    <stop offset="0%" style="stop-color:#1565c0;stop-opacity:1" />
+                    <stop offset="50%" style="stop-color:#4dd0e1;stop-opacity:1" />
+                    <stop offset="100%" style="stop-color:#26c6da;stop-opacity:1" />
+                </linearGradient>
+                <linearGradient id="revGrad" x1="0%" y1="0%" x2="100%" y2="0%">
+                    <stop offset="0%" style="stop-color:#4dd0e1;stop-opacity:0.3" />
+                    <stop offset="100%" style="stop-color:#26c6da;stop-opacity:0.8" />
+                </linearGradient>
+                <filter id="glow" x="-50%" y="-50%" width="200%" height="200%">
+                    <feGaussianBlur stdDeviation="3" result="coloredBlur"/>
+                    <feMerge> 
+                        <feMergeNode in="coloredBlur"/>
+                        <feMergeNode in="SourceGraphic"/>
+                    </feMerge>
+                </filter>
+            </defs>
+            
+            <!-- Background grid -->
+            <defs>
+                <pattern id="grid" width="50" height="50" patternUnits="userSpaceOnUse">
+                    <path d="M 50 0 L 0 0 0 50" fill="none" stroke="rgba(77,208,225,0.1)" stroke-width="1"/>
+                </pattern>
+            </defs>
+            <rect width="100%" height="100%" fill="url(#grid)" opacity="0.3"/>
+            
+            <!-- Main timeline axis -->
+            <line x1="80" y1="450" x2="1260" y2="450" stroke="url(#timelineGrad)" stroke-width="4" filter="url(#glow)"/>
+            
+            <!-- Revenue growth curve -->
+            <polyline points="130,430 250,425 430,400 630,350 830,280 1030,220 1180,180" 
+                     fill="none" stroke="url(#revGrad)" stroke-width="3" opacity="0.8"/>
+            
+            <!-- 1993: Company Founded -->
+            <circle cx="130" cy="450" r="10" fill="#1565c0" stroke="#4dd0e1" stroke-width="2" filter="url(#glow)"/>
+            <text x="130" y="480" text-anchor="middle" font-size="14" font-weight="bold" fill="#4dd0e1" class="milestone-text">1993</text>
+            <g class="milestone-box">
+                <rect x="70" y="340" width="120" height="90" fill="rgba(21,101,192,0.15)" stroke="#1565c0" stroke-width="2" rx="8"/>
+                <text x="130" y="360" text-anchor="middle" font-size="12" font-weight="bold" fill="#4dd0e1" class="milestone-text">Company Founded</text>
+                <text x="130" y="378" text-anchor="middle" font-size="11" fill="#b0bec5" class="milestone-text">Graphics chips for PCs</text>
+                <text x="130" y="396" text-anchor="middle" font-size="11" fill="#26c6da" class="milestone-text">$0.7M Revenue</text>
+                <text x="130" y="414" text-anchor="middle" font-size="10" fill="#90a4ae" class="milestone-text">3D graphics pioneer</text>
+            </g>
+
+            <!-- 1999: GeForce 256 -->
+            <circle cx="250" cy="450" r="10" fill="#1565c0" stroke="#4dd0e1" stroke-width="2" filter="url(#glow)"/>
+            <text x="250" y="480" text-anchor="middle" font-size="14" font-weight="bold" fill="#4dd0e1" class="milestone-text">1999</text>
+            <g class="milestone-box">
+                <rect x="190" y="300" width="120" height="120" fill="rgba(38,198,218,0.15)" stroke="#26c6da" stroke-width="2" rx="8"/>
+                <text x="250" y="320" text-anchor="middle" font-size="12" font-weight="bold" fill="#4dd0e1" class="milestone-text">GeForce 256</text>
+                <text x="250" y="338" text-anchor="middle" font-size="11" fill="#26c6da" class="milestone-text">"World's first GPU"</text>
+                <text x="250" y="356" text-anchor="middle" font-size="11" fill="#26c6da" class="milestone-text">$375M Revenue</text>
+                <text x="250" y="374" text-anchor="middle" font-size="10" fill="#90a4ae" class="milestone-text">Gaming market entry</text>
+                <text x="250" y="392" text-anchor="middle" font-size="10" fill="#90a4ae" class="milestone-text">Transform & lighting</text>
+                <text x="250" y="410" text-anchor="middle" font-size="10" fill="#90a4ae" class="milestone-text">256-bit rendering</text>
+            </g>
+
+            <!-- 2006: CUDA Platform -->
+            <circle cx="430" cy="450" r="12" fill="#1976d2" stroke="#4dd0e1" stroke-width="2" filter="url(#glow)"/>
+            <text x="430" y="485" text-anchor="middle" font-size="14" font-weight="bold" fill="#4dd0e1" class="milestone-text">2006</text>
+            <g class="milestone-box">
+                <rect x="370" y="240" width="120" height="160" fill="rgba(25,118,210,0.15)" stroke="#1976d2" stroke-width="2" rx="8"/>
+                <text x="430" y="260" text-anchor="middle" font-size="12" font-weight="bold" fill="#4dd0e1" class="milestone-text">CUDA Platform</text>
+                <text x="430" y="278" text-anchor="middle" font-size="11" fill="#26c6da" class="milestone-text">Parallel computing</text>
+                <text x="430" y="296" text-anchor="middle" font-size="11" fill="#26c6da" class="milestone-text">$2.8B Revenue</text>
+                <text x="430" y="314" text-anchor="middle" font-size="10" fill="#90a4ae" class="milestone-text">Beyond graphics</text>
+                <text x="430" y="332" text-anchor="middle" font-size="10" fill="#90a4ae" class="milestone-text">Compute revolution</text>
+                <text x="430" y="350" text-anchor="middle" font-size="10" fill="#90a4ae" class="milestone-text">Scientific computing</text>
+                <text x="430" y="368" text-anchor="middle" font-size="10" fill="#90a4ae" class="milestone-text">Ecosystem foundation</text>
+                <text x="430" y="386" text-anchor="middle" font-size="10" fill="#4caf50" class="milestone-text">Paradigm shift</text>
+            </g>
+
+            <!-- 2016: Tesla P100 -->
+            <circle cx="630" cy="450" r="12" fill="#0d47a1" stroke="#4dd0e1" stroke-width="2" filter="url(#glow)"/>
+            <text x="630" y="485" text-anchor="middle" font-size="14" font-weight="bold" fill="#4dd0e1" class="milestone-text">2016</text>
+            <g class="milestone-box">
+                <rect x="570" y="180" width="120" height="160" fill="rgba(13,71,161,0.15)" stroke="#0d47a1" stroke-width="2" rx="8"/>
+                <text x="630" y="200" text-anchor="middle" font-size="12" font-weight="bold" fill="#4dd0e1" class="milestone-text">Tesla P100</text>
+                <text x="630" y="218" text-anchor="middle" font-size="11" fill="#26c6da" class="milestone-text">HBM2 memory</text>
+                <text x="630" y="236" text-anchor="middle" font-size="11" fill="#26c6da" class="milestone-text">$6.9B Revenue</text>
+                <text x="630" y="254" text-anchor="middle" font-size="10" fill="#90a4ae" class="milestone-text">Data center focus</text>
+                <text x="630" y="272" text-anchor="middle" font-size="10" fill="#90a4ae" class="milestone-text">Deep learning</text>
+                <text x="630" y="290" text-anchor="middle" font-size="10" fill="#90a4ae" class="milestone-text">AI/ML revolution</text>
+                <text x="630" y="308" text-anchor="middle" font-size="10" fill="#90a4ae" class="milestone-text">Pascal architecture</text>
+                <text x="630" y="326" text-anchor="middle" font-size="10" fill="#ff9800" class="milestone-text">Market inflection</text>
+            </g>
+
+            <!-- 2020: A100 Ampere -->
+            <circle cx="830" cy="450" r="14" fill="#006064" stroke="#4dd0e1" stroke-width="3" filter="url(#glow)"/>
+            <text x="830" y="490" text-anchor="middle" font-size="14" font-weight="bold" fill="#4dd0e1" class="milestone-text">2020</text>
+            <g class="milestone-box">
+                <rect x="770" y="100" width="120" height="170" fill="rgba(0,96,100,0.15)" stroke="#006064" stroke-width="2" rx="8"/>
+                <text x="830" y="120" text-anchor="middle" font-size="12" font-weight="bold" fill="#4dd0e1" class="milestone-text">A100 Ampere</text>
+                <text x="830" y="138" text-anchor="middle" font-size="11" fill="#26c6da" class="milestone-text">$26.9B Revenue</text>
+                <text x="830" y="156" text-anchor="middle" font-size="11" fill="#26c6da" class="milestone-text">312 TFLOPS FP16</text>
+                <text x="830" y="174" text-anchor="middle" font-size="10" fill="#90a4ae" class="milestone-text">Multi-instance GPU</text>
+                <text x="830" y="192" text-anchor="middle" font-size="10" fill="#90a4ae" class="milestone-text">Transformer models</text>
+                <text x="830" y="210" text-anchor="middle" font-size="10" fill="#90a4ae" class="milestone-text">Cloud computing</text>
+                <text x="830" y="228" text-anchor="middle" font-size="10" fill="#90a4ae" class="milestone-text">Data center</text>
+                <text x="830" y="246" text-anchor="middle" font-size="10" fill="#e91e63" class="milestone-text">breakthrough</text>
+            </g>
+
+            <!-- 2023: H100 Hopper -->
+            <circle cx="1030" cy="450" r="16" fill="#b71c1c" stroke="#4dd0e1" stroke-width="3" filter="url(#glow)"/>
+            <text x="1030" y="495" text-anchor="middle" font-size="14" font-weight="bold" fill="#4dd0e1" class="milestone-text">2023</text>
+            <g class="milestone-box">
+                <rect x="970" y="40" width="120" height="170" fill="rgba(183,28,28,0.15)" stroke="#b71c1c" stroke-width="2" rx="8"/>
+                <text x="1030" y="60" text-anchor="middle" font-size="12" font-weight="bold" fill="#4dd0e1" class="milestone-text">H100 Hopper</text>
+                <text x="1030" y="78" text-anchor="middle" font-size="11" fill="#26c6da" class="milestone-text">$60.9B Revenue</text>
+                <text x="1030" y="96" text-anchor="middle" font-size="11" fill="#26c6da" class="milestone-text">989 TFLOPS BF16</text>
+                <text x="1030" y="114" text-anchor="middle" font-size="10" fill="#90a4ae" class="milestone-text">Transformer Engine</text>
+                <text x="1030" y="132" text-anchor="middle" font-size="10" fill="#90a4ae" class="milestone-text">ChatGPT boom</text>
+                <text x="1030" y="150" text-anchor="middle" font-size="10" fill="#90a4ae" class="milestone-text">95% AI market share</text>
+                <text x="1030" y="168" text-anchor="middle" font-size="10" fill="#90a4ae" class="milestone-text">$2.3T market cap</text>
+                <text x="1030" y="186" text-anchor="middle" font-size="10" fill="#4caf50" class="milestone-text">AI dominance</text>
+            </g>
+
+            <!-- 2025: Blackwell (Future) -->
+            <circle cx="1180" cy="450" r="18" fill="#2e7d32" stroke="#4dd0e1" stroke-width="3" filter="url(#glow)"/>
+            <text x="1180" y="500" text-anchor="middle" font-size="14" font-weight="bold" fill="#4dd0e1" class="milestone-text">2025</text>
+            <g class="milestone-box">
+                <rect x="1120" y="30" width="120" height="170" fill="rgba(46,125,50,0.15)" stroke="#2e7d32" stroke-width="2" rx="8"/>
+                <text x="1180" y="50" text-anchor="middle" font-size="12" font-weight="bold" fill="#4dd0e1" class="milestone-text">B200 Blackwell</text>
+                <text x="1180" y="68" text-anchor="middle" font-size="11" fill="#26c6da" class="milestone-text">208B transistors</text>
+                <text x="1180" y="86" text-anchor="middle" font-size="11" fill="#26c6da" class="milestone-text">20 petaFLOPS</text>
+                <text x="1180" y="104" text-anchor="middle" font-size="10" fill="#90a4ae" class="milestone-text">2.5x H100 performance</text>
+                <text x="1180" y="122" text-anchor="middle" font-size="10" fill="#90a4ae" class="milestone-text">Next-gen reasoning</text>
+                <text x="1180" y="140" text-anchor="middle" font-size="10" fill="#90a4ae" class="milestone-text">25x energy efficiency</text>
+                <text x="1180" y="158" text-anchor="middle" font-size="10" fill="#90a4ae" class="milestone-text">AGI foundation</text>
+                <text x="1180" y="176" text-anchor="middle" font-size="10" fill="#4caf50" class="milestone-text">$150B+ Revenue</text>
+                <text x="1180" y="194" text-anchor="middle" font-size="10" fill="#4caf50" class="milestone-text">(Projected)</text>
+            </g>
+            
+            <!-- Key metrics legend -->
+            <g class="legend-box">
+                <rect x="80" y="520" width="400" height="70" fill="rgba(255,255,255,0.08)" stroke="rgba(77,208,225,0.3)" stroke-width="1" rx="8"/>
+                <text x="90" y="540" font-size="14" font-weight="bold" fill="#4dd0e1" class="milestone-text">2024 Key Performance Metrics:</text>
+                <text x="90" y="556" font-size="12" fill="#b0bec5" class="milestone-text">• Revenue: $60.9B (+126% YoY)</text>
+                <text x="90" y="572" font-size="12" fill="#b0bec5" class="milestone-text">• AI Market Share: 95% dominance</text>
+                <text x="270" y="556" font-size="12" fill="#b0bec5" class="milestone-text">• Gross Margin: 73%</text>
+                <text x="270" y="572" font-size="12" fill="#b0bec5" class="milestone-text">• Market Cap: $1.7T+</text>
+            </g>
+            
+            <!-- Growth arrow -->
+            <defs>
+                <marker id="arrowhead" markerWidth="10" markerHeight="7" 
+                        refX="9" refY="3.5" orient="auto">
+                    <polygon points="0 0, 10 3.5, 0 7" fill="#4dd0e1" />
+                </marker>
+            </defs>
+            <line x1="1180" y1="170" x2="1260" y2="100" stroke="#4dd0e1" stroke-width="2" 
+                  marker-end="url(#arrowhead)" opacity="0.8"/>
+            <text x="1220" y="130" font-size="12" fill="#4dd0e1" class="milestone-text">Future Growth</text>
+        </svg>
+    </div>
+</body>
+</html>

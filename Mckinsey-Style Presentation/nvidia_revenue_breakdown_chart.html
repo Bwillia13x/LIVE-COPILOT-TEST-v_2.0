@@ -1,0 +1,347 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NVIDIA Diversified Revenue Architecture - Q1 FY2026</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #0a1628 0%, #1a2a3a 100%);
+            color: white;
+            margin: 0;
+            padding: 20px;
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        .chart-container {
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 20px;
+            padding: 40px;
+            backdrop-filter: blur(15px);
+            border: 1px solid rgba(77, 208, 225, 0.2);
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3);
+            max-width: 1200px;
+            width: 100%;
+            text-align: center;
+        }
+        
+        .title {
+            font-size: 2.5rem;
+            font-weight: 700;
+            margin-bottom: 15px;
+            background: linear-gradient(135deg, #4dd0e1 0%, #26c6da 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+        
+        .subtitle {
+            font-size: 1.2rem;
+            color: rgba(255, 255, 255, 0.8);
+            margin-bottom: 10px;
+        }
+        
+        .quarter-info {
+            font-size: 1rem;
+            color: #4dd0e1;
+            margin-bottom: 30px;
+        }
+        
+        .chart-wrapper {
+            display: flex;
+            align-items: center;
+            gap: 50px;
+            margin: 40px 0;
+        }
+        
+        .pie-container {
+            position: relative;
+            width: 400px;
+            height: 400px;
+        }
+        
+        .legend {
+            flex: 1;
+            text-align: left;
+        }
+        
+        .legend-item {
+            display: flex;
+            align-items: center;
+            margin-bottom: 20px;
+            padding: 15px;
+            background: rgba(255, 255, 255, 0.03);
+            border-radius: 10px;
+            border-left: 4px solid;
+            transition: all 0.3s ease;
+        }
+        
+        .legend-item:hover {
+            background: rgba(255, 255, 255, 0.08);
+            transform: translateX(5px);
+        }
+        
+        .legend-color {
+            width: 20px;
+            height: 20px;
+            border-radius: 4px;
+            margin-right: 15px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+        }
+        
+        .legend-info {
+            flex: 1;
+        }
+        
+        .legend-label {
+            font-size: 1.1rem;
+            font-weight: 600;
+            margin-bottom: 5px;
+        }
+        
+        .legend-amount {
+            font-size: 0.95rem;
+            color: rgba(255, 255, 255, 0.7);
+        }
+        
+        .legend-percentage {
+            font-size: 1.3rem;
+            font-weight: 700;
+            color: #4dd0e1;
+            margin-left: auto;
+        }
+        
+        .total-revenue {
+            background: rgba(77, 208, 225, 0.1);
+            border: 2px solid #4dd0e1;
+            border-radius: 15px;
+            padding: 20px;
+            margin-top: 30px;
+        }
+        
+        .total-label {
+            font-size: 1.1rem;
+            color: rgba(255, 255, 255, 0.8);
+            margin-bottom: 10px;
+        }
+        
+        .total-amount {
+            font-size: 2.5rem;
+            font-weight: 700;
+            color: #4dd0e1;
+        }
+        
+        .growth-indicator {
+            font-size: 1rem;
+            color: #26c6da;
+            margin-top: 10px;
+        }
+        
+        /* Pie chart styles */
+        .pie-chart {
+            width: 100%;
+            height: 100%;
+            border-radius: 50%;
+            position: relative;
+            overflow: hidden;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.4);
+        }
+        
+        .pie-slice {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            clip-path: polygon(50% 50%, 50% 0%, 100% 0%, 100% 100%, 0% 100%, 0% 0%, 50% 0%);
+            transition: all 0.3s ease;
+        }
+        
+        .pie-slice:hover {
+            transform: scale(1.05);
+        }
+        
+        .data-center { background: linear-gradient(135deg, #4dd0e1 0%, #26c6da 100%); }
+        .gaming { background: linear-gradient(135deg, #81c784 0%, #66bb6a 100%); }
+        .automotive { background: linear-gradient(135deg, #ffb74d 0%, #ffa726 100%); }
+        .professional { background: linear-gradient(135deg, #f06292 0%, #ec407a 100%); }
+        .oem-other { background: linear-gradient(135deg, #ba68c8 0%, #ab47bc 100%); }
+        
+        .center-label {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(10, 22, 40, 0.95);
+            padding: 20px;
+            border-radius: 50%;
+            width: 120px;
+            height: 120px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            border: 2px solid #4dd0e1;
+            box-shadow: 0 5px 20px rgba(0, 0, 0, 0.5);
+        }
+        
+        .center-text {
+            font-size: 0.9rem;
+            color: rgba(255, 255, 255, 0.8);
+            margin-bottom: 5px;
+        }
+        
+        .center-total {
+            font-size: 1.2rem;
+            font-weight: 700;
+            color: #4dd0e1;
+        }
+    </style>
+</head>
+<body>
+    <div class="chart-container">
+        <h1 class="title">NVIDIA Diversified Revenue Architecture</h1>
+        <p class="subtitle">Business Segment Distribution & Growth</p>
+        <p class="quarter-info">Q1 Fiscal Year 2026 | April 27, 2025</p>
+        
+        <div class="chart-wrapper">
+            <div class="pie-container">
+                <canvas id="pieChart" width="400" height="400"></canvas>
+                <div class="center-label">
+                    <div class="center-text">Total Revenue</div>
+                    <div class="center-total">$44.1B</div>
+                </div>
+            </div>
+            
+            <div class="legend">
+                <div class="legend-item data-center" style="border-left-color: #4dd0e1;">
+                    <div class="legend-color data-center"></div>
+                    <div class="legend-info">
+                        <div class="legend-label">Data Center</div>
+                        <div class="legend-amount">$39.1 billion | +73% YoY</div>
+                    </div>
+                    <div class="legend-percentage">88.7%</div>
+                </div>
+                
+                <div class="legend-item gaming" style="border-left-color: #81c784;">
+                    <div class="legend-color gaming"></div>
+                    <div class="legend-info">
+                        <div class="legend-label">Gaming</div>
+                        <div class="legend-amount">$3.8 billion | +42% YoY</div>
+                    </div>
+                    <div class="legend-percentage">8.6%</div>
+                </div>
+                
+                <div class="legend-item automotive" style="border-left-color: #ffb74d;">
+                    <div class="legend-color automotive"></div>
+                    <div class="legend-info">
+                        <div class="legend-label">Automotive & Robotics</div>
+                        <div class="legend-amount">$567 million | +72% YoY</div>
+                    </div>
+                    <div class="legend-percentage">1.3%</div>
+                </div>
+                
+                <div class="legend-item professional" style="border-left-color: #f06292;">
+                    <div class="legend-color professional"></div>
+                    <div class="legend-info">
+                        <div class="legend-label">Professional Visualization</div>
+                        <div class="legend-amount">$509 million | +19% YoY</div>
+                    </div>
+                    <div class="legend-percentage">1.1%</div>
+                </div>
+                
+                <div class="legend-item oem-other" style="border-left-color: #ba68c8;">
+                    <div class="legend-color oem-other"></div>
+                    <div class="legend-info">
+                        <div class="legend-label">OEM & Other</div>
+                        <div class="legend-amount">$111 million | +42% YoY</div>
+                    </div>
+                    <div class="legend-percentage">0.3%</div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="total-revenue">
+            <div class="total-label">Total Quarterly Revenue</div>
+            <div class="total-amount">$44.1 Billion</div>
+            <div class="growth-indicator">↗ +69% Year-over-Year Growth | +12% Quarter-over-Quarter</div>
+        </div>
+    </div>
+
+    <script>
+        // Draw pie chart using Canvas
+        const canvas = document.getElementById('pieChart');
+        const ctx = canvas.getContext('2d');
+        const centerX = canvas.width / 2;
+        const centerY = canvas.height / 2;
+        const radius = 150;
+
+        // Data for the pie chart
+        const data = [
+            { label: 'Data Center', value: 88.7, color: '#4dd0e1' },
+            { label: 'Gaming', value: 8.6, color: '#81c784' },
+            { label: 'Automotive', value: 1.3, color: '#ffb74d' },
+            { label: 'Professional', value: 1.1, color: '#f06292' },
+            { label: 'OEM & Other', value: 0.3, color: '#ba68c8' }
+        ];
+
+        // Draw the pie chart
+        let startAngle = -Math.PI / 2; // Start from top
+
+        data.forEach((segment, index) => {
+            const sliceAngle = (segment.value / 100) * 2 * Math.PI;
+            
+            // Create gradient
+            const gradient = ctx.createRadialGradient(centerX, centerY, 0, centerX, centerY, radius);
+            gradient.addColorStop(0, segment.color);
+            gradient.addColorStop(1, segment.color + '80');
+            
+            ctx.beginPath();
+            ctx.moveTo(centerX, centerY);
+            ctx.arc(centerX, centerY, radius, startAngle, startAngle + sliceAngle);
+            ctx.closePath();
+            ctx.fillStyle = gradient;
+            ctx.fill();
+            
+            // Add stroke
+            ctx.strokeStyle = 'rgba(255, 255, 255, 0.1)';
+            ctx.lineWidth = 2;
+            ctx.stroke();
+            
+            // Add label for larger segments
+            if (segment.value > 3) {
+                const labelAngle = startAngle + sliceAngle / 2;
+                const labelX = centerX + Math.cos(labelAngle) * (radius * 0.7);
+                const labelY = centerY + Math.sin(labelAngle) * (radius * 0.7);
+                
+                ctx.fillStyle = 'white';
+                ctx.font = 'bold 14px Arial';
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                ctx.fillText(segment.value + '%', labelX, labelY);
+            }
+            
+            startAngle += sliceAngle;
+        });
+
+        // Add animation on load
+        window.addEventListener('load', () => {
+            const items = document.querySelectorAll('.legend-item');
+            items.forEach((item, index) => {
+                setTimeout(() => {
+                    item.style.opacity = '0';
+                    item.style.transform = 'translateX(-20px)';
+                    item.style.transition = 'all 0.5s ease';
+                    
+                    setTimeout(() => {
+                        item.style.opacity = '1';
+                        item.style.transform = 'translateX(0)';
+                    }, 100);
+                }, index * 150);
+            });
+        });
+    </script>
+</body>
+</html> 

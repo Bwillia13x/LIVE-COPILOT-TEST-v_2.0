@@ -1,0 +1,67 @@
+NVIDIA Strategic Assessment - Chart Data
+
+Chart 1: Evolution Timeline
+Year,Revenue_Billions,Market_Cap_Billions,Key_Milestone,Performance_Metric
+1993,0.0007,0.01,Company Founded,Graphics chips for PCs
+1999,0.375,1.2,GeForce 256 - First GPU,Gaming market entry
+2006,2.8,8.5,CUDA Platform Launch,Parallel computing paradigm
+2016,6.9,25.4,Tesla P100 - AI Focus,HBM2 memory technology
+2020,26.9,323,A100 Ampere,312 TFLOPS FP16
+2023,60.9,2300,H100 Hopper - AI Dominance,989 TFLOPS BF16
+2025,150,3000,B200 Blackwell (Projected),20 petaFLOPS (est.)
+
+Chart 2: Revenue Breakdown FY2024
+Segment,Revenue_Billions,Percentage,YoY_Growth_Percent,Color_Code
+Data Center,47.5,78.7,409,#1f4e79
+Gaming,7.9,13.0,15,#28a745
+Professional Visualization,2.7,4.5,10,#fd7e14
+Automotive,1.8,2.9,22,#6f42c1
+OEM & Other,0.5,0.9,-24,#6c757d
+
+Chart 3: VRIO Analysis
+Strategic_Resource,Valuable,Rare,Inimitable,Organized,Competitive_Advantage,Score
+CUDA Ecosystem & Platform,1,1,1,1,Sustained,4
+GPU Architecture & Design IP,1,1,1,1,Sustained,4
+AI Chip Performance Leadership,1,1,0.5,1,Temporary,3.5
+Brand & Market Position,1,1,0.5,1,Temporary,3.5
+Financial Resources & Cash,1,0,0,1,Parity,2
+Manufacturing Capabilities,1,0,0,0.5,Disadvantage,1.5
+R&D Capabilities & Innovation,1,1,1,1,Sustained,4
+Partnership Network & Ecosystem,1,1,0.5,1,Temporary,3.5
+
+Chart 4: Value Chain Margins
+Activity,Margin_Low,Margin_High,Margin_Average,NVIDIA_Involvement,Strategic_Importance
+R&D & Design,60,80,70,Core,High
+Materials & Equipment,40,60,50,Partner,Medium
+Manufacturing & Fab,15,25,20,Outsourced,Low
+Assembly & Test,20,40,30,Partner,Medium
+Systems Integration,50,70,60,Core,High
+
+Chart 5: AI Market Competitive Landscape
+Company,Market_Share_Percent,Revenue_Billions,Performance_TFLOPS,Platform,Bubble_Size
+NVIDIA,95.0,47.5,989,CUDA,100
+AMD,3.0,1.4,1307,ROCm,8
+Intel,1.0,0.5,432,oneAPI,3
+Google,0.5,0,800,TPU,2
+Others,0.5,0.6,400,Various,2
+
+Chart 6: Geopolitical Risk Matrix
+Risk_Factor,Probability_1to10,Impact_1to10,Risk_Level,Financial_Impact_Billions,Description
+Taiwan Strait Conflict,7,9,High,50,TSMC disruption - 90% manufacturing dependency
+US-China Tech War,8,9,High,30,Export restrictions and sanctions
+Supply Chain Disruption,5,7,Medium,15,HBM memory and component shortages
+AI Regulation,7,5,Medium,10,EU/US compliance requirements
+Competitor Breakthrough,3,6,Low,20,AMD/Intel technology advancement
+Semiconductor Sanctions,5,8,High,25,China market restrictions
+Cyber Attacks,5,4,Low,5,IP theft and security breaches
+
+Additional Metrics for Dashboard
+Metric,Value,Unit,Trend,Context
+Total Revenue FY2024,60.9,Billions USD,+126% YoY,Record high
+Gross Margin,73,Percent,+5.5pp YoY,Industry leading
+R&D Investment,7.3,Billions USD,+13% YoY,12% of revenue
+Employee Count,29584,Employees,+5200 YoY,Global talent
+AI Market Share,95,Percent,+15pp YoY,Dominant position
+Data Center Growth,409,Percent YoY,+350pp,AI boom impact
+Patents Portfolio,27000,Patents,+2000 YoY,IP protection
+CUDA Developers,4500000,Developers,+500k YoY,Ecosystem strength 

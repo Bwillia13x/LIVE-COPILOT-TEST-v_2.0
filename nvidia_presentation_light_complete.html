@@ -1,0 +1,2048 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NVIDIA Strategic Analysis</title>
+
+    <style>
+        :root {
+            --nvidia-green: #76b900;
+            --nvidia-dark-green: #4a7500;
+            --nvidia-light-green: #9ed72b;
+            --light: #ffffff;
+            --light-secondary: #f8fafc;
+            --light-tertiary: #f1f5f9;
+            --dark-gray: #1e293b;
+            --text-dark: #334155;
+            --text-secondary: #64748b;
+            --text-light: #94a3b8;
+            --white: #ffffff;
+            --red: #ef4444;
+            --blue: #3b82f6;
+            --orange: #f59e0b;
+            --purple: #8b5cf6;
+            --glass: rgba(255, 255, 255, 0.7);
+            --glass-border: rgba(255, 255, 255, 0.8);
+            --shadow: rgba(0, 0, 0, 0.1);
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: linear-gradient(135deg, var(--light) 0%, var(--light-secondary) 100%);
+            color: var(--text-dark);
+            overflow: hidden;
+            cursor: auto;
+            font-feature-settings: 'cv02', 'cv03', 'cv04', 'cv11';
+        }
+
+        /* Enhanced Custom Cursor */
+        .cursor {
+            width: 24px;
+            height: 24px;
+            border: 2px solid var(--nvidia-green);
+            border-radius: 50%;
+            position: fixed;
+            pointer-events: none;
+            z-index: 10000;
+            transition: all 0.15s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+            mix-blend-mode: multiply;
+            opacity: 1;
+        }
+
+        .cursor-trail {
+            position: fixed;
+            width: 8px;
+            height: 8px;
+            background: var(--nvidia-green);
+            border-radius: 50%;
+            pointer-events: none;
+            z-index: 9999;
+            opacity: 0.6;
+            transition: all 0.3s ease;
+        }
+
+        .cursor.expand {
+            transform: scale(1.5);
+            background: rgba(118, 185, 0, 0.1);
+            backdrop-filter: blur(10px);
+        }
+
+        /* Background Effects */
+        .bg-particles {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 1;
+        }
+
+        .particle {
+            position: absolute;
+            width: 2px;
+            height: 2px;
+            background: var(--nvidia-green);
+            border-radius: 50%;
+            opacity: 0.2;
+            animation: float 20s infinite linear;
+        }
+
+        @keyframes float {
+            0% {
+                transform: translateY(100vh) rotate(0deg);
+                opacity: 0;
+            }
+            10% {
+                opacity: 0.2;
+            }
+            90% {
+                opacity: 0.2;
+            }
+            100% {
+                transform: translateY(-100vh) rotate(360deg);
+                opacity: 0;
+            }
+        }
+
+        /* Slide System */
+        .presentation {
+            height: 100vh;
+            overflow: hidden;
+            position: relative;
+            z-index: 2;
+        }
+
+        .slide {
+            position: absolute;
+            width: 100%;
+            height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            opacity: 0;
+            transform: translateX(100%) scale(0.95);
+            transition: all 0.8s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+            background: radial-gradient(ellipse at center, rgba(118, 185, 0, 0.02) 0%, transparent 70%);
+        }
+
+        .slide.active {
+            opacity: 1;
+            transform: translateX(0) scale(1);
+        }
+
+        .slide.prev {
+            transform: translateX(-100%) scale(0.95);
+        }
+
+        /* Enhanced Typography */
+        h1 {
+            font-size: clamp(4rem, 12vw, 8rem);
+            font-weight: 800;
+            letter-spacing: -0.04em;
+            line-height: 0.9;
+            margin-bottom: 2rem;
+            background: linear-gradient(135deg, var(--text-dark) 0%, var(--nvidia-green) 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            text-shadow: 0 0 40px rgba(118, 185, 0, 0.2);
+        }
+
+        h2 {
+            font-size: clamp(2.5rem, 6vw, 4rem);
+            font-weight: 700;
+            letter-spacing: -0.03em;
+            margin-bottom: 2rem;
+            line-height: 1.1;
+            position: relative;
+            color: var(--text-dark);
+        }
+
+        h2::after {
+            content: '';
+            position: absolute;
+            bottom: -8px;
+            left: 0;
+            width: 60px;
+            height: 3px;
+            background: var(--nvidia-green);
+            border-radius: 2px;
+        }
+
+        h3 {
+            font-size: clamp(1.5rem, 3vw, 2.2rem);
+            font-weight: 600;
+            color: var(--text-secondary);
+            margin-bottom: 1.5rem;
+            letter-spacing: -0.02em;
+        }
+
+        h4 {
+            font-size: 1.25rem;
+            font-weight: 600;
+            margin-bottom: 0.5rem;
+            color: var(--nvidia-green);
+        }
+
+        p {
+            font-size: clamp(1.1rem, 2vw, 1.4rem);
+            line-height: 1.6;
+            color: var(--text-secondary);
+            max-width: 800px;
+            font-weight: 400;
+        }
+
+        .accent {
+            color: var(--nvidia-green);
+            text-shadow: 0 0 20px rgba(118, 185, 0, 0.2);
+        }
+
+        /* Content Layouts */
+        .content {
+            max-width: 1400px;
+            padding: 0 5%;
+            text-align: center;
+            position: relative;
+            z-index: 2;
+        }
+
+        .split-layout {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 5rem;
+            align-items: center;
+            text-align: left;
+        }
+
+        /* Enhanced Glass Morphism Cards */
+        .glass-card {
+            background: var(--glass);
+            backdrop-filter: blur(20px);
+            border: 1px solid var(--glass-border);
+            border-radius: 20px;
+            padding: 2rem;
+            position: relative;
+            overflow: hidden;
+            transition: all 0.3s ease;
+        }
+
+        .glass-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 1px;
+            background: linear-gradient(90deg, transparent, var(--nvidia-green), transparent);
+            opacity: 0.5;
+        }
+
+        .glass-card {
+            background: var(--glass);
+            backdrop-filter: blur(20px);
+            border: 1px solid var(--glass-border);
+            border-radius: 20px;
+            padding: 2rem;
+            position: relative;
+            overflow: hidden;
+            transition: all 0.3s ease;
+            box-shadow: 0 8px 32px var(--shadow);
+        }
+
+        .glass-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 1px;
+            background: linear-gradient(90deg, transparent, var(--nvidia-green), transparent);
+            opacity: 0.6;
+        }
+
+        .glass-card:hover {
+            transform: translateY(-5px);
+            border-color: rgba(118, 185, 0, 0.4);
+            box-shadow: 0 25px 50px rgba(0, 0, 0, 0.15);
+        }
+
+        /* Enhanced Metrics */
+        .metric {
+            text-align: center;
+            padding: 2rem;
+            position: relative;
+        }
+
+        .metric-value {
+            font-size: clamp(3rem, 8vw, 6rem);
+            font-weight: 900;
+            color: var(--nvidia-green);
+            line-height: 1;
+            text-shadow: 0 0 30px rgba(118, 185, 0, 0.4);
+            position: relative;
+        }
+
+        .metric-value::after {
+            content: '';
+            position: absolute;
+            bottom: -10px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 40px;
+            height: 2px;
+            background: var(--nvidia-green);
+            opacity: 0.6;
+        }
+
+        .metric-label {
+            font-size: 1rem;
+            color: var(--text-secondary);
+            margin-top: 1rem;
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+            font-weight: 500;
+        }
+
+        .metrics-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 2rem;
+            margin: 3rem 0;
+        }
+
+        /* Advanced Charts */
+        .chart-container {
+            position: relative;
+            padding: 2rem;
+            background: var(--glass);
+            backdrop-filter: blur(20px);
+            border-radius: 16px;
+            border: 1px solid var(--glass-border);
+            margin: 2rem 0;
+            box-shadow: 0 8px 32px var(--shadow);
+        }
+
+        .animated-bar {
+            height: 50px;
+            background: linear-gradient(135deg, var(--nvidia-green), var(--nvidia-light-green));
+            margin: 1.5rem 0;
+            border-radius: 25px;
+            position: relative;
+            overflow: hidden;
+            box-shadow: 0 8px 32px rgba(118, 185, 0, 0.25);
+        }
+
+        .animated-bar::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+            animation: shimmer 2s infinite;
+        }
+
+        .animated-bar::after {
+            content: attr(data-label);
+            position: absolute;
+            right: 1.5rem;
+            top: 50%;
+            transform: translateY(-50%);
+            color: var(--white);
+            font-weight: 600;
+            font-size: 0.9rem;
+            text-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
+        }
+
+        @keyframes shimmer {
+            0% { left: -100%; }
+            100% { left: 100%; }
+        }
+
+        .bar-grow {
+            animation: growBar 1.5s cubic-bezier(0.25, 0.46, 0.45, 0.94) forwards;
+        }
+
+        @keyframes growBar {
+            from { width: 0; opacity: 0; }
+            to { opacity: 1; }
+        }
+
+        /* Enhanced Pie Chart */
+        .pie-chart-container {
+            position: relative;
+            width: 300px;
+            height: 300px;
+            margin: 2rem auto;
+        }
+
+        .pie-chart {
+            width: 100%;
+            height: 100%;
+            transform: rotate(-90deg);
+            filter: drop-shadow(0 10px 20px rgba(0, 0, 0, 0.3));
+        }
+
+        .pie-segment {
+            transition: all 0.3s ease;
+            transform-origin: center;
+        }
+
+        .pie-segment:hover {
+            transform: scale(1.05);
+            filter: brightness(1.1);
+        }
+
+        /* Advanced Tables */
+        .data-table {
+            width: 100%;
+            background: var(--glass);
+            backdrop-filter: blur(20px);
+            border-radius: 16px;
+            border: 1px solid var(--glass-border);
+            overflow: hidden;
+            margin: 2rem 0;
+            box-shadow: 0 8px 32px var(--shadow);
+        }
+
+        .data-table th,
+        .data-table td {
+            padding: 1.5rem 2rem;
+            text-align: left;
+            border-bottom: 1px solid rgba(0, 0, 0, 0.05);
+            transition: all 0.3s ease;
+        }
+
+        .data-table th {
+            background: rgba(118, 185, 0, 0.1);
+            font-weight: 600;
+            color: var(--nvidia-green);
+            font-size: 0.9rem;
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+        }
+
+        .data-table tr:hover {
+            background: rgba(118, 185, 0, 0.08);
+            transform: translateX(5px);
+        }
+
+        .data-table td {
+            font-size: 1rem;
+            color: var(--text-secondary);
+        }
+
+        /* Risk Matrix */
+        .risk-matrix {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 1.5rem;
+            max-width: 800px;
+            margin: 3rem auto;
+        }
+
+        .risk-item {
+            padding: 2.5rem 2rem;
+            border-radius: 16px;
+            text-align: center;
+            transition: all 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+            position: relative;
+            overflow: hidden;
+            backdrop-filter: blur(20px);
+            box-shadow: 0 8px 32px var(--shadow);
+        }
+
+        .risk-item::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+            transition: left 0.5s ease;
+        }
+
+        .risk-item:hover::before {
+            left: 100%;
+        }
+
+        .risk-item:hover {
+            transform: translateY(-10px) scale(1.02);
+        }
+
+        .risk-high {
+            background: rgba(239, 68, 68, 0.15);
+            border: 2px solid var(--red);
+            box-shadow: 0 8px 32px rgba(239, 68, 68, 0.2);
+        }
+
+        .risk-medium {
+            background: rgba(245, 158, 11, 0.15);
+            border: 2px solid var(--orange);
+            box-shadow: 0 8px 32px rgba(245, 158, 11, 0.2);
+        }
+
+        .risk-low {
+            background: rgba(118, 185, 0, 0.15);
+            border: 2px solid var(--nvidia-green);
+            box-shadow: 0 8px 32px rgba(118, 185, 0, 0.2);
+        }
+
+        /* Enhanced Navigation */
+        .nav {
+            position: fixed;
+            bottom: 3rem;
+            left: 50%;
+            transform: translateX(-50%);
+            display: flex;
+            gap: 1rem;
+            z-index: 1000;
+            background: var(--glass);
+            backdrop-filter: blur(20px);
+            padding: 1rem 2rem;
+            border-radius: 50px;
+            border: 1px solid var(--glass-border);
+            cursor: pointer;
+            box-shadow: 0 8px 32px var(--shadow);
+        }
+
+        .nav-dot {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            background: rgba(0, 0, 0, 0.2);
+            cursor: pointer;
+            transition: all 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+            position: relative;
+        }
+
+        .nav-dot::before {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 0;
+            height: 0;
+            background: var(--nvidia-green);
+            border-radius: 50%;
+            transition: all 0.3s ease;
+        }
+
+        .nav-dot.active::before,
+        .nav-dot:hover::before {
+            width: 100%;
+            height: 100%;
+        }
+
+        .nav-dot.active {
+            transform: scale(1.3);
+            box-shadow: 0 0 20px rgba(118, 185, 0, 0.5);
+        }
+
+        /* Progress Indicator */
+        .progress {
+            position: fixed;
+            top: 0;
+            left: 0;
+            height: 4px;
+            background: linear-gradient(90deg, var(--nvidia-green), var(--nvidia-light-green));
+            transition: width 0.5s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+            z-index: 1000;
+            box-shadow: 0 0 10px rgba(118, 185, 0, 0.5);
+        }
+
+        /* Slide Counter */
+        .slide-number {
+            position: fixed;
+            top: 3rem;
+            right: 3rem;
+            font-size: 1rem;
+            color: var(--text-secondary);
+            font-weight: 500;
+            background: var(--glass);
+            backdrop-filter: blur(20px);
+            padding: 0.8rem 1.5rem;
+            border-radius: 25px;
+            border: 1px solid var(--glass-border);
+            font-feature-settings: 'tnum';
+            box-shadow: 0 8px 32px var(--shadow);
+        }
+
+        /* Enhanced Animations */
+        .fade-in {
+            animation: fadeInUp 1s cubic-bezier(0.25, 0.46, 0.45, 0.94) forwards;
+            opacity: 0;
+            transform: translateY(30px);
+        }
+
+        @keyframes fadeInUp {
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .stagger > * {
+            animation: fadeInUp 0.8s cubic-bezier(0.25, 0.46, 0.45, 0.94) forwards;
+            opacity: 0;
+            transform: translateY(30px);
+        }
+
+        .stagger > *:nth-child(1) { animation-delay: 0.1s; }
+        .stagger > *:nth-child(2) { animation-delay: 0.2s; }
+        .stagger > *:nth-child(3) { animation-delay: 0.3s; }
+        .stagger > *:nth-child(4) { animation-delay: 0.4s; }
+        .stagger > *:nth-child(5) { animation-delay: 0.5s; }
+        .stagger > *:nth-child(6) { animation-delay: 0.6s; }
+
+        /* Hover Effects */
+        .hover-lift {
+            transition: all 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+        }
+
+        .hover-lift:hover {
+            transform: translateY(-5px);
+        }
+
+        /* Responsive Design */
+        @media (max-width: 1024px) {
+            .split-layout {
+                grid-template-columns: 1fr;
+                gap: 3rem;
+            }
+
+            .metrics-grid {
+                grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            }
+        }
+
+        @media (max-width: 768px) {
+            .content {
+                padding: 0 8%;
+            }
+
+            .risk-matrix {
+                grid-template-columns: 1fr;
+                gap: 1rem;
+            }
+
+            .nav {
+                bottom: 2rem;
+                padding: 0.8rem 1.5rem;
+            }
+
+            .slide-number {
+                top: 2rem;
+                right: 2rem;
+            }
+        }
+
+        /* Loading Animation */
+        .loader {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: var(--light);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 10000;
+            transition: opacity 0.5s ease, visibility 0.5s ease;
+        }
+
+        .loader.hidden {
+            opacity: 0;
+            visibility: hidden;
+        }
+
+        .loader-spinner {
+            width: 60px;
+            height: 60px;
+            border: 3px solid rgba(118, 185, 0, 0.1);
+            border-top: 3px solid var(--nvidia-green);
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        /* Additional Chart Animations */
+        @keyframes drawLine {
+            to { stroke-dashoffset: 0; }
+        }
+
+        @keyframes fillArea {
+            to { opacity: 1; }
+        }
+
+        @keyframes showPoints {
+            to { opacity: 1; }
+        }
+
+        @keyframes showLabels {
+            to { opacity: 1; }
+        }
+
+        /* Bubble Animation Enhancement */
+        .bubble {
+            position: absolute;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+            color: var(--white);
+            font-weight: 600;
+            animation: bubbleGrow 1s ease-out forwards;
+            cursor: pointer;
+            transition: transform 0.3s ease;
+            opacity: 0;
+            transform: scale(0);
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+        }
+
+        .bubble:hover {
+            transform: scale(1.05);
+        }
+
+        @keyframes bubbleGrow {
+            from {
+                opacity: 0;
+                transform: scale(0);
+            }
+            to {
+                opacity: 1;
+                transform: scale(1);
+            }
+        }
+
+        @keyframes showRisk {
+            to { opacity: 1; }
+        }
+    </style>
+</head>
+<body>
+    <!-- Loading Screen -->
+    <div class="loader">
+        <div class="loader-spinner"></div>
+    </div>
+
+    <!-- Animated Background -->
+    <div class="bg-particles"></div>
+
+    <!-- Custom Cursor -->
+    <div class="cursor"></div>
+
+    <!-- Progress Bar -->
+    <div class="progress"></div>
+
+            <!-- Slide Counter -->
+        <div class="slide-number">
+            <span id="current-slide">1</span> / <span id="total-slides">15</span>
+        </div>
+
+        <!-- Navigation Instructions -->
+        <div style="position: fixed; top: 3rem; left: 3rem; font-size: 0.8rem; color: var(--text-secondary); background: var(--glass); backdrop-filter: blur(20px); padding: 0.8rem 1.2rem; border-radius: 20px; border: 1px solid var(--glass-border); z-index: 1000; opacity: 0; animation: fadeIn 1s ease-out 2s forwards; box-shadow: 0 8px 32px var(--shadow);">
+            <div>🖱️ Click to navigate</div>
+            <div>⌨️ Arrow keys • Space</div>
+            <div>🔵 Dots below</div>
+        </div>
+
+    <!-- Presentation Container -->
+    <div class="presentation">
+        
+        <!-- Slide 1: Enhanced Title -->
+        <section class="slide active">
+            <div class="content">
+                <h1 class="fade-in">NVIDIA</h1>
+                <h3 class="fade-in" style="animation-delay: 0.3s;">Strategic Analysis 2025</h3>
+                <p class="fade-in" style="animation-delay: 0.6s; font-size: 1.5rem; margin-top: 2rem;">The AI Computing Monopoly at an Inflection Point</p>
+                <div class="fade-in" style="animation-delay: 0.9s; margin-top: 3rem;">
+                    <div style="display: inline-flex; gap: 2rem; font-size: 1rem; color: var(--text-secondary);">
+                        <span>Market Cap: $3.5T</span>
+                        <span>•</span>
+                        <span>Revenue: $130.5B</span>
+                        <span>•</span>
+                        <span>Growth: 11x (6Y)</span>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Slide 2: Market Dominance with Enhanced Visuals -->
+        <section class="slide">
+            <div class="content">
+                <h2>Unprecedented <span class="accent">Market Dominance</span></h2>
+                <div class="split-layout">
+                    <div class="glass-card">
+                        <div class="pie-chart-container">
+                            <svg class="pie-chart" viewBox="0 0 100 100">
+                                <circle cx="50" cy="50" r="45" fill="none" stroke="rgba(0,0,0,0.1)" stroke-width="10" />
+                                <circle class="pie-segment" cx="50" cy="50" r="45" fill="none" 
+                                        stroke="url(#greenGradient)" stroke-width="10"
+                                        stroke-dasharray="275.8 281.2" stroke-dashoffset="-70.3" 
+                                        style="animation: drawPie 2s ease-out forwards;" />
+                                <text x="50" y="50" text-anchor="middle" dominant-baseline="middle" 
+                                      style="font-size: 18px; font-weight: 800; fill: #334155;">98%</text>
+                                <text x="50" y="65" text-anchor="middle" dominant-baseline="middle" 
+                                      style="font-size: 8px; fill: #64748b;">Market Share</text>
+                                <defs>
+                                    <linearGradient id="greenGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+                                        <stop offset="0%" style="stop-color:#76b900" />
+                                        <stop offset="100%" style="stop-color:#9ed72b" />
+                                    </linearGradient>
+                                </defs>
+                            </svg>
+                        </div>
+                        <p style="text-align: center; margin-top: 1rem; color: var(--text-secondary);">Datacenter GPU Market</p>
+                    </div>
+                    <div class="stagger">
+                        <div class="glass-card hover-lift">
+                            <div class="metric">
+                                <div class="metric-value">3.76M</div>
+                                <div class="metric-label">GPUs Shipped (2023)</div>
+                            </div>
+                        </div>
+                        <div class="glass-card hover-lift">
+                            <div class="metric">
+                                <div class="metric-value">73%</div>
+                                <div class="metric-label">Gross Margins</div>
+                            </div>
+                        </div>
+                        <div class="glass-card hover-lift">
+                            <div class="metric">
+                                <div class="metric-value">$95B</div>
+                                <div class="metric-label">Datacenter Revenue</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Slide 3: Revenue Growth with Advanced Line Chart -->
+        <section class="slide">
+            <div class="content">
+                <h2>Explosive <span class="accent">Growth Trajectory</span></h2>
+                <div class="chart-container">
+                    <div class="line-chart" style="height: 400px; margin: 2rem 0;">
+                        <svg viewBox="0 0 600 300" style="width: 100%; height: 100%;">
+                            <defs>
+                                <linearGradient id="lineGradient" x1="0%" y1="0%" x2="100%" y2="0%">
+                                    <stop offset="0%" style="stop-color:#76b900" />
+                                    <stop offset="100%" style="stop-color:#9ed72b" />
+                                </linearGradient>
+                                <linearGradient id="areaGradient" x1="0%" y1="0%" x2="0%" y2="100%">
+                                    <stop offset="0%" style="stop-color:#76b900;stop-opacity:0.4" />
+                                    <stop offset="100%" style="stop-color:#76b900;stop-opacity:0" />
+                                </linearGradient>
+                            </defs>
+                            
+                            <!-- Grid lines -->
+                            <g stroke="rgba(255,255,255,0.1)" stroke-width="1">
+                                <line x1="80" y1="250" x2="520" y2="250" />
+                                <line x1="80" y1="200" x2="520" y2="200" />
+                                <line x1="80" y1="150" x2="520" y2="150" />
+                                <line x1="80" y1="100" x2="520" y2="100" />
+                                <line x1="80" y1="50" x2="520" y2="50" />
+                            </g>
+                            
+                            <!-- Axes -->
+                            <line x1="80" y1="250" x2="520" y2="250" stroke="#ffffff" stroke-width="2" />
+                            <line x1="80" y1="250" x2="80" y2="30" stroke="#ffffff" stroke-width="2" />
+                            
+                            <!-- Area under curve -->
+                            <path d="M 80 240 L 150 230 L 220 210 L 290 170 L 360 100 L 430 60 L 500 30 L 500 250 L 80 250 Z" 
+                                  fill="url(#areaGradient)" opacity="0" style="animation: fillArea 2s ease-out 1s forwards;" />
+                            
+                            <!-- Main line -->
+                            <path d="M 80 240 L 150 230 L 220 210 L 290 170 L 360 100 L 430 60 L 500 30" 
+                                  fill="none" stroke="url(#lineGradient)" stroke-width="4" 
+                                  stroke-dasharray="600" stroke-dashoffset="600" 
+                                  style="animation: drawLine 2s ease-out forwards;" />
+                            
+                            <!-- Data points with glow -->
+                            <g class="data-points" style="animation: showPoints 0.5s ease-out 2.5s forwards; opacity: 0;">
+                                <circle cx="80" cy="240" r="6" fill="#76b900" stroke="#ffffff" stroke-width="2" />
+                                <circle cx="150" cy="230" r="6" fill="#76b900" stroke="#ffffff" stroke-width="2" />
+                                <circle cx="220" cy="210" r="6" fill="#76b900" stroke="#ffffff" stroke-width="2" />
+                                <circle cx="290" cy="170" r="6" fill="#76b900" stroke="#ffffff" stroke-width="2" />
+                                <circle cx="360" cy="100" r="6" fill="#76b900" stroke="#ffffff" stroke-width="2" />
+                                <circle cx="430" cy="60" r="6" fill="#76b900" stroke="#ffffff" stroke-width="2" />
+                                <circle cx="500" cy="30" r="8" fill="#9ed72b" stroke="#ffffff" stroke-width="2" />
+                            </g>
+                            
+                            <!-- Labels -->
+                            <g fill="#9ca3af" font-size="12" text-anchor="middle">
+                                <text x="80" y="270">FY19</text>
+                                <text x="150" y="270">FY20</text>
+                                <text x="220" y="270">FY21</text>
+                                <text x="290" y="270">FY22</text>
+                                <text x="360" y="270">FY23</text>
+                                <text x="430" y="270">FY24</text>
+                                <text x="500" y="270">FY25</text>
+                            </g>
+                            
+                            <!-- Values -->
+                            <g fill="#ffffff" font-size="11" font-weight="600" text-anchor="middle" class="value-labels" 
+                               style="animation: showLabels 0.5s ease-out 3s forwards; opacity: 0;">
+                                <text x="80" y="225">$11.7B</text>
+                                <text x="500" y="20">$130.5B</text>
+                            </g>
+                        </svg>
+                    </div>
+                </div>
+                <div class="stagger" style="margin-top: 2rem;">
+                    <p style="font-size: 1.8rem; color: var(--nvidia-green); font-weight: 600;">11x revenue growth in 6 years</p>
+                    <p style="margin-top: 1rem;">Compound Annual Growth Rate: 49.3%</p>
+                </div>
+            </div>
+        </section>
+
+        <!-- Slide 4: Financial Performance -->
+        <section class="slide">
+            <div class="content">
+                <h2>Financial <span class="accent">Excellence</span></h2>
+                <div class="data-table">
+                    <table style="width: 100%; border-collapse: collapse;">
+                        <thead>
+                            <tr>
+                                <th>Metric</th>
+                                <th>FY2019</th>
+                                <th>FY2023</th>
+                                <th>FY2025</th>
+                                <th>CAGR</th>
+                            </tr>
+                        </thead>
+                        <tbody class="stagger">
+                            <tr>
+                                <td style="font-weight: 600;">Revenue</td>
+                                <td>$11.7B</td>
+                                <td>$60.9B</td>
+                                <td>$130.5B</td>
+                                <td style="color: #76b900; font-weight: 600;">+49.3%</td>
+                            </tr>
+                            <tr>
+                                <td style="font-weight: 600;">Gross Margin</td>
+                                <td>60%</td>
+                                <td>70%</td>
+                                <td>73%</td>
+                                <td style="color: #76b900;">+3.3%</td>
+                            </tr>
+                            <tr>
+                                <td style="font-weight: 600;">R&D Investment</td>
+                                <td>$2.8B</td>
+                                <td>$16.4B</td>
+                                <td>$35.2B</td>
+                                <td style="color: #76b900;">+52.7%</td>
+                            </tr>
+                            <tr>
+                                <td style="font-weight: 600;">Free Cash Flow</td>
+                                <td>$2.8B</td>
+                                <td>$3.8B</td>
+                                <td>$34.8B</td>
+                                <td style="color: #76b900;">+52.1%</td>
+                            </tr>
+                            <tr>
+                                <td style="font-weight: 600;">Net Income</td>
+                                <td>$4.4B</td>
+                                <td>$29.8B</td>
+                                <td>$73.0B</td>
+                                <td style="color: #76b900;">+60.2%</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </section>
+
+        <!-- Slide 5: CUDA Ecosystem Moat -->
+        <section class="slide">
+            <div class="content">
+                <h2>The <span class="accent">CUDA</span> Moat</h2>
+                <div class="split-layout">
+                    <div>
+                        <h3>17+ Years of Ecosystem Development</h3>
+                        <p style="margin-bottom: 2rem;">Creating insurmountable switching costs</p>
+                        
+                        <!-- Ecosystem Bubble Chart -->
+                        <div class="bubble-chart" style="position: relative; height: 350px; margin: 2rem 0;">
+                            <div class="bubble" style="width: 180px; height: 180px; background: linear-gradient(135deg, #76b900, #9ed72b); top: 15%; left: 15%; animation-delay: 0.2s;">
+                                <div style="text-align: center;">
+                                    <div style="font-size: 1.8rem; font-weight: 700;">CUDA</div>
+                                    <div style="font-size: 0.9rem; opacity: 0.9;">100K+ Developers</div>
+                                </div>
+                            </div>
+                            <div class="bubble" style="width: 100px; height: 100px; background: #ef4444; top: 55%; left: 5%; animation-delay: 0.4s;">
+                                <div style="font-size: 1rem; font-weight: 600;">ROCm</div>
+                            </div>
+                            <div class="bubble" style="width: 90px; height: 90px; background: #3b82f6; top: 45%; left: 65%; animation-delay: 0.6s;">
+                                <div style="font-size: 0.9rem; font-weight: 600;">oneAPI</div>
+                            </div>
+                            <div class="bubble" style="width: 80px; height: 80px; background: #f59e0b; top: 5%; left: 70%; animation-delay: 0.8s;">
+                                <div style="font-size: 0.8rem; font-weight: 600;">Metal</div>
+                            </div>
+                            <div class="bubble" style="width: 70px; height: 70px; background: #8b5cf6; top: 70%; left: 75%; animation-delay: 1s;">
+                                <div style="font-size: 0.7rem; font-weight: 600;">Vulkan</div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="glass-card">
+                        <h3>Ecosystem Strength Metrics</h3>
+                        <div style="margin: 2rem 0;">
+                            <div style="margin: 1.5rem 0;">
+                                <div style="display: flex; justify-content: space-between; margin-bottom: 0.5rem;">
+                                    <span>Developer Tools</span>
+                                    <span style="color: #76b900;">95%</span>
+                                </div>
+                                <div class="animated-bar bar-grow" style="width: 95%;" data-label=""></div>
+                            </div>
+                            <div style="margin: 1.5rem 0;">
+                                <div style="display: flex; justify-content: space-between; margin-bottom: 0.5rem;">
+                                    <span>Library Support</span>
+                                    <span style="color: #76b900;">92%</span>
+                                </div>
+                                <div class="animated-bar bar-grow" style="width: 92%; animation-delay: 0.2s;" data-label=""></div>
+                            </div>
+                            <div style="margin: 1.5rem 0;">
+                                <div style="display: flex; justify-content: space-between; margin-bottom: 0.5rem;">
+                                    <span>Hardware Integration</span>
+                                    <span style="color: #76b900;">88%</span>
+                                </div>
+                                <div class="animated-bar bar-grow" style="width: 88%; animation-delay: 0.4s;" data-label=""></div>
+                            </div>
+                            <div style="margin: 1.5rem 0;">
+                                <div style="display: flex; justify-content: space-between; margin-bottom: 0.5rem;">
+                                    <span>Community Size</span>
+                                    <span style="color: #76b900;">90%</span>
+                                </div>
+                                <div class="animated-bar bar-grow" style="width: 90%; animation-delay: 0.6s;" data-label=""></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Slide 6: Product Roadmap -->
+        <section class="slide">
+            <div class="content">
+                <h2>Product <span class="accent">Innovation</span> Roadmap</h2>
+                <div class="roadmap" style="margin: 4rem 0; position: relative;">
+                    <!-- Timeline line -->
+                    <div style="position: absolute; top: 50%; left: 10%; right: 10%; height: 4px; background: linear-gradient(to right, #76b900, #9ed72b); border-radius: 2px;"></div>
+                    
+                    <div class="roadmap-items stagger" style="display: flex; justify-content: space-between; padding: 0 10%;">
+                        <div class="glass-card hover-lift" style="text-align: center; position: relative; max-width: 200px;">
+                            <div style="position: absolute; bottom: -30px; left: 50%; transform: translateX(-50%); width: 16px; height: 16px; background: #76b900; border-radius: 50%; border: 3px solid #ffffff;"></div>
+                            <h4>Hopper H100</h4>
+                            <p style="font-size: 0.9rem; margin: 0.5rem 0;">Current Generation</p>
+                            <div style="padding: 0.5rem 1rem; background: rgba(118, 185, 0, 0.2); border-radius: 20px; font-size: 0.8rem; color: #76b900; font-weight: 600;">Production</div>
+                        </div>
+                        <div class="glass-card hover-lift" style="text-align: center; position: relative; max-width: 200px;">
+                            <div style="position: absolute; bottom: -30px; left: 50%; transform: translateX(-50%); width: 16px; height: 16px; background: #f59e0b; border-radius: 50%; border: 3px solid #ffffff;"></div>
+                            <h4>Grace CPU</h4>
+                            <p style="font-size: 0.9rem; margin: 0.5rem 0;">ARM Architecture</p>
+                            <div style="padding: 0.5rem 1rem; background: rgba(245, 158, 11, 0.2); border-radius: 20px; font-size: 0.8rem; color: #f59e0b; font-weight: 600;">Ramping 2025</div>
+                        </div>
+                        <div class="glass-card hover-lift" style="text-align: center; position: relative; max-width: 200px;">
+                            <div style="position: absolute; bottom: -30px; left: 50%; transform: translateX(-50%); width: 16px; height: 16px; background: #3b82f6; border-radius: 50%; border: 3px solid #ffffff;"></div>
+                            <h4>Blackwell B100</h4>
+                            <p style="font-size: 0.9rem; margin: 0.5rem 0;">Next Gen GPU</p>
+                            <div style="padding: 0.5rem 1rem; background: rgba(59, 130, 246, 0.2); border-radius: 20px; font-size: 0.8rem; color: #3b82f6; font-weight: 600;">Q4 2025</div>
+                        </div>
+                        <div class="glass-card hover-lift" style="text-align: center; position: relative; max-width: 200px;">
+                            <div style="position: absolute; bottom: -30px; left: 50%; transform: translateX(-50%); width: 16px; height: 16px; background: #8b5cf6; border-radius: 50%; border: 3px solid #ffffff;"></div>
+                            <h4>DRIVE Thor</h4>
+                            <p style="font-size: 0.9rem; margin: 0.5rem 0;">Automotive AI</p>
+                            <div style="padding: 0.5rem 1rem; background: rgba(139, 92, 246, 0.2); border-radius: 20px; font-size: 0.8rem; color: #8b5cf6; font-weight: 600;">2026 Launch</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Slide 7: Revenue Segments -->
+        <section class="slide">
+            <div class="content">
+                <h2>Revenue by <span class="accent">Segment</span></h2>
+                <div class="split-layout">
+                    <div class="chart-container">
+                        <h3 style="margin-bottom: 2rem;">FY2025 Revenue Distribution</h3>
+                        <div style="margin: 2rem 0;">
+                            <div style="margin: 1.5rem 0;">
+                                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.8rem;">
+                                    <span style="font-weight: 600;">Data Center</span>
+                                    <span style="color: #76b900; font-weight: 700; font-size: 1.1rem;">$73.0B (56%)</span>
+                                </div>
+                                <div class="animated-bar bar-grow" style="width: 56%; background: linear-gradient(135deg, #76b900, #9ed72b);"></div>
+                            </div>
+                            <div style="margin: 1.5rem 0;">
+                                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.8rem;">
+                                    <span style="font-weight: 600;">Gaming</span>
+                                    <span style="color: #3b82f6; font-weight: 700; font-size: 1.1rem;">$45.5B (35%)</span>
+                                </div>
+                                <div class="animated-bar bar-grow" style="width: 35%; background: linear-gradient(135deg, #3b82f6, #60a5fa); animation-delay: 0.2s;"></div>
+                            </div>
+                            <div style="margin: 1.5rem 0;">
+                                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.8rem;">
+                                    <span style="font-weight: 600;">Professional Visualization</span>
+                                    <span style="color: #8b5cf6; font-weight: 700; font-size: 1.1rem;">$7.8B (6%)</span>
+                                </div>
+                                <div class="animated-bar bar-grow" style="width: 6%; background: linear-gradient(135deg, #8b5cf6, #a78bfa); animation-delay: 0.4s;"></div>
+                            </div>
+                            <div style="margin: 1.5rem 0;">
+                                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.8rem;">
+                                    <span style="font-weight: 600;">Automotive</span>
+                                    <span style="color: #f59e0b; font-weight: 700; font-size: 1.1rem;">$3.9B (3%)</span>
+                                </div>
+                                <div class="animated-bar bar-grow" style="width: 3%; background: linear-gradient(135deg, #f59e0b, #fbbf24); animation-delay: 0.6s;"></div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="glass-card">
+                        <div class="metric">
+                            <div class="metric-value" style="font-size: 3.5rem;">$130.5B</div>
+                            <div class="metric-label">Total Revenue FY25</div>
+                        </div>
+                        <div style="margin-top: 2rem; text-align: left;">
+                            <h4 style="margin-bottom: 1rem;">Key Growth Drivers:</h4>
+                            <ul style="list-style: none; padding: 0;">
+                                <li style="margin: 0.8rem 0; display: flex; align-items: center;">
+                                    <div style="width: 8px; height: 8px; background: #76b900; border-radius: 50%; margin-right: 1rem;"></div>
+                                    AI Training Demand
+                                </li>
+                                <li style="margin: 0.8rem 0; display: flex; align-items: center;">
+                                    <div style="width: 8px; height: 8px; background: #3b82f6; border-radius: 50%; margin-right: 1rem;"></div>
+                                    Cloud Infrastructure
+                                </li>
+                                <li style="margin: 0.8rem 0; display: flex; align-items: center;">
+                                    <div style="width: 8px; height: 8px; background: #8b5cf6; border-radius: 50%; margin-right: 1rem;"></div>
+                                    Enterprise Adoption
+                                </li>
+                                <li style="margin: 0.8rem 0; display: flex; align-items: center;">
+                                    <div style="width: 8px; height: 8px; background: #f59e0b; border-radius: 50%; margin-right: 1rem;"></div>
+                                    Autonomous Vehicles
+                                </li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Slide 8: Geographic Risk -->
+        <section class="slide">
+            <div class="content">
+                <h2>Geographic <span class="accent">Exposure</span> & Risk</h2>
+                <div class="chart-container">
+                    <div style="max-width: 900px; margin: 2rem auto;">
+                        <svg viewBox="0 0 800 400" style="width: 100%; height: 400px;">
+                            <!-- Source Node -->
+                            <rect x="50" y="120" width="180" height="160" rx="20" fill="url(#nodeGradient)" stroke="rgba(255,255,255,0.2)" stroke-width="2" />
+                            <text x="140" y="180" text-anchor="middle" fill="white" style="font-weight: 700; font-size: 16px;">NVIDIA</text>
+                            <text x="140" y="200" text-anchor="middle" fill="white" style="font-size: 14px;">Revenue Distribution</text>
+                            <text x="140" y="240" text-anchor="middle" fill="#9ca3af" style="font-size: 12px;">$130.5B Total</text>
+                            
+                            <!-- Flow paths with different risk levels -->
+                            <path d="M 230 160 Q 350 140 470 120" fill="none" stroke="#76b900" stroke-width="25" opacity="0.6" />
+                            <path d="M 230 180 Q 350 180 470 180" fill="none" stroke="#3b82f6" stroke-width="20" opacity="0.6" />
+                            <path d="M 230 200 Q 350 220 470 240" fill="none" stroke="#ef4444" stroke-width="15" opacity="0.6" />
+                            <path d="M 230 220 Q 350 260 470 300" fill="none" stroke="#76b900" stroke-width="12" opacity="0.6" />
+                            
+                            <!-- Destination nodes -->
+                            <g class="region-nodes stagger">
+                                <rect x="470" y="100" width="140" height="40" rx="20" fill="#76b900" />
+                                <text x="540" y="125" text-anchor="middle" fill="white" style="font-weight: 600; font-size: 14px;">United States (40%)</text>
+                                
+                                <rect x="470" y="160" width="140" height="40" rx="20" fill="#3b82f6" />
+                                <text x="540" y="185" text-anchor="middle" fill="white" style="font-weight: 600; font-size: 14px;">Europe (25%)</text>
+                                
+                                <rect x="470" y="220" width="140" height="40" rx="20" fill="#ef4444" />
+                                <text x="540" y="245" text-anchor="middle" fill="white" style="font-weight: 600; font-size: 14px;">China (20%)</text>
+                                
+                                <rect x="470" y="280" width="140" height="40" rx="20" fill="#f59e0b" />
+                                <text x="540" y="305" text-anchor="middle" fill="white" style="font-weight: 600; font-size: 14px;">Asia-Pacific (15%)</text>
+                            </g>
+                            
+                            <!-- Risk indicators -->
+                            <g class="risk-indicators" style="animation: showRisk 1s ease-out 2s forwards; opacity: 0;">
+                                <circle cx="650" cy="240" r="8" fill="#ef4444" />
+                                <text x="670" y="245" fill="#ef4444" style="font-size: 12px; font-weight: 600;">⚠️ $26B at risk</text>
+                                
+                                <circle cx="650" cy="120" r="6" fill="#76b900" />
+                                <text x="670" y="125" fill="#76b900" style="font-size: 12px; font-weight: 600;">✓ Stable</text>
+                            </g>
+                            
+                            <defs>
+                                <linearGradient id="nodeGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+                                    <stop offset="0%" style="stop-color:#76b900" />
+                                    <stop offset="100%" style="stop-color:#4a7500" />
+                                </linearGradient>
+                            </defs>
+                        </svg>
+                    </div>
+                    <div class="stagger" style="margin-top: 2rem; text-align: center;">
+                        <div style="display: inline-flex; gap: 3rem; align-items: center;">
+                            <div style="display: flex; align-items: center; gap: 0.5rem;">
+                                <div style="width: 12px; height: 12px; background: #ef4444; border-radius: 50%;"></div>
+                                <span>High Risk</span>
+                            </div>
+                            <div style="display: flex; align-items: center; gap: 0.5rem;">
+                                <div style="width: 12px; height: 12px; background: #f59e0b; border-radius: 50%;"></div>
+                                <span>Medium Risk</span>
+                            </div>
+                            <div style="display: flex; align-items: center; gap: 0.5rem;">
+                                <div style="width: 12px; height: 12px; background: #76b900; border-radius: 50%;"></div>
+                                <span>Low Risk</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Slide 9: Risk Assessment Matrix -->
+        <section class="slide">
+            <div class="content">
+                <h2>Strategic <span class="accent">Risk</span> Assessment</h2>
+                <div class="risk-matrix">
+                    <div class="risk-item risk-high">
+                        <div style="font-size: 2.5rem; margin-bottom: 1rem;">⚠️</div>
+                        <h4>Geopolitical</h4>
+                        <p style="font-size: 2rem; margin: 1rem 0; color: #ef4444; font-weight: 700;">HIGH</p>
+                        <p style="font-size: 0.9rem;">Export controls<br/>$4.5B revenue impact</p>
+                        <div style="margin-top: 1rem; padding: 0.5rem; background: rgba(239, 68, 68, 0.2); border-radius: 8px; font-size: 0.8rem;">Immediate concern</div>
+                    </div>
+                    
+                    <div class="risk-item risk-high">
+                        <div style="font-size: 2.5rem; margin-bottom: 1rem;">🏭</div>
+                        <h4>Supply Chain</h4>
+                        <p style="font-size: 2rem; margin: 1rem 0; color: #ef4444; font-weight: 700;">HIGH</p>
+                        <p style="font-size: 0.9rem;">TSMC dependency<br/>Fab capacity limits</p>
+                        <div style="margin-top: 1rem; padding: 0.5rem; background: rgba(239, 68, 68, 0.2); border-radius: 8px; font-size: 0.8rem;">Through 2025</div>
+                    </div>
+                    
+                    <div class="risk-item risk-medium">
+                        <div style="font-size: 2.5rem; margin-bottom: 1rem;">🏃</div>
+                        <h4>Competition</h4>
+                        <p style="font-size: 2rem; margin: 1rem 0; color: #f59e0b; font-weight: 700;">MEDIUM</p>
+                        <p style="font-size: 0.9rem;">AMD MI300 Series<br/>Google TPUs</p>
+                        <div style="margin-top: 1rem; padding: 0.5rem; background: rgba(245, 158, 11, 0.2); border-radius: 8px; font-size: 0.8rem;">Emerging threat</div>
+                    </div>
+                    
+                    <div class="risk-item risk-medium">
+                        <div style="font-size: 2.5rem; margin-bottom: 1rem;">🔧</div>
+                        <h4>Technology</h4>
+                        <p style="font-size: 2rem; margin: 1rem 0; color: #f59e0b; font-weight: 700;">MEDIUM</p>
+                        <p style="font-size: 0.9rem;">Open source models<br/>Commoditization risk</p>
+                        <div style="margin-top: 1rem; padding: 0.5rem; background: rgba(245, 158, 11, 0.2); border-radius: 8px; font-size: 0.8rem;">Long-term watch</div>
+                    </div>
+                    
+                    <div class="risk-item risk-low">
+                        <div style="font-size: 2.5rem; margin-bottom: 1rem;">💰</div>
+                        <h4>Financial</h4>
+                        <p style="font-size: 2rem; margin: 1rem 0; color: #76b900; font-weight: 700;">LOW</p>
+                        <p style="font-size: 0.9rem;">Strong balance sheet<br/>Robust cash flow</p>
+                        <div style="margin-top: 1rem; padding: 0.5rem; background: rgba(118, 185, 0, 0.2); border-radius: 8px; font-size: 0.8rem;">Well positioned</div>
+                    </div>
+                    
+                    <div class="risk-item risk-low">
+                        <div style="font-size: 2.5rem; margin-bottom: 1rem;">⚡</div>
+                        <h4>Execution</h4>
+                        <p style="font-size: 2rem; margin: 1rem 0; color: #76b900; font-weight: 700;">LOW</p>
+                        <p style="font-size: 0.9rem;">Proven leadership<br/>Strong track record</p>
+                        <div style="margin-top: 1rem; padding: 0.5rem; background: rgba(118, 185, 0, 0.2); border-radius: 8px; font-size: 0.8rem;">Confident outlook</div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Slide 10: Competition Analysis -->
+        <section class="slide">
+            <div class="content">
+                <h2>Competitive <span class="accent">Landscape</span></h2>
+                <div class="data-table">
+                    <table style="width: 100%; border-collapse: collapse;">
+                        <thead>
+                            <tr>
+                                <th>Competitor</th>
+                                <th>Key Product</th>
+                                <th>Market Share</th>
+                                <th>Threat Level</th>
+                                <th>Competitive Advantage</th>
+                            </tr>
+                        </thead>
+                        <tbody class="stagger">
+                            <tr>
+                                <td style="font-weight: 600; color: #ef4444;">AMD</td>
+                                <td>MI300X</td>
+                                <td>~2.5%</td>
+                                <td><span style="color: #ef4444; font-weight: 600;">High</span></td>
+                                <td>Price/Performance Ratio</td>
+                            </tr>
+                            <tr>
+                                <td style="font-weight: 600; color: #3b82f6;">Google</td>
+                                <td>TPU v5e</td>
+                                <td>Internal Use</td>
+                                <td><span style="color: #f59e0b; font-weight: 600;">Medium</span></td>
+                                <td>Vertical Integration</td>
+                            </tr>
+                            <tr>
+                                <td style="font-weight: 600; color: #f59e0b;">AWS</td>
+                                <td>Trainium2</td>
+                                <td>Cloud Only</td>
+                                <td><span style="color: #f59e0b; font-weight: 600;">Medium</span></td>
+                                <td>Cloud Ecosystem Lock-in</td>
+                            </tr>
+                            <tr>
+                                <td style="font-weight: 600; color: #8b5cf6;">Intel</td>
+                                <td>Gaudi 3</td>
+                                <td>&lt;1%</td>
+                                <td><span style="color: #76b900; font-weight: 600;">Low</span></td>
+                                <td>x86 Integration</td>
+                            </tr>
+                            <tr>
+                                <td style="font-weight: 600; color: #6b7280;">Cerebras</td>
+                                <td>CS-3</td>
+                                <td>Niche</td>
+                                <td><span style="color: #76b900; font-weight: 600;">Low</span></td>
+                                <td>Specialized Workloads</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+                
+                <div class="glass-card" style="margin-top: 3rem;">
+                    <h3>NVIDIA's Defensive Strategies</h3>
+                    <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 2rem; margin-top: 2rem;">
+                        <div style="text-align: center;">
+                            <div style="font-size: 2rem; margin-bottom: 1rem;">🛡️</div>
+                            <h4>CUDA Ecosystem</h4>
+                            <p style="font-size: 0.9rem;">17+ years of developer investment</p>
+                        </div>
+                        <div style="text-align: center;">
+                            <div style="font-size: 2rem; margin-bottom: 1rem;">⚡</div>
+                            <h4>Performance Lead</h4>
+                            <p style="font-size: 0.9rem;">2-3x faster than alternatives</p>
+                        </div>
+                        <div style="text-align: center;">
+                            <div style="font-size: 2rem; margin-bottom: 1rem;">🔬</div>
+                            <h4>R&D Investment</h4>
+                            <p style="font-size: 0.9rem;">$35B annual spending</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Slide 11: Supply Chain Dependencies -->
+        <section class="slide">
+            <div class="content">
+                <h2>Supply Chain <span class="accent">Critical Path</span></h2>
+                <div class="chart-container">
+                    <div style="max-width: 1000px; margin: 2rem auto;">
+                        <svg viewBox="0 0 900 400" style="width: 100%; height: 400px;">
+                            <!-- TSMC Critical Node -->
+                            <rect x="50" y="150" width="200" height="100" rx="20" fill="#ef4444" stroke="rgba(255,255,255,0.3)" stroke-width="2" />
+                            <text x="150" y="185" text-anchor="middle" fill="white" style="font-weight: 700; font-size: 16px;">TSMC</text>
+                            <text x="150" y="205" text-anchor="middle" fill="white" style="font-size: 12px;">4nm/5nm Fabrication</text>
+                            <text x="150" y="225" text-anchor="middle" fill="#ffcccb" style="font-size: 10px;">Single Point of Failure</text>
+                            
+                            <!-- Arrow to NVIDIA -->
+                            <path d="M 250 200 L 350 200" stroke="#ffffff" stroke-width="4" marker-end="url(#arrow)" />
+                            <text x="300" y="190" text-anchor="middle" fill="#9ca3af" style="font-size: 10px;">GPU Dies</text>
+                            
+                            <!-- NVIDIA Assembly -->
+                            <rect x="350" y="150" width="200" height="100" rx="20" fill="url(#greenGradient)" stroke="rgba(255,255,255,0.3)" stroke-width="2" />
+                            <text x="450" y="185" text-anchor="middle" fill="white" style="font-weight: 700; font-size: 16px;">NVIDIA</text>
+                            <text x="450" y="205" text-anchor="middle" fill="white" style="font-size: 12px;">Assembly & Testing</text>
+                            <text x="450" y="225" text-anchor="middle" fill="#c7f59b" style="font-size: 10px;">Design & Software</text>
+                            
+                            <!-- Distribution arrows -->
+                            <path d="M 550 175 L 650 125" stroke="#76b900" stroke-width="3" marker-end="url(#arrow)" />
+                            <path d="M 550 200 L 650 200" stroke="#3b82f6" stroke-width="3" marker-end="url(#arrow)" />
+                            <path d="M 550 225 L 650 275" stroke="#f59e0b" stroke-width="3" marker-end="url(#arrow)" />
+                            
+                            <!-- Customer segments -->
+                            <rect x="650" y="100" width="180" height="50" rx="15" fill="#76b900" opacity="0.8" />
+                            <text x="740" y="130" text-anchor="middle" fill="white" style="font-weight: 600; font-size: 14px;">Hyperscale Cloud</text>
+                            
+                            <rect x="650" y="175" width="180" height="50" rx="15" fill="#3b82f6" opacity="0.8" />
+                            <text x="740" y="205" text-anchor="middle" fill="white" style="font-weight: 600; font-size: 14px;">Enterprise</text>
+                            
+                            <rect x="650" y="250" width="180" height="50" rx="15" fill="#f59e0b" opacity="0.8" />
+                            <text x="740" y="280" text-anchor="middle" fill="white" style="font-weight: 600; font-size: 14px;">Consumer/Gaming</text>
+                            
+                            <!-- Bottleneck warning -->
+                            <circle cx="300" cy="160" r="25" fill="rgba(239, 68, 68, 0.8)" stroke="#ffffff" stroke-width="2" />
+                            <text x="300" y="167" text-anchor="middle" fill="white" style="font-weight: 700; font-size: 18px;">!</text>
+                            <text x="300" y="140" text-anchor="middle" fill="#ef4444" style="font-size: 12px; font-weight: 600;">Bottleneck</text>
+                            
+                            <!-- Capacity metrics -->
+                            <g class="capacity-info stagger" style="animation-delay: 1s;">
+                                <rect x="50" y="320" width="300" height="60" rx="10" fill="rgba(239, 68, 68, 0.1)" stroke="#ef4444" stroke-width="1" />
+                                <text x="200" y="340" text-anchor="middle" fill="#ef4444" style="font-size: 12px; font-weight: 600;">TSMC Capacity Constraints</text>
+                                <text x="200" y="355" text-anchor="middle" fill="#ffffff" style="font-size: 10px;">92% utilization • 18-month lead times</text>
+                                <text x="200" y="370" text-anchor="middle" fill="#ffffff" style="font-size: 10px;">Limited expansion through 2025</text>
+                            </g>
+                            
+                            <defs>
+                                <marker id="arrow" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto" markerUnits="strokeWidth">
+                                    <polygon points="0 0, 10 3.5, 0 7" fill="#ffffff" />
+                                </marker>
+                            </defs>
+                        </svg>
+                    </div>
+                    
+                    <div class="stagger" style="margin-top: 2rem;">
+                        <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 2rem;">
+                            <div class="glass-card" style="text-align: center;">
+                                <div style="font-size: 2.5rem; color: #ef4444; margin-bottom: 1rem;">92%</div>
+                                <p style="font-weight: 600;">TSMC Utilization</p>
+                                <p style="font-size: 0.9rem; margin-top: 0.5rem;">Near capacity limits</p>
+                            </div>
+                            <div class="glass-card" style="text-align: center;">
+                                <div style="font-size: 2.5rem; color: #f59e0b; margin-bottom: 1rem;">18mo</div>
+                                <p style="font-weight: 600;">Lead Times</p>
+                                <p style="font-size: 0.9rem; margin-top: 0.5rem;">Extended delivery</p>
+                            </div>
+                            <div class="glass-card" style="text-align: center;">
+                                <div style="font-size: 2.5rem; color: #76b900; margin-bottom: 1rem;">85%</div>
+                                <p style="font-weight: 600;">NVIDIA Share</p>
+                                <p style="font-size: 0.9rem; margin-top: 0.5rem;">Of TSMC capacity</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Slide 12: Valuation Framework -->
+        <section class="slide">
+            <div class="content">
+                <h2>Valuation <span class="accent">Framework</span></h2>
+                <div class="split-layout">
+                    <div class="glass-card">
+                        <h3>Multiple Analysis</h3>
+                        <div class="data-table" style="font-size: 0.9rem; margin-top: 1.5rem;">
+                            <table style="width: 100%;">
+                                <thead>
+                                    <tr>
+                                        <th>Metric</th>
+                                        <th>NVIDIA</th>
+                                        <th>Peers</th>
+                                        <th>Premium</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr>
+                                        <td>P/E (FWD)</td>
+                                        <td style="color: #ef4444; font-weight: 600;">31.2x</td>
+                                        <td>18.5x</td>
+                                        <td style="color: #ef4444;">+69%</td>
+                                    </tr>
+                                    <tr>
+                                        <td>EV/Sales</td>
+                                        <td style="color: #f59e0b; font-weight: 600;">23.1x</td>
+                                        <td>5.2x</td>
+                                        <td style="color: #f59e0b;">+344%</td>
+                                    </tr>
+                                    <tr>
+                                        <td>PEG Ratio</td>
+                                        <td style="color: #76b900; font-weight: 600;">0.52x</td>
+                                        <td>1.1x</td>
+                                        <td style="color: #76b900;">-53%</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                        
+                        <div style="margin-top: 2rem; padding: 1.5rem; background: rgba(118, 185, 0, 0.1); border-radius: 12px; border-left: 4px solid #76b900;">
+                            <h4 style="color: #76b900; margin-bottom: 0.5rem;">Justification</h4>
+                            <p style="font-size: 0.9rem;">Growth premium warranted by AI market expansion and dominant market position</p>
+                        </div>
+                    </div>
+                    
+                    <div class="glass-card">
+                        <h3>DCF Scenario Analysis</h3>
+                        <div style="margin: 2rem 0;">
+                            <div style="margin: 1.5rem 0;">
+                                <div style="display: flex; justify-content: space-between; margin-bottom: 0.8rem;">
+                                    <span style="font-weight: 600;">Bull Case (25%)</span>
+                                    <span style="color: #76b900; font-weight: 700; font-size: 1.2rem;">$220</span>
+                                </div>
+                                <div class="animated-bar bar-grow" style="width: 100%; background: linear-gradient(135deg, #76b900, #9ed72b);"></div>
+                                <p style="font-size: 0.8rem; margin-top: 0.3rem; color: #9ca3af;">AI adoption accelerates</p>
+                            </div>
+                            
+                            <div style="margin: 1.5rem 0;">
+                                <div style="display: flex; justify-content: space-between; margin-bottom: 0.8rem;">
+                                    <span style="font-weight: 600;">Base Case (50%)</span>
+                                    <span style="color: #3b82f6; font-weight: 700; font-size: 1.2rem;">$185</span>
+                                </div>
+                                <div class="animated-bar bar-grow" style="width: 84%; background: linear-gradient(135deg, #3b82f6, #60a5fa); animation-delay: 0.2s;"></div>
+                                <p style="font-size: 0.8rem; margin-top: 0.3rem; color: #9ca3af;">Steady growth trajectory</p>
+                            </div>
+                            
+                            <div style="margin: 1.5rem 0;">
+                                <div style="display: flex; justify-content: space-between; margin-bottom: 0.8rem;">
+                                    <span style="font-weight: 600;">Bear Case (25%)</span>
+                                    <span style="color: #ef4444; font-weight: 700; font-size: 1.2rem;">$142</span>
+                                </div>
+                                <div class="animated-bar bar-grow" style="width: 65%; background: linear-gradient(135deg, #ef4444, #f87171); animation-delay: 0.4s;"></div>
+                                <p style="font-size: 0.8rem; margin-top: 0.3rem; color: #9ca3af;">Competition + regulation</p>
+                            </div>
+                        </div>
+                        
+                        <div style="margin-top: 2rem; padding: 1.5rem; background: rgba(59, 130, 246, 0.1); border-radius: 12px; text-align: center;">
+                            <div style="font-size: 1.5rem; font-weight: 700; color: #3b82f6; margin-bottom: 0.5rem;">Current: $160</div>
+                            <div style="font-size: 1.1rem; color: #76b900; font-weight: 600;">Upside to Base: +15.6%</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Slide 13: Strategic Recommendations -->
+        <section class="slide">
+            <div class="content">
+                <h2>Strategic <span class="accent">Roadmap</span> 2025-2028</h2>
+                <div class="timeline" style="margin: 4rem 0; position: relative;">
+                    <div style="position: absolute; top: 50%; left: 5%; right: 5%; height: 4px; background: linear-gradient(to right, #3b82f6, #76b900, #9ed72b); border-radius: 2px;"></div>
+                    
+                    <div class="timeline-items stagger" style="display: flex; justify-content: space-between; padding: 0 5%;">
+                        <div class="glass-card hover-lift" style="text-align: center; position: relative; max-width: 250px;">
+                            <div style="position: absolute; bottom: -25px; left: 50%; transform: translateX(-50%); width: 20px; height: 20px; background: #3b82f6; border-radius: 50%; border: 4px solid #ffffff;"></div>
+                            <div style="font-size: 1.5rem; margin-bottom: 1rem;">2025</div>
+                            <h4 style="color: #3b82f6;">Foundation</h4>
+                            <ul style="text-align: left; font-size: 0.9rem; margin-top: 1rem; list-style: none;">
+                                <li style="margin: 0.5rem 0;">• Secure TSMC capacity</li>
+                                <li style="margin: 0.5rem 0;">• Launch Blackwell</li>
+                                <li style="margin: 0.5rem 0;">• Expand partnerships</li>
+                                <li style="margin: 0.5rem 0;">• Mitigate China risk</li>
+                            </ul>
+                        </div>
+                        
+                        <div class="glass-card hover-lift" style="text-align: center; position: relative; max-width: 250px;">
+                            <div style="position: absolute; bottom: -25px; left: 50%; transform: translateX(-50%); width: 20px; height: 20px; background: #76b900; border-radius: 50%; border: 4px solid #ffffff;"></div>
+                            <div style="font-size: 1.5rem; margin-bottom: 1rem;">2026-27</div>
+                            <h4 style="color: #76b900;">Expansion</h4>
+                            <ul style="text-align: left; font-size: 0.9rem; margin-top: 1rem; list-style: none;">
+                                <li style="margin: 0.5rem 0;">• Software revenue 25%</li>
+                                <li style="margin: 0.5rem 0;">• Diversify manufacturing</li>
+                                <li style="margin: 0.5rem 0;">• Grace CPU adoption</li>
+                                <li style="margin: 0.5rem 0;">• Edge computing push</li>
+                            </ul>
+                        </div>
+                        
+                        <div class="glass-card hover-lift" style="text-align: center; position: relative; max-width: 250px;">
+                            <div style="position: absolute; bottom: -25px; left: 50%; transform: translateX(-50%); width: 20px; height: 20px; background: #9ed72b; border-radius: 50%; border: 4px solid #ffffff;"></div>
+                            <div style="font-size: 1.5rem; margin-bottom: 1rem;">2028</div>
+                            <h4 style="color: #9ed72b;">Dominance</h4>
+                            <ul style="text-align: left; font-size: 0.9rem; margin-top: 1rem; list-style: none;">
+                                <li style="margin: 0.5rem 0;">• Platform leadership</li>
+                                <li style="margin: 0.5rem 0;">• $200B+ revenue</li>
+                                <li style="margin: 0.5rem 0;">• Autonomous vehicle scale</li>
+                                <li style="margin: 0.5rem 0;">• Quantum computing</li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="glass-card" style="margin-top: 3rem;">
+                    <h3>Success Metrics</h3>
+                    <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 2rem; margin-top: 2rem;">
+                        <div style="text-align: center;">
+                            <div style="font-size: 2.5rem; color: #76b900; margin-bottom: 0.5rem;">90%+</div>
+                            <p style="font-weight: 600;">Market Share</p>
+                        </div>
+                        <div style="text-align: center;">
+                            <div style="font-size: 2.5rem; color: #3b82f6; margin-bottom: 0.5rem;">30%</div>
+                            <p style="font-weight: 600;">Software Mix</p>
+                        </div>
+                        <div style="text-align: center;">
+                            <div style="font-size: 2.5rem; color: #f59e0b; margin-bottom: 0.5rem;">65%+</div>
+                            <p style="font-weight: 600;">Gross Margins</p>
+                        </div>
+                        <div style="text-align: center;">
+                            <div style="font-size: 2.5rem; color: #8b5cf6; margin-bottom: 0.5rem;">25%</div>
+                            <p style="font-weight: 600;">Revenue CAGR</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Slide 14: Investment Thesis -->
+        <section class="slide">
+            <div class="content">
+                <h2>Investment <span class="accent">Thesis</span> Summary</h2>
+                <div class="split-layout">
+                    <div class="glass-card">
+                        <h3 style="color: #76b900; margin-bottom: 2rem;">💪 Strengths</h3>
+                        <ul style="list-style: none; padding: 0;">
+                            <li style="margin: 1rem 0; display: flex; align-items: center; padding: 1rem; background: rgba(118, 185, 0, 0.1); border-radius: 8px;">
+                                <div style="width: 8px; height: 8px; background: #76b900; border-radius: 50%; margin-right: 1rem;"></div>
+                                <div>
+                                    <strong>98% market dominance</strong><br/>
+                                    <span style="font-size: 0.9rem; color: #9ca3af;">Datacenter GPU leadership</span>
+                                </div>
+                            </li>
+                            <li style="margin: 1rem 0; display: flex; align-items: center; padding: 1rem; background: rgba(118, 185, 0, 0.1); border-radius: 8px;">
+                                <div style="width: 8px; height: 8px; background: #76b900; border-radius: 50%; margin-right: 1rem;"></div>
+                                <div>
+                                    <strong>CUDA ecosystem moat</strong><br/>
+                                    <span style="font-size: 0.9rem; color: #9ca3af;">17+ years of development</span>
+                                </div>
+                            </li>
+                            <li style="margin: 1rem 0; display: flex; align-items: center; padding: 1rem; background: rgba(118, 185, 0, 0.1); border-radius: 8px;">
+                                <div style="width: 8px; height: 8px; background: #76b900; border-radius: 50%; margin-right: 1rem;"></div>
+                                <div>
+                                    <strong>Superior margins</strong><br/>
+                                    <span style="font-size: 0.9rem; color: #9ca3af;">73% gross, 60%+ operating</span>
+                                </div>
+                            </li>
+                            <li style="margin: 1rem 0; display: flex; align-items: center; padding: 1rem; background: rgba(118, 185, 0, 0.1); border-radius: 8px;">
+                                <div style="width: 8px; height: 8px; background: #76b900; border-radius: 50%; margin-right: 1rem;"></div>
+                                <div>
+                                    <strong>Innovation leadership</strong><br/>
+                                    <span style="font-size: 0.9rem; color: #9ca3af;">$35B+ R&D investment</span>
+                                </div>
+                            </li>
+                        </ul>
+                    </div>
+                    
+                    <div class="glass-card">
+                        <h3 style="color: #ef4444; margin-bottom: 2rem;">⚠️ Risks</h3>
+                        <ul style="list-style: none; padding: 0;">
+                            <li style="margin: 1rem 0; display: flex; align-items: center; padding: 1rem; background: rgba(239, 68, 68, 0.1); border-radius: 8px;">
+                                <div style="width: 8px; height: 8px; background: #ef4444; border-radius: 50%; margin-right: 1rem;"></div>
+                                <div>
+                                    <strong>Geopolitical tensions</strong><br/>
+                                    <span style="font-size: 0.9rem; color: #9ca3af;">China exposure $26B</span>
+                                </div>
+                            </li>
+                            <li style="margin: 1rem 0; display: flex; align-items: center; padding: 1rem; background: rgba(239, 68, 68, 0.1); border-radius: 8px;">
+                                <div style="width: 8px; height: 8px; background: #ef4444; border-radius: 50%; margin-right: 1rem;"></div>
+                                <div>
+                                    <strong>Supply constraints</strong><br/>
+                                    <span style="font-size: 0.9rem; color: #9ca3af;">TSMC bottleneck</span>
+                                </div>
+                            </li>
+                            <li style="margin: 1rem 0; display: flex; align-items: center; padding: 1rem; background: rgba(245, 158, 11, 0.1); border-radius: 8px;">
+                                <div style="width: 8px; height: 8px; background: #f59e0b; border-radius: 50%; margin-right: 1rem;"></div>
+                                <div>
+                                    <strong>Valuation premium</strong><br/>
+                                    <span style="font-size: 0.9rem; color: #9ca3af;">High expectations embedded</span>
+                                </div>
+                            </li>
+                            <li style="margin: 1rem 0; display: flex; align-items: center; padding: 1rem; background: rgba(245, 158, 11, 0.1); border-radius: 8px;">
+                                <div style="width: 8px; height: 8px; background: #f59e0b; border-radius: 50%; margin-right: 1rem;"></div>
+                                <div>
+                                    <strong>Rising competition</strong><br/>
+                                    <span style="font-size: 0.9rem; color: #9ca3af;">AMD, custom chips</span>
+                                </div>
+                            </li>
+                        </ul>
+                    </div>
+                </div>
+                
+                <div class="glass-card" style="margin-top: 3rem; text-align: center; padding: 3rem;">
+                    <h3 style="margin-bottom: 2rem;">Valuation Summary</h3>
+                    <div style="display: flex; justify-content: center; align-items: center; gap: 3rem; font-size: 1.5rem;">
+                        <div>
+                            <strong>Target Price:</strong> 
+                            <span style="color: #76b900; font-size: 2rem; font-weight: 700;">$185</span>
+                        </div>
+                        <div style="color: #9ca3af;">|</div>
+                        <div>
+                            <strong>Current:</strong> 
+                            <span style="font-size: 2rem; font-weight: 700;">$160</span>
+                        </div>
+                        <div style="color: #9ca3af;">|</div>
+                        <div>
+                            <strong>Upside:</strong> 
+                            <span style="color: #76b900; font-size: 2rem; font-weight: 700;">+15.6%</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Slide 15: Executive Summary -->
+        <section class="slide">
+            <div class="content">
+                <h2>Executive <span class="accent">Summary</span></h2>
+                <div style="margin: 3rem 0;">
+                    <p style="font-size: 1.8rem; margin-bottom: 3rem; text-align: center; line-height: 1.4;">
+                        NVIDIA's competitive advantages remain <span style="color: #76b900; font-weight: 600;">intact</span>,<br>
+                        but vigilance and strategic execution are <span style="color: #f59e0b; font-weight: 600;">required</span>.
+                    </p>
+                </div>
+                
+                <div class="metrics-grid stagger">
+                    <div class="glass-card hover-lift" style="text-align: center; padding: 2.5rem;">
+                        <div style="font-size: 2rem; margin-bottom: 1rem;">🛡️</div>
+                        <div class="metric-value" style="font-size: 2.5rem; margin-bottom: 1rem;">DEFEND</div>
+                        <div class="metric-label">CUDA Ecosystem</div>
+                        <p style="font-size: 0.9rem; margin-top: 1rem; color: #9ca3af;">Maintain developer loyalty</p>
+                    </div>
+                    
+                    <div class="glass-card hover-lift" style="text-align: center; padding: 2.5rem;">
+                        <div style="font-size: 2rem; margin-bottom: 1rem;">🌏</div>
+                        <div class="metric-value" style="font-size: 2.5rem; margin-bottom: 1rem; color: #f59e0b;">NAVIGATE</div>
+                        <div class="metric-label">Geopolitical Risks</div>
+                        <p style="font-size: 0.9rem; margin-top: 1rem; color: #9ca3af;">Diversify exposure</p>
+                    </div>
+                    
+                    <div class="glass-card hover-lift" style="text-align: center; padding: 2.5rem;">
+                        <div style="font-size: 2rem; margin-bottom: 1rem;">🚀</div>
+                        <div class="metric-value" style="font-size: 2.5rem; margin-bottom: 1rem; color: #3b82f6;">ACCELERATE</div>
+                        <div class="metric-label">Software Revenue</div>
+                        <p style="font-size: 0.9rem; margin-top: 1rem; color: #9ca3af;">Platform monetization</p>
+                    </div>
+                    
+                    <div class="glass-card hover-lift" style="text-align: center; padding: 2.5rem;">
+                        <div style="font-size: 2rem; margin-bottom: 1rem;">🔬</div>
+                        <div class="metric-value" style="font-size: 2.5rem; margin-bottom: 1rem; color: #8b5cf6;">MAINTAIN</div>
+                        <div class="metric-label">R&D Leadership</div>
+                        <p style="font-size: 0.9rem; margin-top: 1rem; color: #9ca3af;">Innovation edge</p>
+                    </div>
+                </div>
+                
+                <div style="margin-top: 4rem; text-align: center;">
+                    <div class="glass-card" style="display: inline-block; padding: 2rem 3rem;">
+                        <h3 style="color: #76b900; margin-bottom: 1rem;">🎯 Recommendation: BUY</h3>
+                        <p style="font-size: 1.2rem; margin-bottom: 1rem;">Strong fundamentals with manageable risks</p>
+                        <p style="font-style: italic; color: #9ca3af;">
+                            Success depends on execution in a rapidly evolving landscape
+                        </p>
+                    </div>
+                </div>
+            </div>
+        </section>
+        
+    </div>
+
+    <!-- Navigation -->
+    <nav class="nav"></nav>
+
+    <script>
+        // Enhanced JavaScript for animations and interactions
+        class PresentationController {
+            constructor() {
+                this.currentSlide = 0;
+                this.slides = document.querySelectorAll('.slide');
+                this.totalSlides = this.slides.length;
+                this.isTransitioning = false;
+                this.navDots = [];
+                
+                console.log(`Found ${this.totalSlides} slides`);
+                
+                this.init();
+            }
+
+            init() {
+                this.createParticles();
+                this.setupCursor();
+                this.createNavigationDots();
+                this.setupKeyboardControls();
+                this.setupTouchControls();
+                this.setupClickNavigation();
+                this.updateSlide();
+                this.hideLoader();
+            }
+
+            createParticles() {
+                const container = document.querySelector('.bg-particles');
+                if (!container) return;
+                
+                for (let i = 0; i < 30; i++) {
+                    const particle = document.createElement('div');
+                    particle.className = 'particle';
+                    particle.style.left = Math.random() * 100 + '%';
+                    particle.style.animationDelay = Math.random() * 20 + 's';
+                    particle.style.animationDuration = (Math.random() * 10 + 15) + 's';
+                    container.appendChild(particle);
+                }
+            }
+
+            setupCursor() {
+                const cursor = document.querySelector('.cursor');
+                if (!cursor) return;
+                
+                let mouseX = 0, mouseY = 0;
+                let cursorX = 0, cursorY = 0;
+
+                document.addEventListener('mousemove', (e) => {
+                    mouseX = e.clientX;
+                    mouseY = e.clientY;
+                    cursor.style.opacity = '1';
+                });
+
+                const animateCursor = () => {
+                    cursorX += (mouseX - cursorX) * 0.15;
+                    cursorY += (mouseY - cursorY) * 0.15;
+                    
+                    cursor.style.left = cursorX - 12 + 'px';
+                    cursor.style.top = cursorY - 12 + 'px';
+                    
+                    requestAnimationFrame(animateCursor);
+                };
+                animateCursor();
+
+                document.addEventListener('mousedown', () => cursor.classList.add('expand'));
+                document.addEventListener('mouseup', () => cursor.classList.remove('expand'));
+            }
+
+            createNavigationDots() {
+                const nav = document.querySelector('.nav');
+                if (!nav) return;
+                
+                // Clear existing dots
+                nav.innerHTML = '';
+                
+                for (let i = 0; i < this.totalSlides; i++) {
+                    const dot = document.createElement('div');
+                    dot.className = 'nav-dot';
+                    if (i === 0) dot.classList.add('active');
+                    
+                    dot.addEventListener('click', (e) => {
+                        e.stopPropagation();
+                        this.goToSlide(i);
+                    });
+                    
+                    nav.appendChild(dot);
+                }
+                
+                this.navDots = document.querySelectorAll('.nav-dot');
+                console.log(`Created ${this.navDots.length} navigation dots`);
+            }
+
+            updateSlide() {
+                if (this.isTransitioning) return;
+                this.isTransitioning = true;
+
+                console.log(`Switching to slide ${this.currentSlide + 1}`);
+
+                this.slides.forEach((slide, index) => {
+                    slide.classList.remove('active', 'prev');
+                    if (index === this.currentSlide) {
+                        slide.classList.add('active');
+                        this.resetAnimations(slide);
+                    } else if (index < this.currentSlide) {
+                        slide.classList.add('prev');
+                    }
+                });
+
+                // Update navigation dots
+                this.navDots.forEach((dot, index) => {
+                    dot.classList.toggle('active', index === this.currentSlide);
+                });
+
+                // Update progress bar
+                const progress = document.querySelector('.progress');
+                if (progress) {
+                    progress.style.width = `${((this.currentSlide + 1) / this.totalSlides) * 100}%`;
+                }
+
+                // Update slide counter
+                const currentSlideElement = document.getElementById('current-slide');
+                const totalSlidesElement = document.getElementById('total-slides');
+                if (currentSlideElement) currentSlideElement.textContent = this.currentSlide + 1;
+                if (totalSlidesElement) totalSlidesElement.textContent = this.totalSlides;
+
+                setTimeout(() => {
+                    this.isTransitioning = false;
+                }, 800);
+            }
+
+            resetAnimations(slide) {
+                const animatedElements = slide.querySelectorAll('.fade-in, .stagger > *, .bar-grow, .pie-segment');
+                animatedElements.forEach(el => {
+                    el.style.animation = 'none';
+                    el.offsetHeight; // Trigger reflow
+                    el.style.animation = null;
+                });
+            }
+
+            goToSlide(index) {
+                if (this.isTransitioning) return;
+                
+                const newSlide = Math.max(0, Math.min(index, this.totalSlides - 1));
+                if (newSlide !== this.currentSlide) {
+                    this.currentSlide = newSlide;
+                    this.updateSlide();
+                }
+            }
+
+            nextSlide() {
+                if (this.currentSlide < this.totalSlides - 1) {
+                    this.goToSlide(this.currentSlide + 1);
+                }
+            }
+
+            prevSlide() {
+                if (this.currentSlide > 0) {
+                    this.goToSlide(this.currentSlide - 1);
+                }
+            }
+
+            setupKeyboardControls() {
+                document.addEventListener('keydown', (e) => {
+                    switch(e.key) {
+                        case 'ArrowRight':
+                        case ' ':
+                            e.preventDefault();
+                            this.nextSlide();
+                            break;
+                        case 'ArrowLeft':
+                            e.preventDefault();
+                            this.prevSlide();
+                            break;
+                        case 'Home':
+                            e.preventDefault();
+                            this.goToSlide(0);
+                            break;
+                        case 'End':
+                            e.preventDefault();
+                            this.goToSlide(this.totalSlides - 1);
+                            break;
+                    }
+                });
+            }
+
+            setupTouchControls() {
+                let touchStartX = 0;
+                let touchEndX = 0;
+
+                document.addEventListener('touchstart', (e) => {
+                    touchStartX = e.changedTouches[0].screenX;
+                });
+
+                document.addEventListener('touchend', (e) => {
+                    touchEndX = e.changedTouches[0].screenX;
+                    this.handleSwipe();
+                });
+
+                this.handleSwipe = () => {
+                    const threshold = 50;
+                    if (touchEndX < touchStartX - threshold) {
+                        this.nextSlide();
+                    }
+                    if (touchEndX > touchStartX + threshold) {
+                        this.prevSlide();
+                    }
+                };
+            }
+
+            setupClickNavigation() {
+                document.addEventListener('click', (e) => {
+                    // Don't navigate if clicking on navigation elements
+                    if (e.target.closest('.nav') || 
+                        e.target.closest('.slide-number') || 
+                        e.target.closest('button') || 
+                        e.target.closest('a')) {
+                        return;
+                    }
+                    
+                    // Click right side to go forward, left side to go back
+                    const clickX = e.clientX;
+                    const windowWidth = window.innerWidth;
+                    
+                    if (clickX > windowWidth * 0.6) {
+                        this.nextSlide();
+                    } else if (clickX < windowWidth * 0.4) {
+                        this.prevSlide();
+                    } else {
+                        this.nextSlide(); // Default to next
+                    }
+                });
+            }
+
+            hideLoader() {
+                setTimeout(() => {
+                    const loader = document.querySelector('.loader');
+                    if (loader) {
+                        loader.classList.add('hidden');
+                        console.log('Loader hidden');
+                    }
+                }, 300);
+            }
+        }
+
+        // Custom animations
+        const animations = {
+            drawPie: `
+                @keyframes drawPie {
+                    from {
+                        stroke-dasharray: 0 283;
+                        opacity: 0;
+                    }
+                    to {
+                        stroke-dasharray: 275.8 283;
+                        opacity: 1;
+                    }
+                }
+            `
+        };
+
+        // Add animations to stylesheet
+        const style = document.createElement('style');
+        style.textContent = Object.values(animations).join('\n');
+        document.head.appendChild(style);
+
+        // Initialize presentation
+        function initPresentation() {
+            try {
+                console.log('Initializing NVIDIA presentation...');
+                window.presentation = new PresentationController();
+                console.log('Presentation initialized successfully');
+            } catch (error) {
+                console.error('Error initializing presentation:', error);
+                // Force hide loader even if there's an error
+                const loader = document.querySelector('.loader');
+                if (loader) loader.classList.add('hidden');
+            }
+        }
+
+        // Initialize when DOM is ready
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', initPresentation);
+        } else {
+            initPresentation();
+        }
+
+        // Debugging helper functions
+        window.debugPresentation = {
+            nextSlide: () => window.presentation?.nextSlide(),
+            prevSlide: () => window.presentation?.prevSlide(),
+            goToSlide: (n) => window.presentation?.goToSlide(n - 1),
+            getCurrentSlide: () => window.presentation?.currentSlide + 1,
+            getTotalSlides: () => window.presentation?.totalSlides
+        };
+
+        console.log('Use debugPresentation.nextSlide(), debugPresentation.prevSlide(), or debugPresentation.goToSlide(n) to navigate manually');
+        console.log('Navigation: Click, Arrow keys, Space bar, or dots at bottom');
+    </script>
+</body>
+</html> 

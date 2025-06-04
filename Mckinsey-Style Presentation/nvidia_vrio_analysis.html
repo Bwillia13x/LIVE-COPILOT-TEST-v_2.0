@@ -1,0 +1,322 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NVIDIA VRIO Analysis - Strategic Resource Assessment</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #0a1628 0%, #1a2a3a 100%);
+            color: white;
+            margin: 0;
+            padding: 20px;
+            min-height: 100vh;
+        }
+        
+        .analysis-container {
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 15px;
+            padding: 30px;
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            max-width: 1200px;
+            margin: 0 auto;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+        }
+        
+        .analysis-title {
+            color: #4dd0e1;
+            font-size: 32px;
+            font-weight: 700;
+            text-align: center;
+            margin-bottom: 10px;
+            text-shadow: 0 0 20px rgba(77, 208, 225, 0.3);
+        }
+        
+        .analysis-subtitle {
+            color: #b0bec5;
+            font-size: 18px;
+            text-align: center;
+            margin-bottom: 40px;
+        }
+        
+        .vrio-table {
+            width: 100%;
+            border-collapse: collapse;
+            background: rgba(255, 255, 255, 0.03);
+            border-radius: 12px;
+            overflow: hidden;
+            box-shadow: 0 4px 16px rgba(0, 0, 0, 0.2);
+        }
+        
+        .vrio-table th {
+            background: linear-gradient(135deg, #1565c0 0%, #0d47a1 100%);
+            color: white;
+            padding: 18px 15px;
+            text-align: center;
+            font-weight: 600;
+            font-size: 14px;
+            border: 1px solid rgba(77, 208, 225, 0.2);
+            text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
+        }
+        
+        .vrio-table th:first-child {
+            text-align: left;
+            width: 25%;
+        }
+        
+        .vrio-table td {
+            padding: 16px 15px;
+            border: 1px solid rgba(77, 208, 225, 0.1);
+            text-align: center;
+            font-size: 13px;
+            background: rgba(255, 255, 255, 0.02);
+        }
+        
+        .vrio-table td:first-child {
+            text-align: left;
+            font-weight: 600;
+            color: #4dd0e1;
+            background: rgba(77, 208, 225, 0.08);
+        }
+        
+        .vrio-table tr:hover {
+            background: rgba(77, 208, 225, 0.05);
+            transform: translateY(-1px);
+            transition: all 0.3s ease;
+        }
+        
+        /* Checkmark and X styling */
+        .check {
+            color: #4caf50;
+            font-size: 18px;
+            font-weight: bold;
+            text-shadow: 0 0 8px rgba(76, 175, 80, 0.5);
+        }
+        
+        .cross {
+            color: #f44336;
+            font-size: 18px;
+            font-weight: bold;
+            text-shadow: 0 0 8px rgba(244, 67, 54, 0.5);
+        }
+        
+        .dash {
+            color: #ff9800;
+            font-size: 18px;
+            font-weight: bold;
+        }
+        
+        /* Competitive Advantage Styling */
+        .sustained-advantage {
+            background: linear-gradient(135deg, rgba(76, 175, 80, 0.2) 0%, rgba(76, 175, 80, 0.1) 100%);
+            color: #81c784;
+            font-weight: 600;
+            border-left: 4px solid #4caf50;
+        }
+        
+        .temporary-advantage {
+            background: linear-gradient(135deg, rgba(255, 152, 0, 0.2) 0%, rgba(255, 152, 0, 0.1) 100%);
+            color: #ffb74d;
+            font-weight: 600;
+            border-left: 4px solid #ff9800;
+        }
+        
+        .competitive-parity {
+            background: linear-gradient(135deg, rgba(96, 125, 139, 0.2) 0%, rgba(96, 125, 139, 0.1) 100%);
+            color: #90a4ae;
+            font-weight: 600;
+            border-left: 4px solid #607d8b;
+        }
+        
+        .competitive-disadvantage {
+            background: linear-gradient(135deg, rgba(244, 67, 54, 0.2) 0%, rgba(244, 67, 54, 0.1) 100%);
+            color: #e57373;
+            font-weight: 600;
+            border-left: 4px solid #f44336;
+        }
+        
+        /* Summary section */
+        .vrio-summary {
+            margin-top: 30px;
+            padding: 25px;
+            background: rgba(77, 208, 225, 0.08);
+            border-radius: 12px;
+            border: 1px solid rgba(77, 208, 225, 0.2);
+        }
+        
+        .summary-title {
+            color: #4dd0e1;
+            font-size: 20px;
+            font-weight: 600;
+            margin-bottom: 15px;
+        }
+        
+        .summary-text {
+            color: #b0bec5;
+            line-height: 1.6;
+            font-size: 14px;
+        }
+        
+        .key-insight {
+            background: rgba(76, 175, 80, 0.1);
+            padding: 15px;
+            border-radius: 8px;
+            border-left: 4px solid #4caf50;
+            margin-top: 15px;
+        }
+        
+        .key-insight-title {
+            color: #81c784;
+            font-weight: 600;
+            margin-bottom: 8px;
+        }
+        
+        .legend {
+            display: flex;
+            justify-content: center;
+            gap: 30px;
+            margin-top: 20px;
+            flex-wrap: wrap;
+        }
+        
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 12px;
+        }
+        
+        .legend-symbol {
+            width: 20px;
+            height: 20px;
+            border-radius: 4px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+    <div class="analysis-container">
+        <div class="analysis-title">NVIDIA VRIO Analysis</div>
+        <div class="analysis-subtitle">Strategic Resource Assessment & Competitive Advantage Framework</div>
+        
+        <table class="vrio-table">
+            <thead>
+                <tr>
+                    <th>Strategic Resource</th>
+                    <th>Valuable</th>
+                    <th>Rare</th>
+                    <th>Inimitable</th>
+                    <th>Organized</th>
+                    <th>Competitive Advantage</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td>CUDA Ecosystem & Platform</td>
+                    <td><span class="check">✓</span></td>
+                    <td><span class="check">✓</span></td>
+                    <td><span class="check">✓</span></td>
+                    <td><span class="check">✓</span></td>
+                    <td class="sustained-advantage">Sustained Competitive Advantage</td>
+                </tr>
+                <tr>
+                    <td>GPU Architecture & Design IP</td>
+                    <td><span class="check">✓</span></td>
+                    <td><span class="check">✓</span></td>
+                    <td><span class="check">✓</span></td>
+                    <td><span class="check">✓</span></td>
+                    <td class="sustained-advantage">Sustained Competitive Advantage</td>
+                </tr>
+                <tr>
+                    <td>AI Chip Performance Leadership</td>
+                    <td><span class="check">✓</span></td>
+                    <td><span class="check">✓</span></td>
+                    <td><span class="dash">—</span></td>
+                    <td><span class="check">✓</span></td>
+                    <td class="temporary-advantage">Temporary Competitive Advantage</td>
+                </tr>
+                <tr>
+                    <td>Brand & Market Position</td>
+                    <td><span class="check">✓</span></td>
+                    <td><span class="check">✓</span></td>
+                    <td><span class="dash">—</span></td>
+                    <td><span class="check">✓</span></td>
+                    <td class="temporary-advantage">Temporary Competitive Advantage</td>
+                </tr>
+                <tr>
+                    <td>Financial Resources & Cash</td>
+                    <td><span class="check">✓</span></td>
+                    <td><span class="cross">✗</span></td>
+                    <td><span class="cross">✗</span></td>
+                    <td><span class="dash">—</span></td>
+                    <td class="competitive-parity">Competitive Parity</td>
+                </tr>
+                <tr>
+                    <td>Manufacturing Capabilities</td>
+                    <td><span class="check">✓</span></td>
+                    <td><span class="cross">✗</span></td>
+                    <td><span class="cross">✗</span></td>
+                    <td><span class="dash">—</span></td>
+                    <td class="competitive-disadvantage">Competitive Disadvantage</td>
+                </tr>
+                <tr>
+                    <td>R&D Capabilities & Innovation</td>
+                    <td><span class="check">✓</span></td>
+                    <td><span class="check">✓</span></td>
+                    <td><span class="check">✓</span></td>
+                    <td><span class="check">✓</span></td>
+                    <td class="sustained-advantage">Sustained Competitive Advantage</td>
+                </tr>
+                <tr>
+                    <td>Partnership Network & Ecosystem</td>
+                    <td><span class="check">✓</span></td>
+                    <td><span class="check">✓</span></td>
+                    <td><span class="dash">—</span></td>
+                    <td><span class="check">✓</span></td>
+                    <td class="temporary-advantage">Temporary Competitive Advantage</td>
+                </tr>
+            </tbody>
+        </table>
+        
+        <div class="legend">
+            <div class="legend-item">
+                <div class="legend-symbol" style="background: #4caf50; color: white;">✓</div>
+                <span>Yes</span>
+            </div>
+            <div class="legend-item">
+                <div class="legend-symbol" style="background: #f44336; color: white;">✗</div>
+                <span>No</span>
+            </div>
+            <div class="legend-item">
+                <div class="legend-symbol" style="background: #ff9800; color: white;">—</div>
+                <span>Partial/Uncertain</span>
+            </div>
+        </div>
+        
+        <div class="vrio-summary">
+            <div class="summary-title">Strategic Analysis Summary</div>
+            <div class="summary-text">
+                NVIDIA's competitive position is anchored by three core <strong>Sustained Competitive Advantages</strong>: 
+                the CUDA ecosystem, proprietary GPU architecture, and R&D innovation capabilities. These resources 
+                are valuable, rare, difficult to imitate, and well-organized, creating deep moats around the business.
+                <br><br>
+                The company maintains <strong>Temporary Competitive Advantages</strong> in AI chip performance and 
+                market positioning, though these are more vulnerable to competitive pressure over time. Critical 
+                vulnerabilities exist in manufacturing capabilities, where reliance on TSMC creates strategic dependency.
+            </div>
+            
+            <div class="key-insight">
+                <div class="key-insight-title">Key Strategic Insight</div>
+                NVIDIA's dominance stems from ecosystem lock-in effects rather than hardware superiority alone. 
+                The CUDA platform creates switching costs that sustain competitive advantage even as chip 
+                performance gaps may narrow over time.
+            </div>
+        </div>
+    </div>
+</body>
+</html> 

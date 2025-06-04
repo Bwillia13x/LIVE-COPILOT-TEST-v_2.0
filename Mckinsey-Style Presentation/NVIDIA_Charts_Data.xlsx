@@ -1,0 +1,54 @@
+Chart 1: Evolution Timeline
+Year,Revenue ($B),Key Milestone,Market Cap ($B),Performance Metric
+1993,0.0007,Company Founded,0.01,Graphics chips for PCs
+1999,0.375,GeForce 256 - First GPU,1.2,Gaming market entry
+2006,2.8,CUDA Platform Launch,8.5,Parallel computing paradigm
+2016,6.9,Tesla P100 - AI Focus,25.4,HBM2 memory technology
+2020,26.9,A100 Ampere,323.0,312 TFLOPS FP16
+2023,60.9,H100 Hopper - AI Dominance,2300.0,989 TFLOPS BF16
+2025,150.0,B200 Blackwell (Projected),3000.0,20 petaFLOPS (est.)
+
+Chart 2: Revenue Breakdown FY2024
+Segment,Revenue ($B),Percentage,YoY Growth (%)
+Data Center,47.5,78.7,409
+Gaming,7.9,13.0,15
+Professional Visualization,2.7,4.5,10
+Automotive,1.8,2.9,22
+OEM & Other,0.5,0.9,-24
+
+Chart 3: VRIO Analysis
+Strategic Resource,Valuable,Rare,Inimitable,Organized,Competitive Advantage
+CUDA Ecosystem & Platform,Yes,Yes,Yes,Yes,Sustained
+GPU Architecture & Design IP,Yes,Yes,Yes,Yes,Sustained
+AI Chip Performance Leadership,Yes,Yes,Partial,Yes,Temporary
+Brand & Market Position,Yes,Yes,Partial,Yes,Temporary
+Financial Resources & Cash,Yes,No,No,Yes,Parity
+Manufacturing Capabilities,Yes,No,No,Partial,Disadvantage
+R&D Capabilities & Innovation,Yes,Yes,Yes,Yes,Sustained
+Partnership Network & Ecosystem,Yes,Yes,Partial,Yes,Temporary
+
+Chart 4: Value Chain Margins
+Activity,Margin Range (%),NVIDIA Involvement,Strategic Importance
+R&D & Design,60-80,Core,High
+Materials & Equipment,40-60,Partner,Medium
+Manufacturing & Fab,15-25,Outsourced,Low
+Assembly & Test,20-40,Partner,Medium
+Systems Integration,50-70,Core,High
+
+Chart 5: AI Market Competitive Landscape
+Company,Market Share (%),Revenue ($B),Performance (TFLOPS),Platform
+NVIDIA,95.0,47.5,989,CUDA
+AMD,3.0,1.4,1307,ROCm
+Intel,1.0,0.5,432,oneAPI
+Google,Internal,N/A,N/A,TPU
+Others,1.0,0.6,Varies,Various
+
+Chart 6: Geopolitical Risk Matrix
+Risk Factor,Probability (1-10),Impact (1-10),Risk Level,Description
+Taiwan Strait Conflict,7,9,High,TSMC disruption - 90% manufacturing dependency
+US-China Tech War,8,9,High,Export restrictions and sanctions
+Supply Chain Disruption,5,7,Medium,HBM memory and component shortages
+AI Regulation,7,5,Medium,EU/US compliance requirements
+Competitor Breakthrough,3,6,Low,AMD/Intel technology advancement
+Semiconductor Sanctions,5,8,High,China market restrictions ($20B+ impact)
+Cyber Attacks,5,4,Low,IP theft and security breaches 

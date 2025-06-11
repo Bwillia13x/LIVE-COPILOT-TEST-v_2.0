@@ -86,7 +86,7 @@ export class AudioTranscriptionApp {
       // Initialize theme system
       this.initTheme();
       
-      // Initialize API key from localStorage
+      // Initialize API key from sessionStorage
       await this.initializeAPIKey();
       
       this.setupAudioRecorder();
@@ -159,7 +159,7 @@ export class AudioTranscriptionApp {
     settingsButton?.addEventListener('click', () => {
       settingsModal?.style.setProperty('display', 'flex');
       // Load current API key if saved
-      const savedApiKey = localStorage.getItem('geminiApiKey');
+      const savedApiKey = sessionStorage.getItem('geminiApiKey');
       if (savedApiKey && this.elements.apiKeyInput) {
         this.elements.apiKeyInput.value = savedApiKey;
       }
@@ -180,9 +180,9 @@ export class AudioTranscriptionApp {
         
         if (apiKey) {
           if (rememberKey) {
-            localStorage.setItem('geminiApiKey', apiKey);
+            sessionStorage.setItem('geminiApiKey', apiKey);
           } else {
-            localStorage.removeItem('geminiApiKey');
+            sessionStorage.removeItem('geminiApiKey');
           }
           this.apiService.setApiKey(apiKey);
           this.testAPIConnection();
@@ -252,10 +252,10 @@ export class AudioTranscriptionApp {
 
   private async initializeAPIKey(): Promise<void> {
     try {
-      // Load API key from localStorage
-      const savedApiKey = localStorage.getItem('geminiApiKey');
+      // Load API key from sessionStorage
+      const savedApiKey = sessionStorage.getItem('geminiApiKey');
       if (savedApiKey) {
-        console.log('🔑 Loading saved API key from localStorage');
+        console.log('🔑 Loading saved API key from sessionStorage');
         this.apiService.setApiKey(savedApiKey);
         
         // Update the API key input field if it exists
@@ -269,7 +269,7 @@ export class AudioTranscriptionApp {
           rememberKeyCheckbox.checked = true;
         }
       } else {
-        console.log('⚠️ No API key found in localStorage - user will need to configure one');
+        console.log('⚠️ No API key found in sessionStorage - user will need to configure one');
       }
     } catch (error) {
       ErrorHandler.logError('Failed to initialize API key', error);

@@ -21,7 +21,7 @@ export class APIService {
   private async initializeAPI(): Promise<void> {
     try {
       // Get API key from localStorage or environment variables
-      const storedKey = localStorage.getItem('geminiApiKey');
+      const storedKey = sessionStorage.getItem('geminiApiKey');
       const envKey = import.meta.env.VITE_GEMINI_API_KEY;
       
       // Only use the key if it's not null, undefined, or empty
@@ -187,7 +187,7 @@ Transcription: "${transcription}"`;
     
     try {
       this.apiKey = apiKey.trim();
-      localStorage.setItem('geminiApiKey', this.apiKey);
+      sessionStorage.setItem('geminiApiKey', this.apiKey);
       this.genAI = new GoogleGenAI(this.apiKey as any);
       console.log('🔑 API key set and service initialized successfully');
     } catch (error: any) {
